@@ -231,22 +231,28 @@ async def analyze_clip(audio: UploadFile) -> dict:
     dest.write_bytes(raw)
 
     if decoded is None:
-        # Unknown format (e.g. webm from the browser without ffmpeg). Accept it,
-        # flag that we couldn't check it yet.
-        with _db() as db:
-            cid = db.add_clip(
-                str(dest),
-                duration_s=0.0,
-                is_good=True,
-                issues=["not checked yet (install the audio pack)"],
-            )
-        return {
-            "clip_id": cid,
-            "ok": True,
-            "checked": False,
-            "issues": ["We saved it but couldn't listen to it yet."],
-            "duration_s": 0.0,
-        }
+        # Not a stdlib-readable PCM WAV (e.g. browser webm/opus, mp3, m4a). Try
+        # the ffmpeg decoder (#10/#20); if it isn't installed, accept the clip but
+        # flag it as not-yet-checked so the flow never dead-ends.
+        from .audio.decode import AudioDecodeError, decode_to_samples
+
+        try:
+            decoded = decode_to_samples(str(dest))
+        except AudioDecodeError:
+            with _db() as db:
+                cid = db.add_clip(
+                    str(dest),
+                    duration_s=0.0,
+                    is_good=True,
+                    issues=["not checked yet (install the audio pack)"],
+                )
+            return {
+                "clip_id": cid,
+                "ok": True,
+                "checked": False,
+                "issues": ["We saved it but couldn't listen to it yet."],
+                "duration_s": 0.0,
+            }
 
     samples, sr = decoded
     q: ClipQuality = analyze_samples(samples, sr)

@@ -200,6 +200,42 @@ def analyze_samples(samples: np.ndarray, sample_rate: int) -> ClipQuality:
     )
 
 
+@dataclass
+class LiveMeter:
+    """A single frame of live recording feedback for the meter *while* recording.
+
+    ``level`` is a 0–1 bar height; ``status`` is one of "quiet"/"good"/"loud" so
+    the UI can colour it green/amber without the child reading dBFS (#13).
+    """
+
+    level: float
+    status: str
+    rms_dbfs: float
+
+
+def live_meter(samples: np.ndarray, sample_rate: int = 16000) -> LiveMeter:
+    """Cheap, pure level read for a short live audio chunk (#13).
+
+    Maps RMS dBFS in roughly [-60, 0] to a 0–1 bar, and flags too-quiet vs
+    clipping so the recorder can nudge the child ("speak up" / "too loud") live.
+    """
+    x = _to_mono_float(samples)
+    if x.size == 0:
+        return LiveMeter(level=0.0, status="quiet", rms_dbfs=float("-inf"))
+    rms = float(np.sqrt(np.mean(x**2)))
+    rms_dbfs = _amp_to_dbfs(rms)
+    peak = float(np.max(np.abs(x)))
+    # -60 dBFS → 0.0, 0 dBFS → 1.0 (clamped).
+    level = max(0.0, min(1.0, (rms_dbfs + 60.0) / 60.0))
+    if peak >= CLIP_LEVEL:
+        status = "loud"
+    elif rms_dbfs < RMS_QUIET_DBFS:
+        status = "quiet"
+    else:
+        status = "good"
+    return LiveMeter(level=round(level, 3), status=status, rms_dbfs=round(rms_dbfs, 1))
+
+
 def analyze_file(path: str, sample_rate: int | None = None) -> ClipQuality:
     """Load an audio file and analyse it.
 
@@ -236,6 +272,8 @@ def aggregate(clips: list[ClipQuality]) -> DataProfile:
 __all__ = [
     "Verdict",
     "ClipQuality",
+    "LiveMeter",
+    "live_meter",
     "analyze_samples",
     "analyze_file",
     "aggregate",
