@@ -19,6 +19,20 @@ PORT = int(os.environ.get("TALKTEACH_PORT", "8756"))
 # Sufficiency gate target (minutes of *good* audio) before "Teach!" unlocks.
 TARGET_GOOD_MINUTES = float(os.environ.get("TALKTEACH_TARGET_MINUTES", "30"))
 
+# --- Upload safety (security #7/#9) -------------------------------------------
+# Reject oversized/empty uploads early, and never trust a client-supplied
+# filename as a path component (path-traversal). See DECISIONS.md D-004.
+MAX_UPLOAD_BYTES = int(os.environ.get("TALKTEACH_MAX_UPLOAD_MB", "100")) * 1024 * 1024
+
+# Extensions we recognise as audio. A client name is used ONLY to recover a
+# validated extension for the *generated* storage name — never as a path.
+ALLOWED_AUDIO_EXTENSIONS: frozenset[str] = frozenset(
+    {"wav", "webm", "weba", "ogg", "oga", "opus", "mp3", "m4a", "mp4", "flac", "aac"}
+)
+# Content-type prefixes we accept. Browser MediaRecorder blobs are audio/* (and
+# occasionally video/webm for an audio-only webm container), so both are allowed.
+ALLOWED_AUDIO_CONTENT_PREFIXES: tuple[str, ...] = ("audio/", "video/webm")
+
 
 def ensure_dirs() -> None:
     DEFAULT_PROJECT_DIR.mkdir(parents=True, exist_ok=True)

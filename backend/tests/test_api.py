@@ -14,6 +14,7 @@ import os
 import tempfile
 import time
 import wave
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -90,6 +91,49 @@ def test_analyze_non_wav_degrades_gracefully():
         assert body["ok"] is True  # accepted, just not checked
 
 
+def test_upload_path_traversal_is_contained():
+    """A crafted ../ filename must NOT escape the clip dir (security #7)."""
+    with TestClient(app) as client:
+        evil = "../../../../tmp/pwned.wav"
+        files = {"audio": (evil, _good_wav_bytes(0.8), "audio/wav")}
+        r = client.post("/api/clips/analyze", files=files)
+        assert r.status_code == 200
+        clip_id = r.json()["clip_id"]
+
+    clip_dir = (config.DEFAULT_PROJECT_DIR / "clips").resolve()
+    with ProjectDB.open(config.DEFAULT_DB_PATH) as db:
+        clip = next(c for c in db.list_clips() if c["id"] == clip_id)
+    stored = Path(clip["path"]).resolve()
+    # The stored file lives strictly inside the clip dir...
+    assert clip_dir in stored.parents, stored
+    # ...and the attacker-chosen basename was discarded for a generated one.
+    assert "pwned" not in stored.name
+    assert stored.name.startswith("clip_") and stored.suffix == ".wav"
+
+
+def test_upload_empty_is_rejected():
+    with TestClient(app) as client:
+        files = {"audio": ("empty.wav", b"", "audio/wav")}
+        r = client.post("/api/clips/analyze", files=files)
+        assert r.status_code == 400
+
+
+def test_upload_non_audio_is_rejected():
+    with TestClient(app) as client:
+        files = {"audio": ("malware.exe", b"MZ\x90\x00", "application/x-msdownload")}
+        r = client.post("/api/clips/analyze", files=files)
+        assert r.status_code == 415
+
+
+def test_upload_too_large_is_rejected(monkeypatch):
+    # Shrink the cap so we don't have to send 100 MB.
+    monkeypatch.setattr(config, "MAX_UPLOAD_BYTES", 1024)
+    with TestClient(app) as client:
+        files = {"audio": ("big.wav", _good_wav_bytes(2.0), "audio/wav")}
+        r = client.post("/api/clips/analyze", files=files)
+        assert r.status_code == 413
+
+
 def test_full_training_flow():
     with TestClient(app) as client:
         # Fresh gate should block before there's enough good audio.
@@ -99,8 +143,13 @@ def test_full_training_flow():
         # Seed enough GOOD minutes directly in the DB (40 × 60s = 40 min).
         with ProjectDB.open(config.DEFAULT_DB_PATH) as db:
             for i in range(40):
-                db.add_clip(f"/seed/clip_{i}.wav", duration_s=60.0,
-                            is_good=True, issues=[], transcript="hello there")
+                db.add_clip(
+                    f"/seed/clip_{i}.wav",
+                    duration_s=60.0,
+                    is_good=True,
+                    issues=[],
+                    transcript="hello there",
+                )
 
         after = client.get("/api/sufficiency").json()
         assert after["status"] == "ready"
@@ -139,6 +188,7 @@ def test_train_blocked_without_data():
     os.environ["TALKTEACH_DATA"] = tempfile.mkdtemp(prefix="talkteach-empty-")
     importlib.reload(config)
     import talkteach.app as appmod
+
     importlib.reload(appmod)
     with TestClient(appmod.app) as client:
         r = client.post("/api/train")

@@ -13,6 +13,7 @@ from __future__ import annotations
 import dataclasses
 import io
 import threading
+import uuid
 import wave
 from contextlib import asynccontextmanager
 from dataclasses import asdict
@@ -24,7 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import config
-from .audio.quality import ClipQuality, aggregate, analyze_samples
+from .audio.quality import ClipQuality, analyze_samples
 from .data.project import ProjectDB
 from .director import (
     DataProfile,
@@ -37,6 +38,7 @@ from .director import (
 from .engines import get_engine
 from .engines.base import EngineUnavailableError, TrainProgress
 from .reliability.preflight import run_preflight
+
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
@@ -60,6 +62,7 @@ app.add_middleware(
 
 # --- shared state -------------------------------------------------------------
 
+
 def _db() -> ProjectDB:
     """Open the single Phase-0 project DB (one connection per call keeps SQLite
     happy across the main thread and background training threads via WAL)."""
@@ -69,6 +72,7 @@ def _db() -> ProjectDB:
 
 # --- helpers ------------------------------------------------------------------
 
+
 def _plan_to_dict(plan) -> dict:
     d = asdict(plan)
     d["engine"] = plan.engine.value
@@ -76,6 +80,59 @@ def _plan_to_dict(plan) -> dict:
     d["precision"] = plan.precision.value
     d["effective_batch"] = plan.effective_batch
     return d
+
+
+def _safe_ext(filename: str | None) -> str:
+    """Recover a validated lowercase extension (no dot) from a client filename.
+
+    Falls back to ``wav`` for missing/unknown extensions. The result is only ever
+    used to build a *server-generated* storage name — never as a path component.
+    """
+    if not filename:
+        return "wav"
+    ext = Path(filename).suffix.lower().lstrip(".")
+    return ext if ext in config.ALLOWED_AUDIO_EXTENSIONS else "wav"
+
+
+def _safe_clip_name(filename: str | None) -> str:
+    """Generate a collision-free, traversal-proof storage name (security #7).
+
+    A crafted filename like ``../../etc/passwd`` cannot escape the clip dir
+    because the client string is discarded entirely; only a validated extension
+    survives, appended to a random uuid. See DECISIONS.md D-004.
+    """
+    return f"clip_{uuid.uuid4().hex}.{_safe_ext(filename)}"
+
+
+async def _read_validated_upload(audio: UploadFile) -> bytes:
+    """Read an upload, rejecting empty/oversized/non-audio payloads early (#9).
+
+    Raises HTTP 400 (empty), 413 (too large), or 415 (not an audio type). The
+    content-type check is lenient for browser blobs (audio/* and video/webm) but
+    blocks obviously-wrong uploads (e.g. an ``application/x-msdownload`` .exe).
+    """
+    ctype = (audio.content_type or "").lower()
+    raw_ext = Path(audio.filename).suffix.lower().lstrip(".") if audio.filename else ""
+    # If the client both declares a non-audio content-type AND gives no allowed
+    # audio extension, reject before reading the whole body.
+    ctype_ok = not ctype or ctype.startswith(config.ALLOWED_AUDIO_CONTENT_PREFIXES)
+    ext_ok = raw_ext in config.ALLOWED_AUDIO_EXTENSIONS
+    if not ctype_ok and not ext_ok:
+        raise HTTPException(
+            status_code=415,
+            detail="That doesn't look like a sound file. Try a WAV, MP3, or a recording.",
+        )
+
+    raw = await audio.read()
+    if len(raw) == 0:
+        raise HTTPException(status_code=400, detail="That recording was empty.")
+    if len(raw) > config.MAX_UPLOAD_BYTES:
+        mb = config.MAX_UPLOAD_BYTES // (1024 * 1024)
+        raise HTTPException(
+            status_code=413,
+            detail=f"That file is too big — the limit is about {mb} MB per clip.",
+        )
+    return raw
 
 
 def _decode_wav_bytes(data: bytes) -> tuple[np.ndarray, int] | None:
@@ -89,6 +146,7 @@ def _decode_wav_bytes(data: bytes) -> tuple[np.ndarray, int] | None:
             frames = wf.readframes(wf.getnframes())
     except (wave.Error, EOFError, OSError):
         return None
+    dtype: type[np.signedinteger]
     if sampwidth == 2:
         dtype, peak = np.int16, 32768.0
     elif sampwidth == 4:
@@ -116,6 +174,7 @@ def _current_data_profile(db: ProjectDB) -> DataProfile:
 
 # --- request models -----------------------------------------------------------
 
+
 class ProjectIn(BaseModel):
     name: str
     language_code: str | None = None
@@ -131,6 +190,7 @@ class ExportIn(BaseModel):
 
 
 # --- endpoints ----------------------------------------------------------------
+
 
 @app.get("/api/health")
 def health() -> dict:
@@ -161,22 +221,29 @@ async def analyze_clip(audio: UploadFile) -> dict:
 
     Decodes PCM WAV with the stdlib (no ffmpeg). For other formats it accepts the
     clip but marks quality unknown so the flow never dead-ends."""
-    raw = await audio.read()
+    raw = await _read_validated_upload(audio)
     config.ensure_dirs()
     decoded = _decode_wav_bytes(raw)
     clip_dir = config.DEFAULT_PROJECT_DIR / "clips"
     clip_dir.mkdir(parents=True, exist_ok=True)
-    dest = clip_dir / (audio.filename or "clip.wav")
+    # Server-generated name: the client filename is never a path component (#7).
+    dest = clip_dir / _safe_clip_name(audio.filename)
     dest.write_bytes(raw)
 
     if decoded is None:
         # Unknown format (e.g. webm from the browser without ffmpeg). Accept it,
         # flag that we couldn't check it yet.
         with _db() as db:
-            cid = db.add_clip(str(dest), duration_s=0.0, is_good=True,
-                              issues=["not checked yet (install the audio pack)"])
+            cid = db.add_clip(
+                str(dest),
+                duration_s=0.0,
+                is_good=True,
+                issues=["not checked yet (install the audio pack)"],
+            )
         return {
-            "clip_id": cid, "ok": True, "checked": False,
+            "clip_id": cid,
+            "ok": True,
+            "checked": False,
             "issues": ["We saved it but couldn't listen to it yet."],
             "duration_s": 0.0,
         }
@@ -223,7 +290,8 @@ def draft_transcript(body: DraftIn) -> dict:
 @app.post("/api/transcribe")
 async def transcribe(audio: UploadFile) -> dict:
     """The 'Try it' microphone."""
-    raw = await audio.read()
+    raw = await _read_validated_upload(audio)
+    config.ensure_dirs()
     tmp = config.DEFAULT_PROJECT_DIR / "try.wav"
     tmp.write_bytes(raw)
     engine = get_engine(EngineKind.WHISPER_LORA)
@@ -236,7 +304,7 @@ async def transcribe(audio: UploadFile) -> dict:
 
 # --- training jobs ------------------------------------------------------------
 
-_jobs: dict[int, "_Job"] = {}
+_jobs: dict[int, _Job] = {}
 _jobs_lock = threading.Lock()
 
 
@@ -264,7 +332,9 @@ def _run_training(run_id: int, plan, manifest: list[dict], workdir: str) -> None
     try:
         db.update_run(run_id, status="running")
         final = engine.train(
-            plan, manifest, workdir,
+            plan,
+            manifest,
+            workdir,
             progress=on_progress,
             should_stop=cancel.is_set,
         )
@@ -280,8 +350,13 @@ def _run_training(run_id: int, plan, manifest: list[dict], workdir: str) -> None
     except Exception as e:  # never let a training thread die silently
         with _jobs_lock:
             _jobs[run_id].progress = TrainProgress(
-                epoch=0, total_epochs=plan.epochs, fraction=0.0, smartness=None,
-                message=f"Something went wrong: {e}", done=False, failed=True,
+                epoch=0,
+                total_epochs=plan.epochs,
+                fraction=0.0,
+                smartness=None,
+                message=f"Something went wrong: {e}",
+                done=False,
+                failed=True,
             )
         db.update_run(run_id, status="failed")
     finally:
@@ -314,8 +389,13 @@ def start_training() -> dict:
     workdir = str(config.DEFAULT_PROJECT_DIR / "runs" / str(run_id))
     Path(workdir).mkdir(parents=True, exist_ok=True)
     initial = TrainProgress(
-        epoch=0, total_epochs=plan.epochs, fraction=0.0, smartness=None,
-        message="Getting ready to teach…", done=False, failed=False,
+        epoch=0,
+        total_epochs=plan.epochs,
+        fraction=0.0,
+        smartness=None,
+        message="Getting ready to teach…",
+        done=False,
+        failed=False,
     )
     with _jobs_lock:
         _jobs[run_id] = _Job(run_id=run_id, progress=initial, cancel=threading.Event())
@@ -338,9 +418,12 @@ def training_status(run_id: int) -> dict:
         raise HTTPException(status_code=404, detail="That training run wasn't found.")
     done = run["status"] == "done"
     return {
-        "epoch": 0, "total_epochs": 0, "fraction": 1.0 if done else 0.0,
+        "epoch": 0,
+        "total_epochs": 0,
+        "fraction": 1.0 if done else 0.0,
         "smartness": (1.0 - run["best_val_wer"]) if run.get("best_val_wer") is not None else None,
-        "message": f"Status: {run['status']}", "done": done,
+        "message": f"Status: {run['status']}",
+        "done": done,
         "failed": run["status"] == "failed",
     }
 
@@ -361,7 +444,9 @@ def export_model(body: ExportIn) -> dict:
         run = db.get_run(body.run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="That model wasn't found.")
-    model_dir = run.get("checkpoint_path") or str(config.DEFAULT_PROJECT_DIR / "runs" / str(body.run_id))
+    model_dir = run.get("checkpoint_path") or str(
+        config.DEFAULT_PROJECT_DIR / "runs" / str(body.run_id)
+    )
     out_dir = str(config.DEFAULT_PROJECT_DIR / "exports" / str(body.run_id))
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     engine = get_engine(EngineKind.WHISPER_LORA)
