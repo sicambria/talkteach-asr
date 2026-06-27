@@ -103,41 +103,29 @@ class WhisperLoRAEngine(ASREngine):
         progress: ProgressCallback | None = None,
         should_stop: ShouldStop | None = None,
     ) -> TrainProgress:
-        """Run the teaching job (real loop in phase 1; simulation today).
+        """Run the teaching job: the real PEFT/LoRA loop, or the simulation.
 
-        Currently always falls through to :meth:`_simulate_train` so the app is
-        fully exercisable without a GPU. When torch is available we still
-        simulate, but the structured outline below is where the real loop lands.
+        Dispatch (see DECISIONS.md D-012): the real ``Seq2SeqTrainer`` loop runs
+        when the training deps are present, the run isn't force-simulated, and at
+        least one manifest clip exists on disk. Otherwise we fall back to the
+        dependency-free simulation so the whole app stays exercisable on a
+        GPU-less machine with seed/fake data. The real loop lives in
+        :mod:`talkteach.engines._whisper_train` (kept separate so its pure helpers
+        are unit-tested without torch).
         """
-        if _has("torch"):
-            # TODO(phase-1): real PEFT/LoRA Seq2SeqTrainer loop. Outline:
-            #   1. Resolve device/precision from plan.compute / plan.precision.
-            #   2. WhisperProcessor.from_pretrained(plan.base_checkpoint); build a
-            #      torch Dataset over `manifest` (load wav -> log-mel features via
-            #      processor.feature_extractor; tokenize `text` -> labels).
-            #   3. WhisperForConditionalGeneration.from_pretrained(...); wrap with
-            #      peft.LoraConfig(r=plan.lora_rank, lora_alpha=plan.lora_alpha,
-            #      target_modules=["q_proj","v_proj"], ...) -> get_peft_model.
-            #      Optionally freeze the encoder when plan.freeze_encoder.
-            #   4. DataCollatorSpeechSeq2SeqWithPadding (pad input_features +
-            #      labels, replace pad token id with -100).
-            #   5. Seq2SeqTrainingArguments built from the plan:
-            #         per_device_train_batch_size = plan.batch_size,
-            #         gradient_accumulation_steps = plan.grad_accum,
-            #         learning_rate = plan.learning_rate,
-            #         num_train_epochs = plan.epochs,
-            #         warmup_ratio = plan.warmup_ratio,
-            #         max_grad_norm = plan.grad_clip, seed = plan.seed,
-            #         fp16/bf16 from plan.precision, output_dir = workdir,
-            #         load_best_model_at_end=True + EarlyStoppingCallback(
-            #             plan.early_stop_patience).
-            #   6. compute_metrics -> jiwer.wer; report smartness = 1 - WER.
-            #   7. A TrainerCallback bridges HF logs -> TrainProgress(progress=...)
-            #      and polls should_stop() to set control.should_training_stop.
-            #   8. trainer.train(resume_from_checkpoint=<latest in workdir>).
-            # Until that lands, fall through to the simulation so nothing breaks:
-            pass
-        return self._simulate_train(plan, manifest, workdir, progress, should_stop)
+        from . import _whisper_train as wt
+
+        has_deps = not _missing(_TRAIN_DEPS)
+        simulate, reason = wt.should_simulate(manifest, has_train_deps=has_deps)
+        if simulate:
+            if reason:
+                # Visible in logs / Grown-up mode; never crashes the child's flow.
+                import logging
+
+                logging.getLogger("talkteach.train").info("Simulating training: %s", reason)
+            return self._simulate_train(plan, manifest, workdir, progress, should_stop)
+
+        return wt.run_real_training(plan, manifest, workdir, progress, should_stop)
 
     def _simulate_train(
         self,
@@ -295,24 +283,73 @@ class WhisperLoRAEngine(ASREngine):
 
     # -- Use on my computer ---------------------------------------------------
 
-    def export(self, model_dir: str, out_dir: str, fmt: str = "ctranslate2") -> ExportResult:
-        """Package ``model_dir`` into a portable runtime format.
+    @staticmethod
+    def _resolve_full_model(model_dir: str) -> str:
+        """Return a directory holding a *full* HF model to convert.
 
-        Real CTranslate2 conversion when the dep is present; otherwise writes a
-        small JSON manifest describing what *would* be exported and returns an
-        :class:`ExportResult` whose ``notes`` explain which dep is missing.
+        Real training saves a PEFT/LoRA *adapter* (plus the processor) to the run
+        dir. CTranslate2/ONNX need a full model, so if we find an adapter we load
+        the base, merge the adapter in, and save the merged model to
+        ``<model_dir>/_merged``. A plain full model is returned unchanged. Needs
+        torch/transformers/peft; callers guard on availability.
+        """
+        adapter_cfg = os.path.join(model_dir, "adapter_config.json")
+        if not os.path.isfile(adapter_cfg):
+            return model_dir  # already a full model (or a dry-run placeholder)
+
+        import json as _json
+
+        from peft import PeftModel  # type: ignore
+        from transformers import WhisperForConditionalGeneration, WhisperProcessor  # type: ignore
+
+        with open(adapter_cfg, encoding="utf-8") as fh:
+            base_id = _json.load(fh).get("base_model_name_or_path", "openai/whisper-small")
+        base = WhisperForConditionalGeneration.from_pretrained(base_id)
+        merged = PeftModel.from_pretrained(base, model_dir).merge_and_unload()
+        merged_dir = os.path.join(model_dir, "_merged")
+        os.makedirs(merged_dir, exist_ok=True)
+        merged.save_pretrained(merged_dir)
+        # Bring the processor/tokenizer along so the converter has everything.
+        try:
+            WhisperProcessor.from_pretrained(model_dir).save_pretrained(merged_dir)
+        except Exception:
+            WhisperProcessor.from_pretrained(base_id).save_pretrained(merged_dir)
+        return merged_dir
+
+    def export(self, model_dir: str, out_dir: str, fmt: str = "ctranslate2") -> ExportResult:
+        """Package ``model_dir`` into a portable, offline runtime format (#4).
+
+        For a LoRA-trained run, the adapter is first merged into the base model
+        (:meth:`_resolve_full_model`). The default ``ctranslate2`` target gives
+        the fastest CPU inference and pairs with the faster-whisper "Try it" path;
+        ``onnx`` is the streaming/edge target via sherpa-onnx (Phase 2 scaffold,
+        DECISIONS.md D-006). When the needed dep is missing we write a manifest
+        describing what *would* be produced so the flow never dead-ends.
         """
         os.makedirs(out_dir, exist_ok=True)
 
-        if fmt == "ctranslate2" and _has(_EXPORT_DEP):
+        if fmt in ("ctranslate2", "ct2") and _has(_EXPORT_DEP) and _has("transformers"):
             from ctranslate2.converters import TransformersConverter  # type: ignore
 
-            converter = TransformersConverter(model_dir)
-            converter.convert(out_dir, quantization="int8", force=True)
+            source = self._resolve_full_model(model_dir)
+            TransformersConverter(source).convert(out_dir, quantization="int8", force=True)
             return ExportResult(
                 format="ctranslate2",
                 path=out_dir,
                 notes="Converted to CTranslate2 (int8). Copy this folder to use offline.",
+            )
+
+        if fmt == "onnx" and _has("optimum") and _has("transformers"):
+            # sherpa-onnx consumes ONNX exported via 🤗 optimum. Scaffolded path:
+            # merge LoRA, then `optimum.exporters.onnx` the Whisper model.
+            from optimum.exporters.onnx import main_export  # type: ignore
+
+            source = self._resolve_full_model(model_dir)
+            main_export(source, output=out_dir, task="automatic-speech-recognition")
+            return ExportResult(
+                format="onnx",
+                path=out_dir,
+                notes="Exported to ONNX. Run with sherpa-onnx for streaming/edge use.",
             )
 
         # Dry-run placeholder so the "Use on my computer" flow is exercisable.

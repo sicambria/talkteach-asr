@@ -285,5 +285,39 @@ correctness; ESLint + Prettier cover JS hygiene and style.
 
 Consequence: `npm run check` is a real, green gate. A future TS migration can
 flip `checkJs` back on incrementally.
+
+## D-012 — When does `train()` run the real loop vs. the simulation?
+
+Context: with `[ml]` installed (as in this venv), we want "Teach!" to *really*
+train. But the fast test suite must never trigger a multi-GB model download +
+fit, and the existing tests seed clips with non-existent paths (`/seed/*.wav`,
+`a.wav`) expecting the dependency-free simulation.
+
+Options (score /100):
+1. **Real when (deps present) AND (manifest audio actually exists on disk) AND
+   (not force-simulated); simulate otherwise** — 93 — elegant and honest: if the
+   engine literally cannot load the audio it was handed, it can't really train,
+   so it demonstrates via the simulation (clearly `[SIMULATION]`-marked). Real
+   clips on a real install → real training. The existing tests (fake paths) keep
+   passing *unchanged* because their paths don't resolve. An explicit
+   `TALKTEACH_FORCE_SIMULATION=1` override exists for demos/CI.
+2. Real behind an opt-in env flag (default simulate) — 75 — safest for tests but
+   undersells the promise; a plain `[ml]` install would still only simulate.
+3. Real whenever torch present — 55 — faithful to the promise but breaks the fast
+   tests (fake paths) and risks an accidental 2 GB download in CI.
+4. Real only inside the integration marker — 60 — the product flow never trains
+   for real; wrong.
+5. A UI consent gate before real training — 70 — good product idea (model
+   download consent) but orthogonal to the engine-level decision; layer it on top.
+
+Decision: **Option 1.** `_should_simulate(manifest)` returns True when training
+deps are missing, when `TALKTEACH_FORCE_SIMULATION=1`, or when no manifest entry
+points to an existing file. The end-to-end real fit is additionally exercised by
+`pytest -m integration` against the toy dataset (#22).
+
+Consequence: the real `Seq2SeqTrainer` path is the default for a real install
+with real recordings, while the test suite stays fast, deterministic, and green
+without modification. Pure helpers (args-from-plan, WER, NaN-guard, checkpoint
+discovery) are unit-tested directly.
 </content>
 </invoke>

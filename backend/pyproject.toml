@@ -22,6 +22,7 @@ ml = [
     "torch>=2.2",
     "transformers>=4.40",
     "peft>=0.10",
+    "datasets>=2.18",     # 🤗 Dataset for the real fine-tune loop (roadmap #1)
     "faster-whisper>=1.0",
     "soundfile>=0.12",
     "librosa>=0.10",
@@ -93,3 +94,11 @@ no_implicit_optional = true
 [[tool.mypy.overrides]]
 module = ["talkteach.engines.*", "talkteach.audio.decode", "talkteach.audio.vad"]
 disallow_untyped_defs = false
+
+# The real-training wrapper is a thin shim over torch/transformers/peft whose
+# stubs are incomplete and rename APIs across versions (e.g. tokenizer →
+# processing_class, evaluation_strategy → eval_strategy). It is verified by the
+# `integration` test, not the type checker; don't gate CI on its dynamic surface.
+[[tool.mypy.overrides]]
+module = ["talkteach.engines._whisper_train"]
+ignore_errors = true

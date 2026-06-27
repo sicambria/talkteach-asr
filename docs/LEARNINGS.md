@@ -28,6 +28,22 @@ Newest entries at the top of each section.
 
 ## Errors encountered & fixes
 
+- **transformers 5.x renamed `Seq2SeqTrainer(tokenizer=…)` → `processing_class=`.**
+  The first real fine-tune run died with `TypeError: __init__() got an unexpected
+  keyword argument 'tokenizer'` on transformers 5.12. Fix: try
+  `processing_class=processor` first, fall back to `tokenizer=…` so the same code
+  works on 4.40+ and 5.x. Lesson: the HF training surface churns across majors;
+  the engine wrapper isolates that churn (and is excluded from the mypy gate for
+  the same reason — see `pyproject.toml`).
+
+- **The integration test silently *skipped* the first time** because `datasets`
+  was declared in the `[ml]` extra but not actually installed in the venv. A
+  skipped opt-in test reads as "passed" at a glance — always confirm it actually
+  *ran* (`1 passed`, not `1 skipped`) before trusting it. Installed `datasets`,
+  then the real loop ran green (whisper-tiny, 1 epoch, CPU, ~10 s after download).
+
+- **`pip` is absent in `backend/.venv`.** The venv was created by `uv venv`,
+
 - **`pip` is absent in `backend/.venv`.** The venv was created by `uv venv`,
   which doesn't install pip. `python -m pip install …` fails with
   `No module named pip`. Fix: install into it with
