@@ -1,12 +1,14 @@
 """End-to-end API tests for the TalkTeach job server.
 
-Exercises the whole four-screen flow over HTTP with NO ML deps installed:
+Exercises the whole four-screen flow over HTTP without requiring a GPU or models:
 project → analyze a real WAV → sufficiency gate → train (simulation) → status →
-export → graceful transcription. Uses a throwaway data dir via env.
+export → transcription. The "graceful without ML" check is skipped when
+faster-whisper is installed. Uses a throwaway data dir via env.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import io
 import os
 import tempfile
@@ -14,6 +16,11 @@ import time
 import wave
 
 import numpy as np
+import pytest
+
+# faster-whisper present → the transcribe endpoint takes the real path (needs a
+# model), so the "graceful without ML" assertion only holds when it's absent.
+_FASTER_WHISPER = importlib.util.find_spec("faster_whisper") is not None
 
 # Point the backend at a throwaway data dir BEFORE importing the app/config.
 os.environ["TALKTEACH_DATA"] = tempfile.mkdtemp(prefix="talkteach-test-")
@@ -138,6 +145,10 @@ def test_train_blocked_without_data():
         assert r.status_code == 409  # gate refuses; friendly message
 
 
+@pytest.mark.skipif(
+    _FASTER_WHISPER,
+    reason="faster-whisper installed; the endpoint takes the real (model-requiring) path",
+)
 def test_transcribe_graceful_without_ml():
     with TestClient(app) as client:
         files = {"audio": ("try.wav", _good_wav_bytes(0.6), "audio/wav")}

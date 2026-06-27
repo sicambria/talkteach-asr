@@ -1,7 +1,9 @@
 """Tests for the engine adapter layer.
 
-These run with NO heavy ML deps installed (torch/transformers/peft/faster-whisper
-are not in the test environment). They prove:
+These adapt to the environment: with the heavy ML extras absent they assert the
+graceful-degradation path; with them installed the real paths take over (and the
+no-dep assertions are skipped, since real models/audio aren't downloaded here).
+They prove:
   * the package import-guards correctly (importing it here can't fail),
   * is_available() reports the missing deps by name,
   * the dependency-free simulation train drives the UI contract end-to-end,
@@ -12,9 +14,22 @@ are not in the test environment). They prove:
 
 from __future__ import annotations
 
+import importlib.util
 import os
 
 import pytest
+
+
+def _have(*mods: str) -> bool:
+    return all(importlib.util.find_spec(m) is not None for m in mods)
+
+
+# These tests adapt to whichever environment they run in: with the `[ml]`/`[export]`
+# extras absent they assert the graceful-degradation path; with them present the
+# real paths take over (and need real models/audio, so we skip rather than download).
+_TRAIN_DEPS = _have("torch", "transformers", "peft")
+_FASTER_WHISPER = _have("faster_whisper")
+_CT2 = _have("ctranslate2")
 
 # Importing all of this with zero ML deps is itself the first assertion.
 from talkteach.engines import get_engine
@@ -56,11 +71,16 @@ def test_engine_instantiates_and_is_asreengine():
     assert isinstance(eng.name(), str) and eng.name()
 
 
-def test_is_available_reports_missing_module():
+def test_is_available_reflects_environment():
     ok, msg = WhisperLoRAEngine().is_available()
-    assert ok is False
-    # The message must name a specific missing training dep.
-    assert any(mod in msg for mod in ("torch", "transformers", "peft"))
+    if _TRAIN_DEPS:
+        # Training trio present → available, no message.
+        assert ok is True
+        assert msg == ""
+    else:
+        # Absent → unavailable, message names a specific missing training dep.
+        assert ok is False
+        assert any(mod in msg for mod in ("torch", "transformers", "peft"))
 
 
 def test_simulation_train_drives_progress_to_completion(tmp_path):
@@ -115,11 +135,19 @@ def test_should_stop_cancels_early(tmp_path):
     assert "stop" in final.message.lower() or "cancel" in final.message.lower()
 
 
+@pytest.mark.skipif(
+    _FASTER_WHISPER,
+    reason="faster-whisper installed; the real transcribe path needs a model + real audio",
+)
 def test_transcribe_without_faster_whisper_raises():
     with pytest.raises(EngineUnavailableError):
         WhisperLoRAEngine().transcribe("a.wav")
 
 
+@pytest.mark.skipif(
+    _CT2,
+    reason="ctranslate2 installed; the real export path needs a trained model on disk",
+)
 def test_export_dry_run_writes_manifest(tmp_path):
     result = WhisperLoRAEngine().export(str(tmp_path / "model"), str(tmp_path / "out"))
     assert isinstance(result, ExportResult)
