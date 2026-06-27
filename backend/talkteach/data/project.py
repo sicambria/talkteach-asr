@@ -120,12 +120,11 @@ class ProjectDB:
             ),
         )
         self._conn.commit()
+        assert cur.lastrowid is not None  # INSERT always sets a rowid
         return int(cur.lastrowid)
 
     def update_transcript(self, clip_id: int, transcript: str) -> None:
-        self._conn.execute(
-            "UPDATE clip SET transcript = ? WHERE id = ?", (transcript, clip_id)
-        )
+        self._conn.execute("UPDATE clip SET transcript = ? WHERE id = ?", (transcript, clip_id))
         self._conn.commit()
 
     def set_clip_good(self, clip_id: int, is_good: bool, issues: list[str]) -> None:
@@ -173,6 +172,7 @@ class ProjectDB:
             (engine, base_checkpoint, plan_json, now),
         )
         self._conn.commit()
+        assert cur.lastrowid is not None  # INSERT always sets a rowid
         return int(cur.lastrowid)
 
     def update_run(self, run_id: int, **fields: Any) -> None:
@@ -186,27 +186,20 @@ class ProjectDB:
         bad = set(fields) - _RUN_UPDATABLE_COLUMNS
         if bad:
             raise ValueError(
-                f"Cannot update column(s) {sorted(bad)}; "
-                f"allowed: {sorted(_RUN_UPDATABLE_COLUMNS)}"
+                f"Cannot update column(s) {sorted(bad)}; allowed: {sorted(_RUN_UPDATABLE_COLUMNS)}"
             )
         assignments = ", ".join(f"{col} = ?" for col in fields)
         params = list(fields.values())
         params.append(run_id)
-        self._conn.execute(
-            f"UPDATE training_run SET {assignments} WHERE id = ?", params
-        )
+        self._conn.execute(f"UPDATE training_run SET {assignments} WHERE id = ?", params)
         self._conn.commit()
 
     def get_run(self, run_id: int) -> dict[str, Any] | None:
-        row = self._conn.execute(
-            "SELECT * FROM training_run WHERE id = ?", (run_id,)
-        ).fetchone()
+        row = self._conn.execute("SELECT * FROM training_run WHERE id = ?", (run_id,)).fetchone()
         return self._run_to_dict(row) if row is not None else None
 
     def list_runs(self) -> list[dict[str, Any]]:
-        rows = self._conn.execute(
-            "SELECT * FROM training_run ORDER BY id"
-        ).fetchall()
+        rows = self._conn.execute("SELECT * FROM training_run ORDER BY id").fetchall()
         return [self._run_to_dict(r) for r in rows]
 
     # -- row conversion ----------------------------------------------------

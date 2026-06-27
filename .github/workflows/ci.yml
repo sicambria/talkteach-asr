@@ -1,0 +1,90 @@
+name: CI
+
+# Quality gate on every push and PR (roadmap #38). Three independent jobs —
+# Python, UI, Rust — so a failure points straight at the layer that broke.
+# Heavy ML/GPU paths are NOT run here (they live behind the `integration`/`ffmpeg`
+# pytest markers); CI exercises the light, deterministic core that must always
+# stay green without a GPU. See DECISIONS.md D-002.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python (lint · type · test)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+      - name: Create venv + install (light + dev deps only — no GPU/ML)
+        run: |
+          uv venv backend/.venv --python ${{ matrix.python-version }}
+          VIRTUAL_ENV=backend/.venv uv pip install -e 'backend[dev]'
+      - name: Ruff lint
+        run: backend/.venv/bin/ruff check backend/talkteach backend/tests
+      - name: Ruff format check
+        run: backend/.venv/bin/ruff format --check backend/talkteach backend/tests
+      - name: Mypy
+        run: backend/.venv/bin/mypy --config-file backend/pyproject.toml backend/talkteach
+      - name: Pytest
+        run: cd backend && .venv/bin/python -m pytest -q
+
+  ui:
+    name: UI (build · check · format)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - run: cd ui && npm ci
+      - name: Build
+        run: cd ui && npm run build
+      - name: svelte-check
+        run: cd ui && npm run check
+      - name: Prettier format check
+        run: cd ui && npm run format:check
+      - name: ESLint
+        run: cd ui && npm run lint
+
+  rust:
+    name: Rust (fmt · clippy · check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system deps for Tauri (Linux WebKit/GTK)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: rustfmt
+        run: cd src-tauri && cargo fmt --check
+      - name: clippy
+        run: cd src-tauri && cargo clippy -- -D warnings
+      - name: cargo check
+        run: cd src-tauri && cargo check

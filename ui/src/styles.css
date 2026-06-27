@@ -9,19 +9,19 @@
   --tt-ink: #1d2433;
   --tt-ink-soft: #4a5365;
 
-  --tt-primary: #ff7b54;      /* warm orange — the "go" colour */
+  --tt-primary: #ff7b54; /* warm orange — the "go" colour */
   --tt-primary-dark: #e85d35;
-  --tt-accent: #4cc9b0;       /* teal — secondary actions */
+  --tt-accent: #4cc9b0; /* teal — secondary actions */
   --tt-accent-dark: #2fa791;
-  --tt-happy: #36b37e;        /* green — thumbs up / success */
-  --tt-oops: #ff5d73;         /* red/pink — thumbs down / problems */
-  --tt-sun: #ffd166;          /* yellow — highlights, mascot */
+  --tt-happy: #36b37e; /* green — thumbs up / success */
+  --tt-oops: #ff5d73; /* red/pink — thumbs down / problems */
+  --tt-sun: #ffd166; /* yellow — highlights, mascot */
 
   --tt-radius: 22px;
   --tt-radius-lg: 32px;
   --tt-focus: #2563eb;
 
-  --tt-font: "Comic Sans MS", "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --tt-font: 'Comic Sans MS', 'Baloo 2', 'Trebuchet MS', system-ui, sans-serif;
 }
 
 * {
@@ -72,12 +72,15 @@ button {
   border: none;
   border-radius: var(--tt-radius);
   padding: 18px 32px;
-  min-height: 64px;              /* big tap targets */
+  min-height: 64px; /* big tap targets */
   min-width: 64px;
   color: white;
   background: var(--tt-primary);
   box-shadow: 0 6px 0 var(--tt-primary-dark);
-  transition: transform 0.06s ease, box-shadow 0.06s ease, filter 0.15s ease;
+  transition:
+    transform 0.06s ease,
+    box-shadow 0.06s ease,
+    filter 0.15s ease;
 }
 
 button:hover {
@@ -179,7 +182,7 @@ button.mic.recording {
   align-items: center;
 }
 
-input[type="text"],
+input[type='text'],
 select {
   font-family: inherit;
   font-size: 1.3rem;
@@ -244,7 +247,7 @@ select {
 
 .grownup {
   text-align: left;
-  font-family: "SFMono-Regular", Consolas, monospace;
+  font-family: 'SFMono-Regular', Consolas, monospace;
   font-size: 0.95rem;
   background: #1d2433;
   color: #d7f7ee;

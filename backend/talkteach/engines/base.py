@@ -23,8 +23,9 @@ How the methods map to the four child-facing screens:
 from __future__ import annotations
 
 import abc
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     # types.py is framework-free, but keep it behind TYPE_CHECKING so this module
@@ -55,7 +56,7 @@ class TrainProgress:
     epoch: int
     total_epochs: int
     fraction: float  # overall progress in [0, 1]
-    smartness: Optional[float]  # 1 - val_WER on a held-out set, [0, 1]; None until first eval
+    smartness: float | None  # 1 - val_WER on a held-out set, [0, 1]; None until first eval
     message: str
     done: bool = False
     failed: bool = False
@@ -101,11 +102,11 @@ class ASREngine(abc.ABC):
     @abc.abstractmethod
     def train(
         self,
-        plan: "TrainingPlan",
+        plan: TrainingPlan,
         manifest: list[dict],
         workdir: str,
-        progress: Optional[ProgressCallback] = None,
-        should_stop: Optional[ShouldStop] = None,
+        progress: ProgressCallback | None = None,
+        should_stop: ShouldStop | None = None,
     ) -> TrainProgress:
         """Run the "Teach!" job and return the final :class:`TrainProgress`.
 
@@ -139,7 +140,7 @@ class ASREngine(abc.ABC):
 
     @abc.abstractmethod
     def transcribe(self, audio_path: str, model_dir: str | None = None) -> str:
-        """"Try it": transcribe one clip and return the recognised text.
+        """ "Try it": transcribe one clip and return the recognised text.
 
         Uses the trained model in ``model_dir`` when given, else the base model.
         Raises :class:`EngineUnavailableError` if inference deps are missing.
@@ -147,7 +148,7 @@ class ASREngine(abc.ABC):
 
     @abc.abstractmethod
     def export(self, model_dir: str, out_dir: str, fmt: str = "ctranslate2") -> ExportResult:
-        """"Use on my computer": package ``model_dir`` into a portable format.
+        """ "Use on my computer": package ``model_dir`` into a portable format.
 
         Default ``fmt`` is CTranslate2 (fast, CPU-friendly, offline). Returns an
         :class:`ExportResult` describing what was produced and where.

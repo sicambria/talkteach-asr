@@ -67,8 +67,7 @@ class PreflightReport:
         recordings).
         """
         return not any(
-            r.status is CheckStatus.FAIL and r.name in self._BLOCKING
-            for r in self.results
+            r.status is CheckStatus.FAIL and r.name in self._BLOCKING for r in self.results
         )
 
     @property
@@ -237,7 +236,13 @@ def run_preflight(
     ]
 
     if check_microphone:
-        present = _microphone_present() if mic_present == _AUTO else mic_present
+        # if/else (not a ternary) so mypy can narrow away the _AUTO str sentinel.
+        present: bool | None
+        if mic_present == _AUTO:  # noqa: SIM108
+            present = _microphone_present()
+        else:
+            # Narrowed: anything other than the _AUTO sentinel is a bool|None override.
+            present = mic_present  # type: ignore[assignment]
         results.append(_check_microphone(present))
 
     return PreflightReport(results=results)

@@ -2,34 +2,34 @@
   // Screen 0 — "What should we teach?"
   // Name the project, pick a language (or let the computer figure it out),
   // then start. jargon-free everywhere.
-  import { createEventDispatcher } from "svelte";
-  import { createProject } from "../lib/api.js";
-  import { project, grownUpMode } from "../lib/store.js";
-  import Mascot from "../components/Mascot.svelte";
+  import { createEventDispatcher } from 'svelte';
+  import { createProject } from '../lib/api.js';
+  import { project, grownUpMode } from '../lib/store.js';
+  import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
 
   // A short, friendly list of common languages with flags.
   const LANGUAGES = [
-    { code: "en", flag: "🇬🇧", label: "English" },
-    { code: "es", flag: "🇪🇸", label: "Spanish" },
-    { code: "fr", flag: "🇫🇷", label: "French" },
-    { code: "de", flag: "🇩🇪", label: "German" },
-    { code: "hu", flag: "🇭🇺", label: "Hungarian" },
-    { code: "it", flag: "🇮🇹", label: "Italian" },
-    { code: "ro", flag: "🇷🇴", label: "Romanian" },
+    { code: 'en', flag: '🇬🇧', label: 'English' },
+    { code: 'es', flag: '🇪🇸', label: 'Spanish' },
+    { code: 'fr', flag: '🇫🇷', label: 'French' },
+    { code: 'de', flag: '🇩🇪', label: 'German' },
+    { code: 'hu', flag: '🇭🇺', label: 'Hungarian' },
+    { code: 'it', flag: '🇮🇹', label: 'Italian' },
+    { code: 'ro', flag: '🇷🇴', label: 'Romanian' },
   ];
 
-  let name = "";
-  let languageCode = "en";
+  let name = '';
+  let languageCode = 'en';
   let letItFigureOut = false; // when true we send null
   let busy = false;
-  let errorMsg = "";
+  let errorMsg = '';
 
   $: canStart = name.trim().length > 0 && !busy;
 
   async function start() {
-    errorMsg = "";
+    errorMsg = '';
     busy = true;
     try {
       const code = letItFigureOut ? null : languageCode;
@@ -39,7 +39,7 @@
         name: name.trim(),
         language_code: code,
       });
-      dispatch("done");
+      dispatch('done');
     } catch (e) {
       errorMsg = e.message || "Something went wrong. Let's try again.";
     } finally {
@@ -58,7 +58,7 @@
       type="text"
       placeholder="Like: My Robot Friend"
       bind:value={name}
-      on:keydown={(e) => e.key === "Enter" && canStart && start()}
+      on:keydown={(e) => e.key === 'Enter' && canStart && start()}
       aria-label="Project name"
     />
 
@@ -89,7 +89,7 @@
   {/if}
 
   <button class="big" disabled={!canStart} on:click={start}>
-    {busy ? "Starting…" : "Let's go! ▶"}
+    {busy ? 'Starting…' : "Let's go! ▶"}
   </button>
 
   {#if $grownUpMode}

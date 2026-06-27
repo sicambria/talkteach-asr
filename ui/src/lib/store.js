@@ -1,6 +1,6 @@
 // Shared app state for the TalkTeach wizard.
 // jargon-free: these stores hold the few things every screen needs to see.
-import { writable } from "svelte/store";
+import { writable } from 'svelte/store';
 
 // The project the child is working on: { project_id, name, language_code }.
 export const project = writable(null);

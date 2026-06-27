@@ -2,15 +2,15 @@
   // The wizard host. Holds the current step (0..4) and shows one screen at a
   // time, plus a friendly stepper, a mascot, and a hidden "Grown-up mode" gear.
   // jargon-free: every visible word here is plain language.
-  import { STEPS } from "./lib/constants.js";
-  import { grownUpMode, project } from "./lib/store.js";
-  import Mascot from "./components/Mascot.svelte";
+  import { STEPS } from './lib/constants.js';
+  import { grownUpMode, project } from './lib/store.js';
+  import Mascot from './components/Mascot.svelte';
 
-  import Screen0_NewProject from "./screens/Screen0_NewProject.svelte";
-  import Screen1_Record from "./screens/Screen1_Record.svelte";
-  import Screen2_Check from "./screens/Screen2_Check.svelte";
-  import Screen3_Teach from "./screens/Screen3_Teach.svelte";
-  import Screen4_Try from "./screens/Screen4_Try.svelte";
+  import Screen0_NewProject from './screens/Screen0_NewProject.svelte';
+  import Screen1_Record from './screens/Screen1_Record.svelte';
+  import Screen2_Check from './screens/Screen2_Check.svelte';
+  import Screen3_Teach from './screens/Screen3_Teach.svelte';
+  import Screen4_Try from './screens/Screen4_Try.svelte';
 
   // 0 = New project (before the stepper). 1..4 = Record/Check/Teach/Try.
   let step = 0;
@@ -45,9 +45,9 @@
           class:active={step === n}
           disabled={n > step}
           on:click={() => goTo(n)}
-          aria-current={step === n ? "step" : undefined}
+          aria-current={step === n ? 'step' : undefined}
         >
-          <span class="dot">{step > n ? "✓" : n}</span>
+          <span class="dot">{step > n ? '✓' : n}</span>
           <span class="step-label">{label}</span>
         </button>
       {/each}
@@ -84,8 +84,8 @@
 {#if $grownUpMode}
   <div class="grownup" style="max-width:820px;margin:0 auto 40px;">
     <h3>Grown-up mode</h3>
-    Step: {step} ({step >= 1 ? STEPS[step - 1] : "New project"})
-    {"\n"}Project: {$project ? JSON.stringify($project) : "(none yet)"}
+    Step: {step} ({step >= 1 ? STEPS[step - 1] : 'New project'})
+    {'\n'}Project: {$project ? JSON.stringify($project) : '(none yet)'}
   </div>
 {/if}
 

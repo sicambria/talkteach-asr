@@ -47,11 +47,11 @@ sidecar; for now, start it yourself.
 
 ## Where things are
 
-| Path | What it is |
-| --- | --- |
-| `src/App.svelte` | Wizard host: step state, stepper, mascot, Grown-up gear |
-| `src/screens/` | The five screens (Screen0–Screen4) |
-| `src/lib/api.js` | Typed client for every backend endpoint |
-| `src/lib/store.js` | Shared state (project, sufficiency, run, grown-up mode) |
-| `src/lib/constants.js` | Backend URL and other shared constants |
-| `src/styles.css` | Kid-friendly theme |
+| Path                   | What it is                                              |
+| ---------------------- | ------------------------------------------------------- |
+| `src/App.svelte`       | Wizard host: step state, stepper, mascot, Grown-up gear |
+| `src/screens/`         | The five screens (Screen0–Screen4)                      |
+| `src/lib/api.js`       | Typed client for every backend endpoint                 |
+| `src/lib/store.js`     | Shared state (project, sufficiency, run, grown-up mode) |
+| `src/lib/constants.js` | Backend URL and other shared constants                  |
+| `src/styles.css`       | Kid-friendly theme                                      |

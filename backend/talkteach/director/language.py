@@ -12,10 +12,11 @@ from .types import LanguageProfile
 # Whisper's supported language codes (ISO 639-1). Source: Whisper tokenizer.
 # Trimmed to the commonly-used set; membership only gates base-model choice.
 WHISPER_LANGS: frozenset[str] = frozenset(
+    # A multi-line string reads far better than 99 quoted list elements.
     """en zh de es ru ko fr ja pt tr pl ca nl ar sv it id hi fi vi he uk el ms cs
     ro da hu ta no th ur hr bg lt la mi ml cy sk te fa lv bn sr az sl kn et mk br
     eu is hy ne mn bs kk sq sw gl mr pa si km sn yo so af oc ka be tg sd gu am yi
-    lo uz fo ht ps tk nn mt sa lb my bo tl mg as tt haw ln ha ba jw su""".split()
+    lo uz fo ht ps tk nn mt sa lb my bo tl mg as tt haw ln ha ba jw su""".split()  # noqa: SIM905
 )
 
 

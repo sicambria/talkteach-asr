@@ -102,8 +102,8 @@ def test_empty_input_is_handled():
 
 def test_aggregate_math():
     clips = [
-        ClipQuality(duration_s=60.0, ok=True),    # 1.0 good min
-        ClipQuality(duration_s=30.0, ok=True),    # 0.5 good min
+        ClipQuality(duration_s=60.0, ok=True),  # 1.0 good min
+        ClipQuality(duration_s=30.0, ok=True),  # 0.5 good min
         ClipQuality(duration_s=120.0, ok=False),  # 2.0 total, not good
     ]
     profile = aggregate(clips)

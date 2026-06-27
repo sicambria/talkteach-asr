@@ -32,6 +32,7 @@ _FASTER_WHISPER = _have("faster_whisper")
 _CT2 = _have("ctranslate2")
 
 # Importing all of this with zero ML deps is itself the first assertion.
+from talkteach.director.types import Compute, EngineKind, Precision, TrainingPlan
 from talkteach.engines import get_engine
 from talkteach.engines.base import (
     ASREngine,
@@ -40,7 +41,6 @@ from talkteach.engines.base import (
     TrainProgress,
 )
 from talkteach.engines.whisper_lora import WhisperLoRAEngine
-from talkteach.director.types import Compute, EngineKind, Precision, TrainingPlan
 
 
 def _make_plan(epochs: int = 3) -> TrainingPlan:
@@ -96,7 +96,7 @@ def test_simulation_train_drives_progress_to_completion(tmp_path):
 
     # Fractions are non-decreasing and reach ~1.0.
     fractions = [p.fraction for p in seen]
-    assert all(b >= a - 1e-9 for a, b in zip(fractions, fractions[1:]))
+    assert all(b >= a - 1e-9 for a, b in zip(fractions, fractions[1:], strict=False))
     assert fractions[-1] == pytest.approx(1.0)
 
     # Final state: returned object AND last callback both report done at 1.0.

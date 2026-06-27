@@ -135,17 +135,13 @@ def _choose_schedule(
         rationale.append(f"{minutes:.0f} min → 8 epochs, full LoRA, LR 1e-4 cosine.")
     else:
         epochs, lr, freeze = 5, 8e-5, False
-        rationale.append(
-            f"{minutes:.0f} min (plenty) → 5 epochs, lower LR 8e-5 for stability."
-        )
+        rationale.append(f"{minutes:.0f} min (plenty) → 5 epochs, lower LR 8e-5 for stability.")
     warmup_ratio = 0.1
     patience = 3  # eval rounds of no val-WER improvement → early stop
     return epochs, lr, warmup_ratio, patience, freeze
 
 
-def build_plan(
-    hw: HardwareProfile, data: DataProfile, lang: LanguageProfile
-) -> TrainingPlan:
+def build_plan(hw: HardwareProfile, data: DataProfile, lang: LanguageProfile) -> TrainingPlan:
     """Combine all three probes into one zero-config TrainingPlan."""
     rationale: list[str] = []
     engine, base, precision = _choose_engine_and_model(hw, lang, data, rationale)

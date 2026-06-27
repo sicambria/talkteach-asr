@@ -258,5 +258,32 @@ when ffmpeg is absent, exactly as today.
 
 Consequence: ties UI recording to the ffmpeg bundling work; both are Tier B
 (code + guarded) here since ffmpeg isn't installed in-sandbox.
+
+## D-011 — svelte-check strictness on a plain-JS Svelte codebase
+
+Context: the UI is plain JavaScript Svelte (no TypeScript). Enabling
+`svelte-check` with `checkJs: true` + `strict: true` surfaced **61** errors —
+all of them JS-level strictness noise (`document.getElementById` may be `null`,
+untyped function params), zero genuine Svelte template/binding bugs.
+
+Options (score /100):
+1. **Run svelte-check with `checkJs: false` (template/component validation only)**
+   — 88 — catches the errors that actually matter for a Svelte app (undefined
+   components, bad bindings, a11y, store misuse) without imposing TS-strict typing
+   on a codebase that deliberately isn't TypeScript. Confirmed 0 errors.
+2. Fix all 61 with JSDoc types + null guards — 65 — large churn for a 9-file UI;
+   buys real type safety but is a TS-migration in disguise, out of scope now.
+3. Migrate the UI to TypeScript — 60 — the right long-term move, but a separate,
+   large piece of work; tracked as a follow-up, not part of the guardrails pass.
+4. Drop svelte-check entirely — 30 — abandons a gate the roadmap names (#39).
+5. `checkJs: true` but disable strict — 55 — still ~dozens of nullability errors;
+   awkward middle ground.
+
+Decision: **Option 1** now; **Option 3 (TS migration)** noted as a future
+follow-up in `docs/I18N.md`-adjacent backlog. svelte-check gates template
+correctness; ESLint + Prettier cover JS hygiene and style.
+
+Consequence: `npm run check` is a real, green gate. A future TS migration can
+flip `checkJs` back on incrementally.
 </content>
 </invoke>

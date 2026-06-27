@@ -5,19 +5,19 @@
   // from /api/sufficiency. You can also drop in audio files you already have.
   // The "Teach" button only wakes up when there's enough good audio.
   // jargon-free everywhere.
-  import { onMount, onDestroy, createEventDispatcher } from "svelte";
-  import { analyzeClip, sufficiency as fetchSufficiency } from "../lib/api.js";
-  import { sufficiency, grownUpMode } from "../lib/store.js";
-  import Mascot from "../components/Mascot.svelte";
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { analyzeClip, sufficiency as fetchSufficiency } from '../lib/api.js';
+  import { sufficiency, grownUpMode } from '../lib/store.js';
+  import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
 
   // A friendly placeholder line for "karaoke" prompt reading.
   const PROMPTS = [
-    "The big red bus goes fast.",
-    "My dog likes to jump and play.",
-    "We had pancakes for breakfast.",
-    "Look at the bright yellow sun!",
+    'The big red bus goes fast.',
+    'My dog likes to jump and play.',
+    'We had pancakes for breakfast.',
+    'Look at the bright yellow sun!',
   ];
   let promptIndex = 0;
   $: prompt = PROMPTS[promptIndex % PROMPTS.length];
@@ -27,7 +27,7 @@
   let chunks = [];
   let lastResult = null; // ClipQuality
   let busy = false;
-  let micError = "";
+  let micError = '';
   let dragOver = false;
 
   let pollTimer = null;
@@ -52,7 +52,7 @@
   });
 
   async function startRecording() {
-    micError = "";
+    micError = '';
     lastResult = null;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -63,12 +63,12 @@
       };
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunks, { type: "audio/webm" });
+        const blob = new Blob(chunks, { type: 'audio/webm' });
         await handleClip(blob);
       };
       mediaRecorder.start();
       recording = true;
-    } catch (e) {
+    } catch {
       micError = "I couldn't use the microphone. Can a grown-up help turn it on?";
     }
   }
@@ -107,12 +107,12 @@
   }
 
   $: s = $sufficiency;
-  $: readyToTeach = s && s.status === "ready";
+  $: readyToTeach = s && s.status === 'ready';
   $: pct = s ? Math.round((s.fraction || 0) * 100) : 0;
 </script>
 
 <section class="screen">
-  <Mascot mood={recording ? "think" : "happy"} size={90} />
+  <Mascot mood={recording ? 'think' : 'happy'} size={90} />
   <h1>Let's record!</h1>
   <p>Read this out loud, then press the big button.</p>
 
@@ -125,11 +125,11 @@
       class:recording
       on:click={toggleRecording}
       aria-pressed={recording}
-      aria-label={recording ? "Stop recording" : "Start recording"}
+      aria-label={recording ? 'Stop recording' : 'Start recording'}
     >
-      {recording ? "⏹" : "🎤"}
+      {recording ? '⏹' : '🎤'}
     </button>
-    <span>{recording ? "Listening… press to stop" : "Press to talk"}</span>
+    <span>{recording ? 'Listening… press to stop' : 'Press to talk'}</span>
   </div>
 
   {#if busy}
@@ -188,19 +188,15 @@
     {/if}
   </div>
 
-  <button
-    class="big"
-    disabled={!readyToTeach}
-    on:click={() => dispatch("next")}
-  >
-    {readyToTeach ? "Next: Check the words ▶" : "Record a bit more first…"}
+  <button class="big" disabled={!readyToTeach} on:click={() => dispatch('next')}>
+    {readyToTeach ? 'Next: Check the words ▶' : 'Record a bit more first…'}
   </button>
 
   {#if $grownUpMode}
     <div class="grownup">
       <h3>Grown-up mode</h3>
       sufficiency: {JSON.stringify(s)}
-      {"\n"}last clip: {JSON.stringify(lastResult)}
+      {'\n'}last clip: {JSON.stringify(lastResult)}
     </div>
   {/if}
 </section>

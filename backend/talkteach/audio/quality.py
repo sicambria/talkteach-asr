@@ -172,16 +172,16 @@ def analyze_samples(samples: np.ndarray, sample_rate: int) -> ClipQuality:
         # No noise floor frames — assume a clean signal (cap high).
         est_snr_db = 60.0
     else:
-        est_snr_db = float(10.0 * np.log10(max(speech_pow, _DBFS_FLOOR) / max(noise_pow, _DBFS_FLOOR)))
+        snr_ratio = max(speech_pow, _DBFS_FLOOR) / max(noise_pow, _DBFS_FLOOR)
+        est_snr_db = float(10.0 * np.log10(snr_ratio))
 
     # Only flag noise when there is actually speech to judge.
     if speech_mask.any() and est_snr_db < SNR_MIN_DB:
         issues.append(ISSUE_TOO_NOISY)
 
     # --- Too quiet --------------------------------------------------------
-    if rms_dbfs < RMS_QUIET_DBFS:
-        if ISSUE_TOO_QUIET not in issues:
-            issues.append(ISSUE_TOO_QUIET)
+    if rms_dbfs < RMS_QUIET_DBFS and ISSUE_TOO_QUIET not in issues:
+        issues.append(ISSUE_TOO_QUIET)
 
     # --- Duration sanity --------------------------------------------------
     if duration_s < MIN_DURATION_S:

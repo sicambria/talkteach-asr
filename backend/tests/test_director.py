@@ -12,7 +12,6 @@ from talkteach.director import (
     EngineKind,
     GateStatus,
     HardwareProfile,
-    LanguageProfile,
     Precision,
     build_plan,
     probe_language,
@@ -36,6 +35,7 @@ def data(good=40.0, total=50.0, clips=60):
 
 
 # --- engine / model selection by hardware ------------------------------------
+
 
 def test_big_gpu_picks_whisper_medium_fp16():
     plan = build_plan(hw(Compute.CUDA, vram=24, name="RTX 4090"), data(), probe_language("en"))
@@ -74,6 +74,7 @@ def test_unsupported_language_with_tiny_data_stays_whisper():
 
 # --- schedule by data size ----------------------------------------------------
 
+
 def test_tiny_data_freezes_encoder_and_more_epochs():
     plan = build_plan(hw(Compute.CUDA, vram=12), data(good=15, total=18), probe_language("en"))
     assert plan.freeze_encoder is True
@@ -104,6 +105,7 @@ def test_plan_always_has_rationale_and_safety():
 
 # --- language probe -----------------------------------------------------------
 
+
 def test_language_probe_none_is_autodetect():
     lp = probe_language(None)
     assert lp.auto_detect is True
@@ -118,26 +120,31 @@ def test_language_probe_known_and_unknown():
 
 # --- sufficiency gate ---------------------------------------------------------
 
+
 def test_sufficiency_blocks_when_too_little():
-    res = sufficiency(DataProfile(good_minutes=12, total_minutes=15, clip_count=20), target_minutes=30)
+    profile = DataProfile(good_minutes=12, total_minutes=15, clip_count=20)
+    res = sufficiency(profile, target_minutes=30)
     assert res.status is GateStatus.BLOCKED
     assert res.fraction < 1.0
     assert any("more minute" in m for m in res.messages)
 
 
 def test_sufficiency_ready_when_enough():
-    res = sufficiency(DataProfile(good_minutes=35, total_minutes=40, clip_count=60), target_minutes=30)
+    profile = DataProfile(good_minutes=35, total_minutes=40, clip_count=60)
+    res = sufficiency(profile, target_minutes=30)
     assert res.status is GateStatus.READY
     assert res.fraction == 1.0
 
 
 def test_sufficiency_warns_on_poor_quality_fraction():
     # Lots of audio but most of it bad.
-    res = sufficiency(DataProfile(good_minutes=31, total_minutes=100, clip_count=120), target_minutes=30)
+    profile = DataProfile(good_minutes=31, total_minutes=100, clip_count=120)
+    res = sufficiency(profile, target_minutes=30)
     assert res.status is GateStatus.READY  # enough good minutes...
     assert any("quiet" in m or "noisy" in m for m in res.messages)  # ...but warned
 
 
 def test_sufficiency_target_has_floor():
-    res = sufficiency(DataProfile(good_minutes=21, total_minutes=22, clip_count=30), target_minutes=5)
+    profile = DataProfile(good_minutes=21, total_minutes=22, clip_count=30)
+    res = sufficiency(profile, target_minutes=5)
     assert res.target_minutes >= 20.0  # MIN_TARGET_MINUTES floor

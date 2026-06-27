@@ -3,20 +3,20 @@
   // Record into the mic, send it to the trained model, and show what it heard.
   // Then: Save, "Use on my computer" (export), or "Make it better" (go back).
   // jargon-free.
-  import { createEventDispatcher, onDestroy } from "svelte";
-  import { transcribe, exportModel } from "../lib/api.js";
-  import { currentRun, grownUpMode } from "../lib/store.js";
-  import Mascot from "../components/Mascot.svelte";
+  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { transcribe, exportModel } from '../lib/api.js';
+  import { currentRun, grownUpMode } from '../lib/store.js';
+  import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
 
   let recording = false;
   let mediaRecorder = null;
   let chunks = [];
-  let heardText = "";
+  let heardText = '';
   let busy = false;
-  let micError = "";
-  let exportNote = "";
+  let micError = '';
+  let exportNote = '';
   let saved = false;
 
   onDestroy(() => {
@@ -24,8 +24,8 @@
   });
 
   async function startRecording() {
-    micError = "";
-    heardText = "";
+    micError = '';
+    heardText = '';
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunks = [];
@@ -35,12 +35,12 @@
       };
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunks, { type: "audio/webm" });
+        const blob = new Blob(chunks, { type: 'audio/webm' });
         await sendForText(blob);
       };
       mediaRecorder.start();
       recording = true;
-    } catch (e) {
+    } catch {
       micError = "I couldn't use the microphone. Can a grown-up help?";
     }
   }
@@ -60,7 +60,7 @@
     busy = true;
     try {
       const res = await transcribe(blob);
-      heardText = res.text || "";
+      heardText = res.text || '';
     } catch (e) {
       micError = e.message || "I couldn't understand that one.";
     } finally {
@@ -74,18 +74,16 @@
   }
 
   async function useOnMyComputer() {
-    exportNote = "";
+    exportNote = '';
     const run = $currentRun;
     if (!run?.run_id) {
-      exportNote = "Teach the computer first, then you can use it here.";
+      exportNote = 'Teach the computer first, then you can use it here.';
       return;
     }
     busy = true;
     try {
-      const res = await exportModel(run.run_id, "onnx");
-      exportNote = res.notes
-        ? res.notes
-        : `Saved as ${res.format} at ${res.path}`;
+      const res = await exportModel(run.run_id, 'onnx');
+      exportNote = res.notes ? res.notes : `Saved as ${res.format} at ${res.path}`;
     } catch (e) {
       exportNote = e.message || "I couldn't get it ready for your computer.";
     } finally {
@@ -105,11 +103,11 @@
       class:recording
       on:click={toggleRecording}
       aria-pressed={recording}
-      aria-label={recording ? "Stop recording" : "Start recording"}
+      aria-label={recording ? 'Stop recording' : 'Start recording'}
     >
-      {recording ? "⏹" : "🎤"}
+      {recording ? '⏹' : '🎤'}
     </button>
-    <span>{recording ? "Listening… press to stop" : "Press to talk"}</span>
+    <span>{recording ? 'Listening… press to stop' : 'Press to talk'}</span>
   </div>
 
   {#if busy}
@@ -129,14 +127,10 @@
 
   <div class="row">
     <button class="secondary" on:click={save}>
-      {saved ? "Saved ✓" : "💾 Save"}
+      {saved ? 'Saved ✓' : '💾 Save'}
     </button>
-    <button on:click={useOnMyComputer} disabled={busy}>
-      🖥 Use on my computer
-    </button>
-    <button class="ghost" on:click={() => dispatch("again")}>
-      🔁 Make it better
-    </button>
+    <button on:click={useOnMyComputer} disabled={busy}> 🖥 Use on my computer </button>
+    <button class="ghost" on:click={() => dispatch('again')}> 🔁 Make it better </button>
   </div>
 
   {#if exportNote}
@@ -147,7 +141,7 @@
     <div class="grownup">
       <h3>Grown-up mode</h3>
       run: {JSON.stringify($currentRun)}
-      {"\n"}heard: {heardText}
+      {'\n'}heard: {heardText}
     </div>
   {/if}
 </section>

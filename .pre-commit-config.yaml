@@ -1,0 +1,40 @@
+# Local pre-commit hooks mirroring the CI gates (roadmap #39). Install once with
+#   pip install pre-commit && pre-commit install
+# Runs fast checks before each commit so CI rarely catches anything new.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: ^ui/jsconfig\.json$ # jsconfig allows comments (JSONC)
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        files: ^backend/talkteach/
+        args: [--config-file, backend/pyproject.toml]
+        additional_dependencies: [pydantic, numpy]
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        files: ^ui/(src/|.*\.(json|js|svelte))
+        exclude: ^ui/(dist/|package-lock\.json|src/lib/credits\.json)

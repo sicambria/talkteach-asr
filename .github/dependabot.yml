@@ -1,0 +1,70 @@
+# Dependabot — keep TalkTeach's dependency surface current and CVE-free.
+#
+# This is roadmap item X #42 ("dependency hygiene") on autopilot. TalkTeach pulls
+# from four ecosystems across three runtimes (Python backend, npm UI + root Tauri
+# orchestrator, Rust shell) plus the CI itself, so each gets its own entry.
+#
+# Weekly cadence is deliberate: a kids' app ships rarely and we'd rather review a
+# small batch of considered bumps than a daily trickle of noise. Conventional-
+# commit prefixes match the repo's commit style.
+version: 2
+updates:
+  # --- Python backend (pyproject.toml, incl. the heavy [ml] extra) ------------
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "python"
+
+  # --- Svelte UI --------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/ui"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "ui"
+
+  # --- Root npm (the @tauri-apps/cli orchestrator) ----------------------------
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "tauri"
+
+  # --- Rust / Tauri desktop shell ---------------------------------------------
+  - package-ecosystem: "cargo"
+    directory: "/src-tauri"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "rust"
+
+  # --- GitHub Actions used by CI ----------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - "dependencies"
+      - "ci"

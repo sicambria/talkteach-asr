@@ -30,7 +30,8 @@ import importlib.util
 import json
 import os
 import time
-from typing import Optional
+
+from talkteach.director.types import TrainingPlan
 
 from .base import (
     ASREngine,
@@ -40,7 +41,6 @@ from .base import (
     ShouldStop,
     TrainProgress,
 )
-from talkteach.director.types import TrainingPlan
 
 # Required to run a *real* LoRA fine-tune. faster_whisper is needed only for
 # "Try it" inference, so it is tracked separately from the training trio.
@@ -100,8 +100,8 @@ class WhisperLoRAEngine(ASREngine):
         plan: TrainingPlan,
         manifest: list[dict],
         workdir: str,
-        progress: Optional[ProgressCallback] = None,
-        should_stop: Optional[ShouldStop] = None,
+        progress: ProgressCallback | None = None,
+        should_stop: ShouldStop | None = None,
     ) -> TrainProgress:
         """Run the teaching job (real loop in phase 1; simulation today).
 
@@ -144,8 +144,8 @@ class WhisperLoRAEngine(ASREngine):
         plan: TrainingPlan,
         manifest: list[dict],
         workdir: str,
-        progress: Optional[ProgressCallback],
-        should_stop: Optional[ShouldStop],
+        progress: ProgressCallback | None,
+        should_stop: ShouldStop | None,
     ) -> TrainProgress:
         """Dependency-free stand-in for a real fine-tune.
 
@@ -282,8 +282,7 @@ class WhisperLoRAEngine(ASREngine):
         """
         if not _has(_TRANSCRIBE_DEP):
             raise EngineUnavailableError(
-                f"'Try it' needs the {_TRANSCRIBE_DEP} package — "
-                f"ask a grown-up to {_INSTALL_HINT}."
+                f"'Try it' needs the {_TRANSCRIBE_DEP} package — ask a grown-up to {_INSTALL_HINT}."
             )
         from faster_whisper import WhisperModel  # type: ignore
 

@@ -1,15 +1,15 @@
 <script>
   // A cheerful mascot placeholder. Swap the emoji for real art later.
   // jargon-free: just a friendly face that reacts with different "moods".
-  export let mood = "happy"; // happy | wave | think | cheer | oops
+  export let mood = 'happy'; // happy | wave | think | cheer | oops
   export let size = 96;
 
   const FACES = {
-    happy: "🤖",
-    wave: "👋",
-    think: "🤔",
-    cheer: "🎉",
-    oops: "😅",
+    happy: '🤖',
+    wave: '👋',
+    think: '🤔',
+    cheer: '🎉',
+    oops: '😅',
   };
 
   $: face = FACES[mood] || FACES.happy;

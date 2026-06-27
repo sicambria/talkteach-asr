@@ -3,11 +3,11 @@
   // One big button starts teaching. We then ask the backend "how's it going?"
   // every ~1.5s and show a progress bar and a "How smart is it?" meter.
   // jargon-free: no "training", "epochs as numbers only", no "WER".
-  import { createEventDispatcher, onDestroy } from "svelte";
-  import { startTraining, trainProgress } from "../lib/api.js";
-  import { sufficiency, currentRun, grownUpMode } from "../lib/store.js";
-  import { TRAIN_POLL_MS } from "../lib/constants.js";
-  import Mascot from "../components/Mascot.svelte";
+  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { startTraining, trainProgress } from '../lib/api.js';
+  import { sufficiency, currentRun, grownUpMode } from '../lib/store.js';
+  import { TRAIN_POLL_MS } from '../lib/constants.js';
+  import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -15,11 +15,11 @@
   let progress = null; // TrainProgress
   let polling = false;
   let paused = false;
-  let errorMsg = "";
+  let errorMsg = '';
   let pollTimer = null;
 
   $: s = $sufficiency;
-  $: readyToTeach = s && s.status === "ready";
+  $: readyToTeach = s && s.status === 'ready';
 
   $: fractionPct = progress ? Math.round((progress.fraction || 0) * 100) : 0;
   $: smartPct = progress ? Math.round((progress.smartness || 0) * 100) : 0;
@@ -48,7 +48,7 @@
         }
       }
     } catch (e) {
-      errorMsg = e.message || "I lost track of the teaching.";
+      errorMsg = e.message || 'I lost track of the teaching.';
       stopPolling();
     }
   }
@@ -62,7 +62,7 @@
   }
 
   async function teach() {
-    errorMsg = "";
+    errorMsg = '';
     progress = null;
     try {
       const res = await startTraining();
@@ -87,7 +87,7 @@
   function closeForNow() {
     // Stop watching and step back; the run continues server-side.
     stopPolling();
-    dispatch("back");
+    dispatch('back');
   }
 
   // A few cheerful status lines based on how far along we are.
@@ -96,24 +96,24 @@
     (done
       ? "All done! It's ready to try."
       : failed
-      ? "Oops, that didn't work."
-      : fractionPct > 66
-      ? "Almost there…"
-      : fractionPct > 33
-      ? "Getting smarter!"
-      : polling
-      ? "Warming up the brain…"
-      : "");
+        ? "Oops, that didn't work."
+        : fractionPct > 66
+          ? 'Almost there…'
+          : fractionPct > 33
+            ? 'Getting smarter!'
+            : polling
+              ? 'Warming up the brain…'
+              : '');
 </script>
 
 <section class="screen">
-  <Mascot mood={done ? "cheer" : failed ? "oops" : polling ? "think" : "happy"} size={100} />
+  <Mascot mood={done ? 'cheer' : failed ? 'oops' : polling ? 'think' : 'happy'} size={100} />
   <h1>Teach it!</h1>
 
   {#if !polling && !done}
     <p>When you press the button, the computer will learn from your recordings.</p>
     <button class="big" disabled={!readyToTeach} on:click={teach}>
-      {readyToTeach ? "Teach it! ✨" : "Record more first…"}
+      {readyToTeach ? 'Teach it! ✨' : 'Record more first…'}
     </button>
     {#if paused}
       <button class="secondary" on:click={resume}>Keep watching ▶</button>
@@ -147,14 +147,14 @@
   {/if}
 
   {#if done}
-    <button class="big" on:click={() => dispatch("next")}>Next: Try it! ▶</button>
+    <button class="big" on:click={() => dispatch('next')}>Next: Try it! ▶</button>
   {/if}
 
   {#if $grownUpMode}
     <div class="grownup">
       <h3>Grown-up mode</h3>
       run_id: {runId}
-      {"\n"}progress: {JSON.stringify(progress)}
+      {'\n'}progress: {JSON.stringify(progress)}
     </div>
   {/if}
 </section>

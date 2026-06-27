@@ -1,0 +1,7 @@
+# Force contributors through the structured templates above; no blank issues.
+blank_issues_enabled: false
+
+# No external contact links — TalkTeach is offline-first and maintainer-led.
+# Security and data-privacy reports go privately to the maintainer instead
+# (see SECURITY.md), NOT to the public issue tracker.
+contact_links: []

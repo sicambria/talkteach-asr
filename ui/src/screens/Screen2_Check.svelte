@@ -2,10 +2,10 @@
   // Screen 2 — Check the words.
   // For each clip we ask the computer to write down what it heard (a draft),
   // then the child can tap any word to fix it and save. jargon-free.
-  import { createEventDispatcher, onMount } from "svelte";
-  import { transcribeDraft } from "../lib/api.js";
-  import { grownUpMode } from "../lib/store.js";
-  import Mascot from "../components/Mascot.svelte";
+  import { createEventDispatcher, onMount } from 'svelte';
+  import { transcribeDraft } from '../lib/api.js';
+  import { grownUpMode } from '../lib/store.js';
+  import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -13,18 +13,18 @@
   // small placeholder list so the screen flow is real and testable.
   // TODO(backend): replace with GET of the project's recorded clips.
   let clips = [
-    { id: "clip-1", label: "Recording 1", text: "", loading: false, saved: false },
-    { id: "clip-2", label: "Recording 2", text: "", loading: false, saved: false },
+    { id: 'clip-1', label: 'Recording 1', text: '', loading: false, saved: false },
+    { id: 'clip-2', label: 'Recording 2', text: '', loading: false, saved: false },
   ];
 
-  let errorMsg = "";
+  let errorMsg = '';
 
   async function loadDraft(clip) {
     clip.loading = true;
     clips = clips; // poke Svelte reactivity
     try {
       const res = await transcribeDraft(clip.id);
-      clip.text = res.text || "";
+      clip.text = res.text || '';
     } catch (e) {
       errorMsg = e.message || "I couldn't write the words for that clip.";
     } finally {
@@ -48,8 +48,6 @@
     clip.saved = true;
     clips = clips;
   }
-
-  $: allSaved = clips.every((c) => c.saved || !c.text);
 </script>
 
 <section class="screen">
@@ -87,10 +85,8 @@
   {/if}
 
   <div class="row">
-    <button class="ghost" on:click={() => dispatch("back")}>◀ Back</button>
-    <button class="big" on:click={() => dispatch("next")}>
-      Next: Teach it! ▶
-    </button>
+    <button class="ghost" on:click={() => dispatch('back')}>◀ Back</button>
+    <button class="big" on:click={() => dispatch('next')}> Next: Teach it! ▶ </button>
   </div>
 
   {#if $grownUpMode}
