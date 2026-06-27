@@ -6,8 +6,8 @@ authors = ["TalkTeach"]
 edition = "2021"
 rust-version = "1.77"
 
-# The Tauri shell. Phase 0 is a thin window around the Svelte UI; Phase 1 will
-# spawn the Python FastAPI backend as a sidecar (see src/main.rs).
+# The Tauri shell. Spawns the Python FastAPI backend as a sidecar so the user
+# never starts a server (see src/lib.rs and docs/SIDECAR.md).
 
 [lib]
 name = "talkteach_lib"
@@ -23,5 +23,6 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"   # spawn the Python backend as a sidecar (roadmap #15)
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

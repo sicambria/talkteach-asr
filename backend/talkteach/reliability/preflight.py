@@ -84,13 +84,35 @@ class PreflightReport:
         return "Not quite ready yet — let's fix one thing first."
 
 
-def _microphone_present() -> bool | None:
-    """Best-effort microphone presence check, no audio library available.
+def _microphone_via_sounddevice() -> bool | None:
+    """Real cross-platform input-device probe via PortAudio, if available.
 
-    Returns True/False on Linux (where ``/dev/snd`` is a reliable heuristic
-    for a sound subsystem), or None ("unknown") on platforms we can't sniff
-    without extra deps.
+    ``sounddevice`` (optional) gives a true device list on Windows/macOS/Linux —
+    far better than the ``/dev/snd`` heuristic. Returns True/False when it can
+    enumerate devices, or None when the library/PortAudio backend is absent so the
+    caller falls back to the per-OS heuristic.
     """
+    try:
+        import sounddevice as sd  # type: ignore
+    except Exception:
+        return None
+    try:
+        devices = sd.query_devices()
+    except Exception:
+        return None
+    return any(d.get("max_input_channels", 0) > 0 for d in devices)
+
+
+def _microphone_present() -> bool | None:
+    """Best-effort microphone presence check (roadmap #18).
+
+    Prefers a real PortAudio device query (cross-platform) when ``sounddevice``
+    is installed; otherwise falls back to the ``/dev/snd`` heuristic on Linux, or
+    None ("unknown") on macOS/Windows where we can't sniff without an audio lib.
+    """
+    via_lib = _microphone_via_sounddevice()
+    if via_lib is not None:
+        return via_lib
     if os.name == "posix" and os.path.isdir("/dev/snd"):
         try:
             # A bare /dev/snd with only "controlC*"/no card devices can exist;

@@ -6,6 +6,7 @@ Run from the backend/ directory; pyproject sets pythonpath=["."].
 from __future__ import annotations
 
 from talkteach.director import Compute, HardwareProfile
+from talkteach.reliability import preflight as pf
 from talkteach.reliability.preflight import CheckStatus, run_preflight
 
 
@@ -97,3 +98,17 @@ def test_disk_warn_does_not_block():
     assert _by_name(report, "Disk").status is CheckStatus.WARN
     assert report.can_train is True
     assert report.ok is True
+
+
+def test_sounddevice_probe_absent_returns_none():
+    # sounddevice isn't installed in the base/test env → real-probe returns None,
+    # so the per-OS heuristic takes over (roadmap #18).
+    assert pf._microphone_via_sounddevice() is None
+
+
+def test_sounddevice_probe_used_when_available(monkeypatch):
+    # When the real probe answers, it wins over the /dev/snd heuristic.
+    monkeypatch.setattr(pf, "_microphone_via_sounddevice", lambda: True)
+    assert pf._microphone_present() is True
+    monkeypatch.setattr(pf, "_microphone_via_sounddevice", lambda: False)
+    assert pf._microphone_present() is False
