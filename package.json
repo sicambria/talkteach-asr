@@ -1,0 +1,16 @@
+{
+  "name": "talkteach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TalkTeach — child-proof, zero-config ASR-training desktop app (Tauri shell + Svelte UI). Run the desktop app from here with `npm run tauri dev`.",
+  "scripts": {
+    "dev": "npm --prefix ui run dev",
+    "build": "npm --prefix ui run build",
+    "preview": "npm --prefix ui run preview",
+    "ui:install": "npm --prefix ui install",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

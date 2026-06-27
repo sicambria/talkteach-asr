@@ -1,0 +1,379 @@
+"""TalkTeach job server (FastAPI) — wires the director, audio, data, engines,
+and reliability layers into the 10 endpoints the four-screen wizard calls.
+
+Phase 0 contract: the whole server imports and runs with NO ML deps. Clip
+analysis works for PCM WAV via the stdlib `wave` module (no ffmpeg needed);
+training runs in the engine's dependency-free simulation; transcription degrades
+gracefully (returns `available: false` instead of crashing) until `[ml]` is
+installed.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import io
+import threading
+import wave
+from contextlib import asynccontextmanager
+from dataclasses import asdict
+from pathlib import Path
+
+import numpy as np
+from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+from . import config
+from .audio.quality import ClipQuality, aggregate, analyze_samples
+from .data.project import ProjectDB
+from .director import (
+    DataProfile,
+    EngineKind,
+    build_plan,
+    probe_hardware,
+    probe_language,
+    sufficiency,
+)
+from .engines import get_engine
+from .engines.base import EngineUnavailableError, TrainProgress
+from .reliability.preflight import run_preflight
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    config.ensure_dirs()
+    with _db() as db:
+        if db.get_project() is None:
+            db.init_project(name="My project", language_code=None)
+    yield
+
+
+app = FastAPI(title="TalkTeach", version="0.0.1", lifespan=_lifespan)
+
+# The Tauri shell loads the UI from a local origin; allow it during dev.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# --- shared state -------------------------------------------------------------
+
+def _db() -> ProjectDB:
+    """Open the single Phase-0 project DB (one connection per call keeps SQLite
+    happy across the main thread and background training threads via WAL)."""
+    config.ensure_dirs()
+    return ProjectDB.open(config.DEFAULT_DB_PATH)
+
+
+# --- helpers ------------------------------------------------------------------
+
+def _plan_to_dict(plan) -> dict:
+    d = asdict(plan)
+    d["engine"] = plan.engine.value
+    d["compute"] = plan.compute.value
+    d["precision"] = plan.precision.value
+    d["effective_batch"] = plan.effective_batch
+    return d
+
+
+def _decode_wav_bytes(data: bytes) -> tuple[np.ndarray, int] | None:
+    """Decode PCM WAV to float32 mono-or-multichannel in [-1, 1], stdlib only.
+    Returns None for non-WAV / unsupported payloads (caller degrades gracefully)."""
+    try:
+        with wave.open(io.BytesIO(data), "rb") as wf:
+            n_channels = wf.getnchannels()
+            sampwidth = wf.getsampwidth()
+            sr = wf.getframerate()
+            frames = wf.readframes(wf.getnframes())
+    except (wave.Error, EOFError, OSError):
+        return None
+    if sampwidth == 2:
+        dtype, peak = np.int16, 32768.0
+    elif sampwidth == 4:
+        dtype, peak = np.int32, 2147483648.0
+    elif sampwidth == 1:
+        # 8-bit WAV is unsigned.
+        arr = (np.frombuffer(frames, dtype=np.uint8).astype(np.float32) - 128.0) / 128.0
+        if n_channels > 1:
+            arr = arr.reshape(-1, n_channels)
+        return arr, sr
+    else:
+        return None
+    arr = np.frombuffer(frames, dtype=dtype).astype(np.float32) / peak
+    if n_channels > 1:
+        arr = arr.reshape(-1, n_channels)
+    return arr, sr
+
+
+def _current_data_profile(db: ProjectDB) -> DataProfile:
+    clips = db.list_clips()
+    good = sum(c["duration_s"] for c in clips if c["is_good"]) / 60.0
+    total = sum(c["duration_s"] for c in clips) / 60.0
+    return DataProfile(good_minutes=good, total_minutes=total, clip_count=len(clips))
+
+
+# --- request models -----------------------------------------------------------
+
+class ProjectIn(BaseModel):
+    name: str
+    language_code: str | None = None
+
+
+class DraftIn(BaseModel):
+    clip_id: int
+
+
+class ExportIn(BaseModel):
+    run_id: int
+    fmt: str = "ctranslate2"
+
+
+# --- endpoints ----------------------------------------------------------------
+
+@app.get("/api/health")
+def health() -> dict:
+    return {"ok": True, "service": "talkteach", "version": app.version}
+
+
+@app.post("/api/project")
+def create_project(body: ProjectIn) -> dict:
+    with _db() as db:
+        pid = db.init_project(name=body.name, language_code=body.language_code)
+    return {"project_id": pid}
+
+
+@app.get("/api/preflight")
+def preflight() -> dict:
+    report = run_preflight()
+    return {
+        "results": [asdict(r) | {"status": r.status.value} for r in report.results],
+        "ok": report.ok,
+        "can_train": report.can_train,
+        "summary": report.summary,
+    }
+
+
+@app.post("/api/clips/analyze")
+async def analyze_clip(audio: UploadFile) -> dict:
+    """Analyze an uploaded clip, store it, and return the friendly verdict.
+
+    Decodes PCM WAV with the stdlib (no ffmpeg). For other formats it accepts the
+    clip but marks quality unknown so the flow never dead-ends."""
+    raw = await audio.read()
+    config.ensure_dirs()
+    decoded = _decode_wav_bytes(raw)
+    clip_dir = config.DEFAULT_PROJECT_DIR / "clips"
+    clip_dir.mkdir(parents=True, exist_ok=True)
+    dest = clip_dir / (audio.filename or "clip.wav")
+    dest.write_bytes(raw)
+
+    if decoded is None:
+        # Unknown format (e.g. webm from the browser without ffmpeg). Accept it,
+        # flag that we couldn't check it yet.
+        with _db() as db:
+            cid = db.add_clip(str(dest), duration_s=0.0, is_good=True,
+                              issues=["not checked yet (install the audio pack)"])
+        return {
+            "clip_id": cid, "ok": True, "checked": False,
+            "issues": ["We saved it but couldn't listen to it yet."],
+            "duration_s": 0.0,
+        }
+
+    samples, sr = decoded
+    q: ClipQuality = analyze_samples(samples, sr)
+    with _db() as db:
+        cid = db.add_clip(str(dest), duration_s=q.duration_s, is_good=q.ok, issues=q.issues)
+    out = asdict(q) | {"clip_id": cid, "checked": True, "verdict": q.verdict.value}
+    return out
+
+
+@app.get("/api/sufficiency")
+def sufficiency_status() -> dict:
+    with _db() as db:
+        profile = _current_data_profile(db)
+    res = sufficiency(profile, target_minutes=config.TARGET_GOOD_MINUTES)
+    return {
+        "status": res.status.value,
+        "good_minutes": res.good_minutes,
+        "target_minutes": res.target_minutes,
+        "fraction": res.fraction,
+        "messages": res.messages,
+    }
+
+
+@app.post("/api/transcribe/draft")
+def draft_transcript(body: DraftIn) -> dict:
+    with _db() as db:
+        clips = {c["id"]: c for c in db.list_clips()}
+    clip = clips.get(body.clip_id)
+    if clip is None:
+        raise HTTPException(status_code=404, detail="That recording wasn't found.")
+    engine = get_engine(EngineKind.WHISPER_LORA)
+    try:
+        text = engine.transcribe(clip["path"])
+    except EngineUnavailableError as e:
+        return {"text": "", "available": False, "message": str(e)}
+    with _db() as db:
+        db.update_transcript(body.clip_id, text)
+    return {"text": text, "available": True}
+
+
+@app.post("/api/transcribe")
+async def transcribe(audio: UploadFile) -> dict:
+    """The 'Try it' microphone."""
+    raw = await audio.read()
+    tmp = config.DEFAULT_PROJECT_DIR / "try.wav"
+    tmp.write_bytes(raw)
+    engine = get_engine(EngineKind.WHISPER_LORA)
+    try:
+        text = engine.transcribe(str(tmp))
+    except EngineUnavailableError as e:
+        return {"text": "", "available": False, "message": str(e)}
+    return {"text": text, "available": True}
+
+
+# --- training jobs ------------------------------------------------------------
+
+_jobs: dict[int, "_Job"] = {}
+_jobs_lock = threading.Lock()
+
+
+@dataclasses.dataclass
+class _Job:
+    run_id: int
+    progress: TrainProgress
+    cancel: threading.Event
+
+
+def _run_training(run_id: int, plan, manifest: list[dict], workdir: str) -> None:
+    cancel = _jobs[run_id].cancel
+    # Director may select an engine not yet implemented (Phase 2); fall back to
+    # the Whisper-LoRA simulation so the flow always completes in Phase 0.
+    try:
+        engine = get_engine(plan.engine)
+    except NotImplementedError:
+        engine = get_engine(EngineKind.WHISPER_LORA)
+
+    def on_progress(p: TrainProgress) -> None:
+        with _jobs_lock:
+            _jobs[run_id].progress = p
+
+    db = ProjectDB.open(config.DEFAULT_DB_PATH)
+    try:
+        db.update_run(run_id, status="running")
+        final = engine.train(
+            plan, manifest, workdir,
+            progress=on_progress,
+            should_stop=cancel.is_set,
+        )
+        with _jobs_lock:
+            _jobs[run_id].progress = final
+        if final.failed:
+            db.update_run(run_id, status="failed")
+        elif cancel.is_set() and not final.done:
+            db.update_run(run_id, status="cancelled")
+        else:
+            wer = None if final.smartness is None else round(1.0 - final.smartness, 4)
+            db.update_run(run_id, status="done", best_val_wer=wer, checkpoint_path=workdir)
+    except Exception as e:  # never let a training thread die silently
+        with _jobs_lock:
+            _jobs[run_id].progress = TrainProgress(
+                epoch=0, total_epochs=plan.epochs, fraction=0.0, smartness=None,
+                message=f"Something went wrong: {e}", done=False, failed=True,
+            )
+        db.update_run(run_id, status="failed")
+    finally:
+        db.close()
+
+
+@app.post("/api/train")
+def start_training() -> dict:
+    with _db() as db:
+        project = db.get_project() or {}
+        profile = _current_data_profile(db)
+        gate = sufficiency(profile, target_minutes=config.TARGET_GOOD_MINUTES)
+        if gate.status.value != "ready":
+            raise HTTPException(
+                status_code=409,
+                detail=" ".join(gate.messages) or "Add more good recordings first.",
+            )
+        good_clips = db.list_clips(only_good=True)
+        manifest = [{"path": c["path"], "text": c["transcript"] or ""} for c in good_clips]
+
+        hw = probe_hardware(str(config.DEFAULT_PROJECT_DIR))
+        lang = probe_language(project.get("language_code"))
+        plan = build_plan(hw, profile, lang)
+        run_id = db.create_run(
+            engine=plan.engine.value,
+            base_checkpoint=plan.base_checkpoint,
+            plan_json=__import__("json").dumps(_plan_to_dict(plan)),
+        )
+
+    workdir = str(config.DEFAULT_PROJECT_DIR / "runs" / str(run_id))
+    Path(workdir).mkdir(parents=True, exist_ok=True)
+    initial = TrainProgress(
+        epoch=0, total_epochs=plan.epochs, fraction=0.0, smartness=None,
+        message="Getting ready to teach…", done=False, failed=False,
+    )
+    with _jobs_lock:
+        _jobs[run_id] = _Job(run_id=run_id, progress=initial, cancel=threading.Event())
+    threading.Thread(
+        target=_run_training, args=(run_id, plan, manifest, workdir), daemon=True
+    ).start()
+    return {"run_id": run_id, "plan": _plan_to_dict(plan)}
+
+
+@app.get("/api/train/{run_id}")
+def training_status(run_id: int) -> dict:
+    with _jobs_lock:
+        job = _jobs.get(run_id)
+        if job is not None:
+            return asdict(job.progress)
+    # Not in memory (e.g. server restarted) — reconstruct from the DB.
+    with _db() as db:
+        run = db.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="That training run wasn't found.")
+    done = run["status"] == "done"
+    return {
+        "epoch": 0, "total_epochs": 0, "fraction": 1.0 if done else 0.0,
+        "smartness": (1.0 - run["best_val_wer"]) if run.get("best_val_wer") is not None else None,
+        "message": f"Status: {run['status']}", "done": done,
+        "failed": run["status"] == "failed",
+    }
+
+
+@app.post("/api/train/{run_id}/cancel")
+def cancel_training(run_id: int) -> dict:
+    with _jobs_lock:
+        job = _jobs.get(run_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="That training run wasn't found.")
+    job.cancel.set()
+    return {"cancelled": True}
+
+
+@app.post("/api/export")
+def export_model(body: ExportIn) -> dict:
+    with _db() as db:
+        run = db.get_run(body.run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="That model wasn't found.")
+    model_dir = run.get("checkpoint_path") or str(config.DEFAULT_PROJECT_DIR / "runs" / str(body.run_id))
+    out_dir = str(config.DEFAULT_PROJECT_DIR / "exports" / str(body.run_id))
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    engine = get_engine(EngineKind.WHISPER_LORA)
+    result = engine.export(model_dir, out_dir, fmt=body.fmt)
+    return asdict(result)
+
+
+def main() -> None:
+    import uvicorn
+
+    uvicorn.run(app, host=config.HOST, port=config.PORT)
+
+
+if __name__ == "__main__":
+    main()

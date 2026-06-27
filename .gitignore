@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node / Vite / Svelte
+node_modules/
+ui/dist/
+*.tsbuildinfo
+
+# Rust / Tauri
+src-tauri/target/
+
+# TalkTeach local data (projects, audio, models — never committed)
+.talkteach/
+*.db
+*.db-wal
+*.db-shm
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

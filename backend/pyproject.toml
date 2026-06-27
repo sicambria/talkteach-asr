@@ -1,0 +1,47 @@
+[project]
+name = "talkteach-backend"
+version = "0.0.1"
+description = "TalkTeach job server — child-proof, zero-config ASR training backend (Phase 0)"
+# Canonical README lives at the repo root (../README.md); not referenced here so
+# sdist builds don't depend on a path outside this project directory.
+requires-python = ">=3.10"
+# Light deps: enough to run the director, audio quality/sufficiency logic, the
+# data layer, and the FastAPI job server WITHOUT any GPU or ML framework.
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.6",
+    "numpy>=1.24",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+# Heavy ML deps, import-guarded everywhere. Installed only when actually training
+# or running inference. The backend imports and serves non-ML endpoints without them.
+ml = [
+    "torch>=2.2",
+    "transformers>=4.40",
+    "peft>=0.10",
+    "faster-whisper>=1.0",
+    "soundfile>=0.12",
+    "librosa>=0.10",
+]
+export = [
+    "ctranslate2>=4.0",
+    "onnxruntime>=1.17",
+]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["talkteach"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
