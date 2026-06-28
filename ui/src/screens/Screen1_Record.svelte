@@ -6,29 +6,43 @@
   // The "Teach" button only wakes up when there's enough good audio.
   // jargon-free everywhere.
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-  import { analyzeClip, sufficiency as fetchSufficiency } from '../lib/api.js';
-  import { sufficiency, grownUpMode } from '../lib/store.js';
+  import {
+    analyzeClip,
+    sufficiency as fetchSufficiency,
+    getPrompts,
+    saveCorrection,
+    selfTest,
+  } from '../lib/api.js';
+  import { sufficiency, grownUpMode, project } from '../lib/store.js';
   import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
 
-  // A friendly placeholder line for "karaoke" prompt reading.
-  const PROMPTS = [
+  // Karaoke lines to read aloud. We fetch real ones from the backend on mount,
+  // but keep a few friendly defaults so there's always something to read.
+  let prompts = [
     'The big red bus goes fast.',
     'My dog likes to jump and play.',
     'We had pancakes for breakfast.',
     'Look at the bright yellow sun!',
   ];
   let promptIndex = 0;
-  $: prompt = PROMPTS[promptIndex % PROMPTS.length];
+  $: prompt = prompts[promptIndex % prompts.length];
+
+  function anotherSentence() {
+    promptIndex = (promptIndex + 1) % prompts.length;
+  }
 
   let recording = false;
   let mediaRecorder = null;
   let chunks = [];
+  // The sentence shown when recording started — becomes that clip's transcript.
+  let recordingPrompt = null;
   let lastResult = null; // ClipQuality
   let busy = false;
   let micError = '';
   let dragOver = false;
+  let practiceNote = '';
 
   let pollTimer = null;
 
@@ -41,8 +55,22 @@
     }
   }
 
+  async function loadPrompts() {
+    try {
+      const lang = $project?.language_code || null;
+      const res = await getPrompts(lang, 8);
+      if (res.prompts && res.prompts.length) {
+        prompts = res.prompts;
+        promptIndex = 0;
+      }
+    } catch {
+      // Keep the friendly default lines if the backend isn't up yet.
+    }
+  }
+
   onMount(() => {
     refreshSufficiency();
+    loadPrompts();
     pollTimer = setInterval(refreshSufficiency, 4000);
   });
 
@@ -54,6 +82,9 @@
   async function startRecording() {
     micError = '';
     lastResult = null;
+    // Remember the sentence the child is reading right now; we save it as this
+    // clip's words once it's recorded and checked.
+    recordingPrompt = prompt;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunks = [];
@@ -64,7 +95,7 @@
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunks, { type: 'audio/webm' });
-        await handleClip(blob);
+        await handleClip(blob, recordingPrompt);
       };
       mediaRecorder.start();
       recording = true;
@@ -84,15 +115,40 @@
     recording ? stopRecording() : startRecording();
   }
 
-  async function handleClip(blobOrFile) {
+  // `promptText` is the karaoke line for a *recorded* clip (its words). For
+  // dropped-in audio files we pass null, since they aren't reading our sentence.
+  async function handleClip(blobOrFile, promptText = null) {
     busy = true;
     lastResult = null;
     try {
       lastResult = await analyzeClip(blobOrFile);
-      promptIndex += 1; // move the karaoke line along
+      // The sentence the child read becomes the clip's words, so they rarely
+      // have to fix anything on the next screen.
+      if (promptText && lastResult.clip_id != null) {
+        try {
+          await saveCorrection(lastResult.clip_id, promptText);
+        } catch {
+          // Not fatal — they can still fix the words on the Check screen.
+        }
+      }
+      anotherSentence(); // move the karaoke line along
       await refreshSufficiency();
     } catch (e) {
       micError = e.message || "I couldn't listen to that one.";
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function addPracticeSet() {
+    practiceNote = '';
+    busy = true;
+    try {
+      const res = await selfTest();
+      practiceNote = res.message || 'Added a few practice sounds so you can try Teach!';
+      await refreshSufficiency();
+    } catch (e) {
+      practiceNote = e.message || "I couldn't make a practice set.";
     } finally {
       busy = false;
     }
@@ -103,7 +159,7 @@
     e.preventDefault();
     dragOver = false;
     const file = e.dataTransfer?.files?.[0];
-    if (file) handleClip(file);
+    if (file) handleClip(file, null);
   }
 
   $: s = $sufficiency;
@@ -116,8 +172,9 @@
   <h1>Let's record!</h1>
   <p>Read this out loud, then press the big button.</p>
 
-  <!-- Karaoke prompt line placeholder -->
+  <!-- Karaoke prompt line: the sentence to read aloud. -->
   <div class="card prompt">{prompt}</div>
+  <button class="ghost" on:click={anotherSentence}>🔀 Another sentence</button>
 
   <div class="stack">
     <button
@@ -185,6 +242,17 @@
       {/each}
     {:else}
       <p class="hint">Press the mic to start filling this up!</p>
+    {/if}
+  </div>
+
+  <!-- No microphone yet? Add a few ready-made sounds so you can still try. -->
+  <div class="card practice">
+    <p class="hint">No microphone? Try a ready-made set instead.</p>
+    <button class="secondary" disabled={busy} on:click={addPracticeSet}>
+      🎁 Try a practice set
+    </button>
+    {#if practiceNote}
+      <p class="hint">{practiceNote}</p>
     {/if}
   </div>
 

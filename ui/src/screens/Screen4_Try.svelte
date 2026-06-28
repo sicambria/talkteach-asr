@@ -69,7 +69,9 @@
   }
 
   function save() {
-    // TODO(backend): persist this try result if needed.
+    // "Try it" results are shown live and on purpose are not stored anywhere —
+    // there's no server-side persistence for them, so this is a local-only
+    // acknowledgement that the child saw the result.
     saved = true;
   }
 

@@ -92,6 +92,72 @@ export async function analyzeClip(audioOrPath) {
   return unwrap(res, "I couldn't listen to that recording");
 }
 
+// --- Clip list & corrections -------------------------------------------------
+
+/**
+ * GET /api/clips — every recorded clip with its current transcript.
+ * @returns {Promise<{clips: Array<{id:number, duration_s:number, is_good:boolean, issues:string[], transcript:string}>}>}
+ */
+export async function listClips() {
+  const res = await fetch(url('/api/clips'));
+  return unwrap(res, "I couldn't find your recordings");
+}
+
+/**
+ * POST /api/clips/{clip_id}/transcript — save a corrected transcript for one clip.
+ * @param {number|string} clipId
+ * @param {string} text
+ * @returns {Promise<{ok: boolean, clip_id: number, transcript: string}>}
+ */
+export async function saveCorrection(clipId, text) {
+  const res = await fetch(url(`/api/clips/${encodeURIComponent(clipId)}/transcript`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  return unwrap(res, "I couldn't save your fix");
+}
+
+// --- Karaoke prompts ---------------------------------------------------------
+
+/**
+ * GET /api/prompts — sentences to read aloud. The prompt is also the transcript.
+ * @param {string|null} lang - language code, or null to use the project's language
+ * @param {number} [n=8] - how many sentences to fetch
+ * @returns {Promise<{language: string, prompts: string[], languages: string[]}>}
+ */
+export async function getPrompts(lang = null, n = 8) {
+  const params = new URLSearchParams();
+  if (lang) params.set('lang', lang);
+  if (n) params.set('n', String(n));
+  const qs = params.toString();
+  const res = await fetch(url(`/api/prompts${qs ? `?${qs}` : ''}`));
+  return unwrap(res, "I couldn't find any sentences to read");
+}
+
+// --- The grown-up plan -------------------------------------------------------
+
+/**
+ * GET /api/plan — the director's plan + plain-language rationale, plus the
+ * hardware it detected. Used by Grown-up mode.
+ * @returns {Promise<{plan: {engine:string, base_checkpoint:string, precision:string, epochs:number, rationale:string[]}, hardware: {compute:string, gpu_name:string, vram_gib:number, ram_gib:number}}>}
+ */
+export async function getPlan() {
+  const res = await fetch(url('/api/plan'));
+  return unwrap(res, "I couldn't work out the teaching plan");
+}
+
+// --- Practice set (self-test) ------------------------------------------------
+
+/**
+ * POST /api/selftest — seed a tiny toy dataset so "Teach!" works without recording.
+ * @returns {Promise<{seeded: number, message: string}>}
+ */
+export async function selfTest() {
+  const res = await fetch(url('/api/selftest'), { method: 'POST' });
+  return unwrap(res, "I couldn't make a practice set");
+}
+
 // --- Sufficiency / "minutes of good audio" ----------------------------------
 
 /**

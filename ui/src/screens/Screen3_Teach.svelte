@@ -3,8 +3,8 @@
   // One big button starts teaching. We then ask the backend "how's it going?"
   // every ~1.5s and show a progress bar and a "How smart is it?" meter.
   // jargon-free: no "training", "epochs as numbers only", no "WER".
-  import { createEventDispatcher, onDestroy } from 'svelte';
-  import { startTraining, trainProgress } from '../lib/api.js';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { startTraining, trainProgress, getPlan } from '../lib/api.js';
   import { sufficiency, currentRun, grownUpMode } from '../lib/store.js';
   import { TRAIN_POLL_MS } from '../lib/constants.js';
   import Mascot from '../components/Mascot.svelte';
@@ -17,6 +17,22 @@
   let paused = false;
   let errorMsg = '';
   let pollTimer = null;
+
+  // The director's plan + detected hardware, for Grown-up mode. We fetch this
+  // up front so a grown-up can see *why* before pressing Teach. Kids never see
+  // it — the kid view is just the smartness meter and progress.
+  let plan = null;
+  let hardware = null;
+
+  onMount(async () => {
+    try {
+      const res = await getPlan();
+      plan = res.plan;
+      hardware = res.hardware;
+    } catch {
+      // The plan panel just stays hidden if the backend isn't up yet.
+    }
+  });
 
   $: s = $sufficiency;
   $: readyToTeach = s && s.status === 'ready';
@@ -67,6 +83,7 @@
     try {
       const res = await startTraining();
       runId = res.run_id;
+      if (res.plan) plan = res.plan; // the actual plan being used
       currentRun.set({ run_id: runId });
       startPolling();
     } catch (e) {
@@ -153,6 +170,38 @@
   {#if $grownUpMode}
     <div class="grownup">
       <h3>Grown-up mode</h3>
+      {#if plan}
+        <p>
+          <strong>Engine:</strong>
+          {plan.engine} &nbsp;·&nbsp;
+          <strong>Model:</strong>
+          {plan.base_checkpoint}
+        </p>
+        <p>
+          <strong>Precision:</strong>
+          {plan.precision} &nbsp;·&nbsp;
+          <strong>Epochs:</strong>
+          {plan.epochs}
+        </p>
+        {#if hardware}
+          <p>
+            <strong>Hardware:</strong>
+            {hardware.compute}{hardware.gpu_name ? ` (${hardware.gpu_name})` : ''}
+            {#if hardware.vram_gib}· {hardware.vram_gib} GiB VRAM{/if}
+            {#if hardware.ram_gib}· {hardware.ram_gib} GiB RAM{/if}
+          </p>
+        {/if}
+        {#if plan.rationale && plan.rationale.length}
+          <p><strong>Why this plan:</strong></p>
+          <ul class="rationale">
+            {#each plan.rationale as reason}
+              <li>{reason}</li>
+            {/each}
+          </ul>
+        {/if}
+      {:else}
+        <p>Working out the plan…</p>
+      {/if}
       run_id: {runId}
       {'\n'}progress: {JSON.stringify(progress)}
     </div>
@@ -169,5 +218,10 @@
   .error {
     color: var(--tt-oops);
     font-weight: 700;
+  }
+
+  .rationale {
+    text-align: left;
+    margin: 6px 0;
   }
 </style>
