@@ -1,6 +1,6 @@
 # TalkTeach — UI
 
-The friendly web front-end for **TalkTeach**, a child-proof app for teaching a
+The friendly web front-end for **TalkTeach**, an easy-to-use app for teaching a
 computer to understand speech. It is a [Svelte](https://svelte.dev) app that runs
 inside a [Tauri](https://tauri.app) desktop shell.
 
@@ -31,9 +31,9 @@ The complete app (the real window, and later the bundled backend) needs **Rust**
 and the Tauri toolchain. From the **repo root**:
 
 ```bash
-# install Rust from https://rustup.rs, then:
-cargo install tauri-cli --version "^2.0"
-cargo tauri dev      # runs the Svelte UI inside the Tauri window
+# install Rust from https://rustup.rs, then, from the repo root:
+npm install          # one time — installs @tauri-apps/cli
+npm run tauri dev    # runs the Svelte UI inside the Tauri window
 ```
 
 ## The backend

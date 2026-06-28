@@ -4,7 +4,7 @@ sufficiency gate, and the policy that combines them into a TrainingPlan)."""
 
 from .active_learning import ClipUncertainty, rank_clips
 from .hardware import probe_hardware
-from .language import probe_language
+from .language import probe_language, supported_languages
 from .policy import adaptive_target, build_plan, sufficiency
 from .types import (
     Compute,
@@ -21,6 +21,7 @@ from .types import (
 __all__ = [
     "probe_hardware",
     "probe_language",
+    "supported_languages",
     "build_plan",
     "sufficiency",
     "adaptive_target",

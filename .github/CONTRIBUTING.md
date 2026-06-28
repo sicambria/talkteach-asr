@@ -1,6 +1,6 @@
 # Contributing to TalkTeach
 
-Thanks for wanting to help. TalkTeach is a **child-proof, offline-first,
+Thanks for wanting to help. TalkTeach is a **easy-to-use, offline-first,
 cross-platform ASR-training desktop app** (Tauri shell + Svelte UI + a Python
 FastAPI backend). It is mostly *integration and UX*, not new ML research — so
 most contributions are about making the four-tap wizard (**Record → Check →
@@ -163,7 +163,7 @@ spine. A Tier-B feature without a "how to verify" note isn't finished.
 
 This project follows an unusual but deliberate convention. When a non-obvious
 choice comes up, **generate the top ~5 options, score them 0–100 against this
-project's constraints (child-proof, offline-first, GPL-3.0, integration-not-
+project's constraints (easy-to-use, offline-first, GPL-3.0, integration-not-
 research, must degrade on a GPU-less laptop), pick the best, and append an entry
 to [`project/docs/DECISIONS.md`](../project/docs/DECISIONS.md)** — don't open a discussion thread to ask.
 

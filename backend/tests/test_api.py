@@ -209,6 +209,22 @@ def test_prompts_endpoint_returns_karaoke_sentences():
         assert client.get("/api/prompts", params={"lang": "zz"}).json()["prompts"]
 
 
+def test_languages_endpoint_lists_all_supported_languages():
+    with TestClient(app) as client:
+        body = client.get("/api/languages").json()
+        langs = body["languages"]
+        # The full Whisper set (~99), each with a code + display name.
+        assert len(langs) > 90
+        assert body["auto_detect"] is True
+        codes = {item["code"] for item in langs}
+        assert {"en", "hu", "ja", "ar"} <= codes
+        by_code = {item["code"]: item["name"] for item in langs}
+        assert by_code["en"] == "English"
+        # Sorted by display name so the picker reads alphabetically.
+        names = [item["name"] for item in langs]
+        assert names == sorted(names)
+
+
 def test_plan_preview_has_rationale():
     with TestClient(app) as client:
         body = client.get("/api/plan").json()

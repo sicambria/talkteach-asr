@@ -35,7 +35,7 @@ What you'd like to happen.
 
 Existing roadmap item #, if any:
 
-## Keep it child-proof and offline-first
+## Keep it easy-to-use and offline-first
 
 How does this fit the product promises? In particular:
 

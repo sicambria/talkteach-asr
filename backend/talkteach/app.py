@@ -24,7 +24,7 @@ from fastapi import FastAPI, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import config
+from . import __version__, config
 from .audio.quality import ClipQuality, analyze_samples
 from .data.project import ProjectDB
 from .director import (
@@ -34,6 +34,7 @@ from .director import (
     probe_hardware,
     probe_language,
     sufficiency,
+    supported_languages,
 )
 from .engines import get_engine
 from .engines.base import EngineUnavailableError, TrainProgress
@@ -69,7 +70,7 @@ def _reconcile_interrupted_runs(db: ProjectDB) -> int:
     return len(stale)
 
 
-app = FastAPI(title="TalkTeach", version="0.0.1", lifespan=_lifespan)
+app = FastAPI(title="TalkTeach", version=__version__, lifespan=_lifespan)
 
 # The Tauri shell loads the UI from a local origin; allow it during dev.
 app.add_middleware(
@@ -327,6 +328,18 @@ def save_transcript(clip_id: int, body: TranscriptIn) -> dict:
             raise HTTPException(status_code=404, detail="That recording wasn't found.")
         db.update_transcript(clip_id, body.text)
     return {"ok": True, "clip_id": clip_id, "transcript": body.text}
+
+
+@app.get("/api/languages")
+def languages() -> dict:
+    """Every speech language the model can be trained for (#36).
+
+    The ~99 Whisper languages (code + English name) that populate the New-Project
+    picker. Languages outside this set are still trainable — the director switches
+    the base model to wav2vec2/XLS-R — and `auto_detect` (no language chosen) lets
+    Whisper identify it. See director/language.py and project/docs/LANGUAGES.md.
+    """
+    return {"languages": supported_languages(), "auto_detect": True}
 
 
 @app.get("/api/prompts")

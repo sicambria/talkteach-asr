@@ -24,7 +24,7 @@ Consequence: what this commits us to / what to revisit.
 ```
 
 Scores are deliberate but not pseudo-precise: they encode *fit to this
-project's constraints* (child-proof, offline-first, GPL-3.0, mostly integration
+project's constraints* (easy-to-use, offline-first, GPL-3.0, mostly integration
 not research, must degrade gracefully on a GPU-less laptop), not abstract merit.
 
 ---
@@ -34,7 +34,7 @@ not research, must degrade gracefully on a GPU-less laptop), not abstract merit.
 Context: the goal says "implement all items in `ROADMAP.md`." Several items
 are physically impossible to *run to completion* in this environment: signed
 installers for three OSes (#24) need code-signing certs and three build hosts;
-compiling the Tauri shell (#14) needs root to install WebKit/GTK dev libs;
+compiling the Tauri shell (#14) needs the WebKit/GTK dev libs installed;
 director calibration (#6) needs real GPUs and labelled datasets; cloud fallback
 (#27) needs a remote GPU; mascot art (#31) needs an artist. Treating "done" as
 "binary literal completion" would force checkbox stubs that fail the final
@@ -60,6 +60,13 @@ scripts) and a documented "how to verify on a provisioned machine."
 Consequence: the bar for "95/100" becomes *coverage × honesty × quality of
 artifacts*, not a green checkbox per line. The matrix must stay in sync with
 reality at the final coherence pass.
+
+> **Update (2026-06-28, pre-release):** #14 is no longer deferred — the Tauri
+> shell was compiled and run end-to-end on a host with WebKit/GTK present
+> (`npm run tauri dev` → window + sidecar spawn + live `/api/health` 200), so it
+> is now Tier A. See `ROADMAP_STATUS.md` #14 and `PHASE0_STATUS.md`. The "needs
+> root" note above was wrong: the dev libs need to be *present*, not installed as
+> root at build time.
 
 ## D-002 — Test strategy for ML code that needs network/GPU
 

@@ -7,9 +7,10 @@
 // project/docs/BUNDLING.md for how it's produced). On window close we kill the child so
 // no orphaned server lingers.
 //
-// This is Tier B: the code is complete and idiomatic, but it is not compiled in
-// the sandbox (the Linux Tauri build needs root-only WebKit/GTK dev libraries).
-// Build it on a provisioned machine via the README "Quick start (desktop app)".
+// Verified end-to-end (2026-06-28): `npm run tauri dev` compiles this shell, the
+// window launches, this `setup()` spawns the backend sidecar, and the UI drives
+// it over the live API. Building installers still needs WebKit/GTK present and a
+// per-OS PyInstaller freeze — see the README "Quick start (desktop app)".
 
 use std::sync::Mutex;
 
@@ -56,14 +57,21 @@ pub fn run() {
                     app.state::<Backend>().0.lock().unwrap().replace(child);
                 }
                 // Don't crash the window if the backend can't start — the UI shows
-                // a friendly "couldn't start" card instead (child-proof contract).
+                // a friendly "couldn't start" card instead (easy-to-use contract).
                 Err(err) => eprintln!("TalkTeach backend did not start: {err}"),
             }
             Ok(())
         })
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::Destroyed) {
-                if let Some(child) = window.app_handle().state::<Backend>().0.lock().unwrap().take() {
+                if let Some(child) = window
+                    .app_handle()
+                    .state::<Backend>()
+                    .0
+                    .lock()
+                    .unwrap()
+                    .take()
+                {
                     let _ = child.kill();
                 }
             }

@@ -84,6 +84,17 @@ jobs:
           workspaces: src-tauri
       - name: rustfmt
         run: cd src-tauri && cargo fmt --check
+      # tauri.conf.json declares the backend sidecar as `externalBin`, so the
+      # tauri build script fails the compile if that file is missing. The real
+      # binary is a per-OS PyInstaller freeze produced in the release pipeline
+      # (see RELEASING.md); for the lint/check gate a stub at the host target
+      # triple is enough to let clippy/check resolve the resource.
+      - name: Stub backend sidecar for clippy/check
+        run: |
+          mkdir -p src-tauri/binaries
+          stub="src-tauri/binaries/talkteach-backend-x86_64-unknown-linux-gnu"
+          printf '#!/bin/sh\nexit 0\n' > "$stub"
+          chmod +x "$stub"
       - name: clippy
         run: cd src-tauri && cargo clippy -- -D warnings
       - name: cargo check

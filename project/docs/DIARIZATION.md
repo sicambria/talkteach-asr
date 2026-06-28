@@ -11,7 +11,7 @@ warn that the data is mixed.
 
 | Backend | License | Notes |
 |---|---|---|
-| **pyannote.audio** | MIT (code) | the de-facto OSS diarizer; **pretrained weights are gated** on Hugging Face and need an accepted user agreement — a real friction point for an offline, child-proof app |
+| **pyannote.audio** | MIT (code) | the de-facto OSS diarizer; **pretrained weights are gated** on Hugging Face and need an accepted user agreement — a real friction point for an offline, easy-to-use app |
 | **NeMo diarization** | Apache-2.0 | ties into the Phase-2 NeMo stack (#25); no gated-weights step |
 
 The gated-weights caveat matters: anything requiring an online agreement

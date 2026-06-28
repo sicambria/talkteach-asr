@@ -57,6 +57,15 @@ export async function createProject(name, languageCode = null) {
   return unwrap(res, "I couldn't start your project");
 }
 
+/**
+ * GET /api/languages — every speech language the model can learn.
+ * @returns {Promise<{languages: Array<{code:string, name:string}>, auto_detect: boolean}>}
+ */
+export async function getLanguages() {
+  const res = await fetch(url('/api/languages'));
+  return unwrap(res, "I couldn't load the list of languages");
+}
+
 // --- Preflight / "Is everything ready?" -------------------------------------
 
 /**

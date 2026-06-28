@@ -4,7 +4,7 @@ This spike validates the **integration risk** the design report (Part C) named a
 the real danger: not the wizard UI, but the *director + reliability + dependency*
 plumbing. It does so by building those parts first, for real, with tests.
 
-## What is REAL and tested (57 passing tests, no GPU/ML deps)
+## What is REAL and tested (110+ passing fast tests, no GPU/ML deps)
 
 | Area | Real behavior | Tests |
 |---|---|---|
@@ -36,14 +36,15 @@ Verified live: `python -m talkteach.app` boots under uvicorn and serves
   are present; otherwise they degrade gracefully.
 - **Svelte UI builds today** — `npm install && npm run build` produces `ui/dist/`
   (46 modules, verified). Four screens, typed API client, kid-friendly styling.
-- **Desktop shell (Tauri v2) is build-ready but not compiled here.** The scaffold
-  is structurally correct and idiomatic (lib.rs `run()` + main.rs, valid
-  `Cargo.toml`, valid `tauri.conf.json` with a complete icon set incl. generated
-  `.ico`/`.icns`, and a root `package.json` orchestrator exposing `npm run tauri`).
-  It is *not* compiled in this environment because the Linux Tauri build requires
-  system WebKit/GTK dev libraries (`libwebkit2gtk-4.1-dev`, …) that need root to
-  install, and sudo is locked here. It builds on a provisioned machine via the
-  recipe in the README ("Quick start (desktop app)").
+- **Desktop shell (Tauri v2) — compiled and verified end-to-end (2026-06-28).**
+  The scaffold is structurally correct and idiomatic (lib.rs `run()` + main.rs,
+  valid `Cargo.toml`, valid `tauri.conf.json` with a complete icon set incl.
+  generated `.ico`/`.icns`, and a root `package.json` orchestrator exposing
+  `npm run tauri`). On a Linux/Wayland host with WebKit/GTK present, `npm run
+  tauri dev` compiled the shell, launched the window, `setup()` spawned the
+  Python backend as a sidecar, and the UI reached it over the live API
+  (`GET /api/health` → `200`, version `0.1.0`). Producing per-OS installers still
+  needs WebKit/GTK present and a per-target PyInstaller freeze (see RELEASING.md).
 - **No ffmpeg** here, so browser `webm` clips are accepted-but-unchecked; PCM WAV
   is fully analyzed. Phase 1 bundles ffmpeg (LGPL build) to handle all formats.
 - **Forced alignment / VAD trimming** (Silero, NeMo Forced Aligner) are Phase 1.

@@ -2,7 +2,7 @@
 
 Phase 0 (this commit) is a tested vertical slice. This document is the full,
 prioritized list of what stands between here and a *world-class* product:
-a child-proof, offline, cross-platform GUI that genuinely trains state-of-the-art
+an easy-to-use, offline, cross-platform GUI that genuinely trains state-of-the-art
 ASR models. Tiers map to the design report's phases (B.8). "✱" = grounded in an
 explicit code marker (`grep -rn TODO|SIMULATION`).
 
@@ -69,7 +69,7 @@ with `[ml]` installed.
 18. **Pre-flight screen wired to the UI**; cross-platform mic detection (replace the
     Linux `/dev/snd` heuristic with a real probe per OS).
 
-### UX (child-proof)
+### UX (easy-to-use)
 19. ✱ **Wire UI to real data**: Screen 2 clip list + persist corrections; Screen 4
     persist results (`Screen2_Check.svelte`, `Screen4_Try.svelte` `TODO(backend)`).
 20. **Browser audio → trainable format**: MediaRecorder emits webm; convert to WAV

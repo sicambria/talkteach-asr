@@ -13,6 +13,10 @@ ui/dist/
 
 # Rust / Tauri
 src-tauri/target/
+# Tauri build-generated capability/ACL schemas (regenerated each build)
+src-tauri/gen/schemas/
+# Frozen PyInstaller backend sidecar (multi-GB build artifact, never committed)
+src-tauri/binaries/
 
 # TalkTeach local data (projects, audio, models — never committed)
 .talkteach/

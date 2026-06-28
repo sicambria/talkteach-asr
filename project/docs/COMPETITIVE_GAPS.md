@@ -1,6 +1,6 @@
 # Competitive gap analysis — parity with the best existing toolsets
 
-The design report's headline (Part A) is that **no** OSS tool ships a child-proof,
+The design report's headline (Part A) is that **no** OSS tool ships an easy-to-use,
 end-to-end GUI that trains SOTA ASR. That's about *packaging + UX*. This doc asks
 a sharper, engineering question: **of the capabilities the best pro ASR-training
 toolsets ship, which does TalkTeach's roadmap not yet cover?** Anything missing
@@ -52,7 +52,7 @@ becomes a roadmap item (see the "Parity" section appended to `ROADMAP.md`, items
 
 ## Honest verdict
 
-For its **target** — a child-proof, offline, one-tap trainer — TalkTeach's
+For its **target** — an easy-to-use, offline, one-tap trainer — TalkTeach's
 roadmap is complete and the core is real. Against the **pro toolsets' full
 surface**, the meaningful gaps are *data augmentation (#46)*, *dataset import
 (#47)*, and *subtitle/long-form transcription (#48/#49)* — all additive,

@@ -2,7 +2,7 @@
 
 "So easily a 10-year-old can" has to include the 10-year-old who uses a screen
 reader, can't use a mouse, or reads more easily with a dyslexia-friendly font.
-Accessibility isn't a polish pass here — it's part of the child-proof promise.
+Accessibility isn't a polish pass here — it's part of the easy-to-use promise.
 This is the working checklist: what's in place and what's still owed.
 
 ## Already present

@@ -1,8 +1,9 @@
 [package]
 name = "talkteach"
 version = "0.1.0"
-description = "TalkTeach — a child-proof speech-recognition training app"
+description = "TalkTeach — an easy-to-use speech-recognition training app"
 authors = ["TalkTeach"]
+license = "GPL-3.0-or-later"
 edition = "2021"
 rust-version = "1.77"
 

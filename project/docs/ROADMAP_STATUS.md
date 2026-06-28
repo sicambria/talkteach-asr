@@ -30,7 +30,7 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 | 11 | Silero VAD trim/segment | B | ✅ | `audio/vad.py` (guarded), pure segmentation logic tested in `tests/test_audio_pipeline.py` |
 | 12 | Forced alignment | C | 🟡 | `audio/align.py` adapter scaffold + `ALIGNMENT.md` |
 | 13 | Live recording-quality feedback | B | 🟡 | backend helper `audio/quality.py::live_meter` + `tests/test_audio_pipeline.py`; UI live-meter wiring (WebAudio, client-side) pending |
-| 14 | Compile the Tauri shell | C | ⬜ | needs root/WebKit libs; recipe in README + `setup.sh`; documented Tier C |
+| 14 | Compile the Tauri shell | A | ✅ | **compiled + ran end-to-end** (2026-06-28): `npm run tauri dev` → window + sidecar spawn + live `/api/health` 200; recipe in README + `setup.sh`. Per-OS installers still a release-pipeline step (`RELEASING.md`) |
 | 15 | Tauri sidecar auto-spawn backend | B | ✅ | `src-tauri/src/lib.rs` sidecar spawn + `tauri.conf.json` externalBin; `SIDECAR.md` |
 | 16 | No-install bundled runtime | C | 🟡 | `scripts/build_sidecar.py` (PyInstaller sidecar) + `BUNDLING.md` (tiny core + uv ML pack) |
 | 17 | Checkpoint/resume exercised e2e | A | ✅ | `find_latest_checkpoint` + resume in `tests/test_whisper_train.py`, `tests/test_durability.py`; sim writes per-epoch checkpoints (`tests/test_engines.py`) |

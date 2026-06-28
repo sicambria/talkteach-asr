@@ -10,7 +10,7 @@ kills it on close.
   stores the `CommandChild` in managed state, and drains its stdout/stderr. On
   `WindowEvent::Destroyed` and `RunEvent::Exit` it `kill()`s the child so no
   orphaned server lingers. If the backend can't start, the window still opens and
-  the UI shows a friendly "couldn't start" card (child-proof contract).
+  the UI shows a friendly "couldn't start" card (easy-to-use contract).
 - `src-tauri/Cargo.toml` — adds `tauri-plugin-shell`.
 - `src-tauri/tauri.conf.json` — `bundle.externalBin: ["binaries/talkteach-backend"]`
   tells the bundler to include the per-target binary.
@@ -27,11 +27,13 @@ npm run tauri build                          # bundles it into the installer
 
 ## Status
 
-**Tier B** (DECISIONS.md D-001): the Rust + Python code and the build script are
-complete and idiomatic, but not compiled in the sandbox (the Linux Tauri build
-needs root-only WebKit/GTK dev libs, and PyInstaller must run per target OS). The
-CI `rust` job (`.github/workflows/ci.yml`) runs `cargo fmt/clippy/check`, and the
-release matrix (`RELEASING.md`) produces the per-OS sidecars + installers.
+**Verified end-to-end** (2026-06-28, on a Linux/Wayland host with WebKit/GTK
+present): `npm run tauri dev` compiles the shell, the window launches, `setup()`
+spawns the Python backend as a sidecar, and the UI drives it over the live API
+(`GET /api/health` → `200`). The CI `rust` job (`.github/workflows/ci.yml`) runs
+`cargo fmt/clippy/check`; the release matrix (`RELEASING.md`) produces the per-OS
+**frozen** PyInstaller sidecars + installers (still the release-pipeline step,
+since the freeze must run on each target OS).
 
 ## Backend bind + CSP
 

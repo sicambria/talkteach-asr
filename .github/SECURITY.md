@@ -1,6 +1,6 @@
 # Security Policy
 
-TalkTeach is a **child-proof, offline-first** desktop app that records and trains
+TalkTeach is a **easy-to-use, offline-first** desktop app that records and trains
 on **children's voice recordings**. That makes security and data privacy the same
 concern here, and we take both seriously. This document explains what's in scope,
 how to report a problem privately, and what to expect back.

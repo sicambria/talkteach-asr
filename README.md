@@ -16,14 +16,14 @@ GUI that actually trains state-of-the-art ASR models.* TalkTeach is mostly
 
 > **Status: Phase 0 → world-class, in progress.** The Python backend (director,
 > audio pipeline, data layer, reliability pre-flight, FastAPI job server) is real
-> and tested: **97 passing tests** (fast suite, no GPU). **Real Whisper-LoRA
+> and tested: **110+ passing fast tests** (no GPU or ML deps). **Real Whisper-LoRA
 > training is implemented** — a PEFT/LoRA `Seq2SeqTrainer` loop with measured WER
 > and safety rails, verified end-to-end on `whisper-tiny` via the opt-in
 > `integration` test. It trains for real when the `[ml]` extra is installed and
 > real recordings exist, and otherwise falls back to a clearly-marked simulation
 > (see [`project/docs/DECISIONS.md`](project/docs/DECISIONS.md) D-012). The Svelte UI is wired to the live
-> API; the Tauri shell spawns the backend as a sidecar (build-ready, not compiled
-> here — needs WebKit/GTK dev libs). See
+> API; the Tauri shell compiles and spawns the backend as a sidecar — verified
+> end-to-end (window + sidecar + live API round-trip). See
 > [`project/docs/ROADMAP_STATUS.md`](project/docs/ROADMAP_STATUS.md) for the per-item status
 > matrix and [`project/docs/PHASE0_STATUS.md`](project/docs/PHASE0_STATUS.md) for real vs.
 > scaffolded.
@@ -32,11 +32,11 @@ GUI that actually trains state-of-the-art ASR models.* TalkTeach is mostly
 
 ## Why it exists (provenance)
 
-The design is the direct implementation of **Part B** of
-`reports/ASR_training_GUI_wizard_research_and_design_2026-06-27.md` in the
-companion **Turan_engine** repo. That report (Part A) verified — across a deep-
-research run, 48 claims adversarially 3-vote-checked — that no OSS tool ships a
-child-proof GUI that trains the best models end-to-end, and (Part C) names the
+The design is the direct implementation of **Part B** of the research report
+[`reports/ASR_training_GUI_wizard_research_and_design_2026-06-27.md`](reports/ASR_training_GUI_wizard_research_and_design_2026-06-27.md),
+included in this repo. That report (Part A) verified — across a deep-research run,
+48 claims adversarially 3-vote-checked — that no open-source tool ships a
+genuinely easy GUI that trains the best models end-to-end, and (Part C) names the
 strongest counter-argument: the hard part isn't the wizard, it's the *director +
 reliability engineering*. TalkTeach builds the director **first and with tests**
 for exactly that reason.
@@ -66,6 +66,19 @@ for exactly that reason.
 │           faithful simulation otherwise)              [BOTH]  │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+## Languages
+
+**Speech** (what the model learns): the **~99 Whisper languages** are first-class —
+pick one from the New-Project screen's quick-picks or its searchable box (served
+live from `GET /api/languages`). A language **outside** Whisper's set is still
+trainable: the director automatically switches the base model to **wav2vec2 /
+XLS-R**, so low-resource and even unwritten languages work given enough audio. Or
+choose **"Let it figure out"** and Whisper auto-detects. Full list + details:
+[`project/docs/LANGUAGES.md`](project/docs/LANGUAGES.md).
+
+**Interface** (the app's own text): **English only** today; the translation
+scaffold and plan are in [`project/docs/I18N.md`](project/docs/I18N.md).
 
 ## Quick start (backend)
 
@@ -107,10 +120,11 @@ npm run dev                    # or: Vite dev server on :1420; backend must run 
 
 ## Quick start (desktop app — Tauri shell)
 
-The native desktop shell is fully scaffolded and **build-ready** (Tauri v2 layout,
-icons, orchestrator scripts). It is *not* compiled in this spike environment
-because the Linux build needs system WebKit/GTK dev libraries that require root to
-install. On a provisioned machine:
+The native desktop shell is **complete and verified end-to-end**: it compiles
+(Tauri v2 + webkit2gtk), the window launches, and `setup()` automatically spawns
+the Python backend as a sidecar that the UI then drives over the live API. You
+need the system WebKit/GTK dev libraries present (one-time, below). On a machine
+that has them:
 
 ```bash
 # 1. Rust toolchain
@@ -126,8 +140,9 @@ npm run tauri dev              # launches the desktop app (spawns the Svelte UI)
 npm run tauri build            # produces a signed-able installer per OS
 ```
 
-The Python backend must be running on `:8756` (Phase 1 will spawn it
-automatically as a Tauri sidecar — see `src-tauri/src/lib.rs`).
+`npm run tauri dev` spawns the Python backend on `:8756` automatically as a Tauri
+sidecar (see `src-tauri/src/lib.rs`), so you don't start a server yourself. (For
+the Vite-only `npm run dev` browser preview, run the backend manually on `:8756`.)
 
 ## Project layout
 
@@ -142,7 +157,7 @@ automatically as a Tauri sidecar — see `src-tauri/src/lib.rs`).
 | `backend/talkteach/benchmark.py` + `benchmarks/` | TTS × ASR benchmark — compare engines on real synthetic speech (WER/CER/time) | **Real**; run via `scripts/benchmark.py` |
 | `backend/talkteach/app.py` | FastAPI job server | **Real + tested** |
 | `ui/` | Svelte 4 four-screen wizard wired to the live API | **Builds + svelte-check/eslint/prettier clean** |
-| `src-tauri/` | Tauri v2 shell — spawns the backend as a sidecar | Build-ready; native compile needs WebKit dev libs |
+| `src-tauri/` | Tauri v2 shell — spawns the backend as a sidecar | **Compiles + runs** (verified end-to-end); needs WebKit/GTK present |
 | `project/docs/` | Status matrix, decisions, per-feature design docs | — |
 
 ## Testing
@@ -177,8 +192,19 @@ Lint/type/format gates: `ruff check`, `ruff format --check`, `mypy talkteach`
 
 ## License
 
+Copyright © 2026 Gaspar Incze and TalkTeach contributors.
+
 **GPL-3.0-or-later** (see [`LICENSE`](LICENSE)) — the lowest-friction path given
 the project reuses copyleft-adjacent tooling and the maintainer approved GPL (see
 report B.6). Third-party components and their **verified** licenses are listed in
 [`project/docs/THIRD_PARTY.md`](project/docs/THIRD_PARTY.md); a credits screen will surface these
 in-app per Phase 2.
+
+## Contributing & community
+
+- **[Contributing guide](.github/CONTRIBUTING.md)** — dev setup, the lint/type/test
+  gates, and how to propose changes.
+- **[Code of conduct](.github/CODE_OF_CONDUCT.md)** — the standards we hold each other to.
+- **[Security policy](.github/SECURITY.md)** — how to report a vulnerability privately.
+- **[Changelog](CHANGELOG.md)** — what changed, release by release.
+- **[Docs index](project/docs/README.md)** — the full design/decision/feature docs.

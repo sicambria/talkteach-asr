@@ -2,7 +2,8 @@
   "name": "talkteach-ui",
   "version": "0.1.0",
   "private": true,
-  "description": "TalkTeach — child-proof ASR-training app (Svelte UI inside a Tauri shell)",
+  "license": "GPL-3.0-or-later",
+  "description": "TalkTeach — easy-to-use ASR-training app (Svelte UI inside a Tauri shell)",
   "type": "module",
   "scripts": {
     "dev": "vite",
