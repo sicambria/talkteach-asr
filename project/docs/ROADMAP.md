@@ -89,7 +89,7 @@ with `[ml]` installed.
 26. **wav2vec2 / XLS-R CTC engine** for unsupported/low-resource languages (the
     director already *selects* it; the adapter is unbuilt).
 27. **Cloud fallback**: one-tap remote/Colab training for GPU-less machines.
-28. **In-app third-party credits screen** auto-generated from `docs/THIRD_PARTY.md`
+28. **In-app third-party credits screen** auto-generated from `THIRD_PARTY.md`
     (Report B.6 attribution requirement).
 29. **Multi-project support** in the app layer (the data layer already supports it;
     `app.py` is single-project for Phase 0).

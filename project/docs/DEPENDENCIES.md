@@ -10,7 +10,7 @@ advisories.
 - **CI** (`.github/workflows/ci.yml`) runs the lint/type/test gates on every PR so
   a bump that breaks something is caught immediately.
 - **pinned + lockfiles**: `ui/package-lock.json`, `src-tauri/Cargo.lock` (on
-  build), and pinned wheels in the bundled runtime (`docs/BUNDLING.md`).
+  build), and pinned wheels in the bundled runtime (`BUNDLING.md`).
 
 ## `npm audit` assessment (as of 2026-06-28)
 

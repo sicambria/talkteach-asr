@@ -2,7 +2,7 @@
 
 Stdlib only. JSON lines are greppable and machine-readable for support without
 pulling in a logging framework. Everything stays under the project dir; nothing
-is sent anywhere (DECISIONS.md D-008).
+is sent anywhere (project/docs/DECISIONS.md D-008).
 """
 
 from __future__ import annotations

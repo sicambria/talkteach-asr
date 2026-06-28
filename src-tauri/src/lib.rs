@@ -3,8 +3,8 @@
 // The shell spawns the Python FastAPI backend as a **sidecar** (roadmap #15) so
 // the user never starts a server — the four-tap wizard "just works" the moment
 // the app opens. The backend binary is bundled as `binaries/talkteach-backend`
-// (per-target via `externalBin` in tauri.conf.json; see docs/SIDECAR.md and
-// docs/BUNDLING.md for how it's produced). On window close we kill the child so
+// (per-target via `externalBin` in tauri.conf.json; see project/docs/SIDECAR.md and
+// project/docs/BUNDLING.md for how it's produced). On window close we kill the child so
 // no orphaned server lingers.
 //
 // This is Tier B: the code is complete and idiomatic, but it is not compiled in
@@ -36,7 +36,7 @@ fn spawn_backend(app: &tauri::AppHandle) -> Result<CommandChild, String> {
         while let Some(event) = rx.recv().await {
             if let CommandEvent::Stderr(line) | CommandEvent::Stdout(line) = event {
                 // Backend logs land in the app log; structured logs also go to the
-                // project dir (see docs/OBSERVABILITY.md).
+                // project dir (see project/docs/OBSERVABILITY.md).
                 let _ = String::from_utf8(line);
             }
         }

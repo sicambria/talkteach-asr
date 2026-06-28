@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate the in-app credits data from docs/THIRD_PARTY.md (roadmap #28).
+"""Generate the in-app credits data from project/docs/THIRD_PARTY.md (roadmap #28).
 
-Parses the licence table in docs/THIRD_PARTY.md and writes
+Parses the licence table in project/docs/THIRD_PARTY.md and writes
 ui/src/lib/credits.json, which the UI's credits screen renders. Keeping a single
 source of truth (the markdown table) means attribution can never drift from the
 documented licences. Run it in CI or a pre-release step.
@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SRC = REPO / "docs" / "THIRD_PARTY.md"
+SRC = REPO / "project" / "docs" / "THIRD_PARTY.md"
 OUT = REPO / "ui" / "src" / "lib" / "credits.json"
 
 # Matches a markdown table row: | **Name** | role | licence |
@@ -47,7 +47,7 @@ def main() -> int:
     components = parse_components(md)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "generated_from": "docs/THIRD_PARTY.md",
+        "generated_from": "project/docs/THIRD_PARTY.md",
         "note": "TalkTeach is GPL-3.0-or-later; these are its third-party components.",
         "components": components,
     }

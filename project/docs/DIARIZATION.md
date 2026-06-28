@@ -17,7 +17,7 @@ warn that the data is mixed.
 The gated-weights caveat matters: anything requiring an online agreement
 acceptance conflicts with the offline promise, so NeMo or a permissively-licensed
 pretrained model is preferable for a bundled build. pyannote is not yet listed in
-`docs/THIRD_PARTY.md` — add it (with the gated-weights note) when a backend is
+`THIRD_PARTY.md` — add it (with the gated-weights note) when a backend is
 chosen.
 
 ## How it would feed the director

@@ -3,7 +3,7 @@
 // The UI's plain-language strings are English-only today. This gives them keys
 // and a tiny lookup so a non-English-speaking child can use the app once
 // catalogs are added. Kept dependency-free and simple; it pairs with the future
-// Svelte 5 / TypeScript migration (DECISIONS.md D-011). Wire `t()` into screens
+// Svelte 5 / TypeScript migration (project/docs/DECISIONS.md D-011). Wire `t()` into screens
 // incrementally — each hard-coded string becomes `t('key')`.
 import { writable, derived } from 'svelte/store';
 

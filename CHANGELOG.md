@@ -13,14 +13,14 @@ versions; we'll call them out under **Changed** with a ⚠️.
 The "Phase 0 → world-class" effort. Phase 0 proved the *integration risk* the
 design report named (director + reliability + dependency plumbing) with a tested
 vertical slice; this work turns the simulated edges into the real product, gated
-behind honest tiers (see `DECISIONS.md` D-001 and `docs/ROADMAP_STATUS.md`).
+behind honest tiers (see `project/docs/DECISIONS.md` D-001 and `project/docs/ROADMAP_STATUS.md`).
 
 ### Added
 
-- **Planning spine** so the breadth stays honest and traceable: `DECISIONS.md`
-  (ADR-lite, top-5-scored choices), `docs/ROADMAP.md` (prioritized P0–P3 + X),
-  `docs/ROADMAP_STATUS.md` (per-item tier + evidence matrix), `docs/PLAN.md`, and
-  `docs/LEARNINGS.md`.
+- **Planning spine** so the breadth stays honest and traceable: `project/docs/DECISIONS.md`
+  (ADR-lite, top-5-scored choices), `project/docs/ROADMAP.md` (prioritized P0–P3 + X),
+  `project/docs/ROADMAP_STATUS.md` (per-item tier + evidence matrix), `project/docs/PLAN.md`, and
+  `project/docs/LEARNINGS.md`.
 - **Lint / type / CI guardrails** (roadmap X #38–39): ruff (lint + format) and
   mypy for the backend, svelte-check for the UI, configured in
   `backend/pyproject.toml`; GitHub Actions CI and `make` targets (`test`, `lint`,
@@ -53,7 +53,7 @@ behind honest tiers (see `DECISIONS.md` D-001 and `docs/ROADMAP_STATUS.md`).
   "help bundle" exporter (`/api/help-bundle`); no telemetry by default (D-008).
 - OSS project hygiene (X #44): `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
   `SECURITY.md`, this changelog, and GitHub issue/PR templates + Dependabot.
-- Thirteen per-feature design docs under `docs/` (engines, calibration,
+- Thirteen per-feature design docs under `project/docs/` (engines, calibration,
   alignment, releasing, cloud fallback, multi-project, denoise, diarization,
   model packs, i18n, accessibility, mascot, landscape currency).
 

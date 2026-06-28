@@ -84,7 +84,7 @@
     }
     busy = true;
     try {
-      // CTranslate2 int8 is the offline desktop default (DECISIONS.md D-006).
+      // CTranslate2 int8 is the offline desktop default (project/docs/DECISIONS.md D-006).
       const res = await exportModel(run.run_id, 'ctranslate2');
       exportNote = res.notes ? res.notes : `Saved as ${res.format} at ${res.path}`;
     } catch (e) {

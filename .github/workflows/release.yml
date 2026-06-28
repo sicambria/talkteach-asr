@@ -2,7 +2,7 @@ name: Release
 
 # Signed installers for Windows + macOS + Linux on a version tag (roadmap #24).
 # SCAFFOLD: builds run on the matrix, but real code-signing/notarization need
-# secrets (see docs/RELEASING.md). Without them, unsigned artifacts are produced.
+# secrets (see project/docs/RELEASING.md). Without them, unsigned artifacts are produced.
 
 on:
   push:
@@ -56,7 +56,7 @@ jobs:
           npm install
           npm --prefix ui install
           npm run tauri build
-        # Signing/notarization secrets (see docs/RELEASING.md) would be wired here:
+        # Signing/notarization secrets (see project/docs/RELEASING.md) would be wired here:
         #   APPLE_CERTIFICATE / APPLE_ID / APPLE_PASSWORD  (macOS notarize)
         #   WINDOWS_CERTIFICATE / WINDOWS_CERTIFICATE_PASSWORD  (Authenticode)
         env:

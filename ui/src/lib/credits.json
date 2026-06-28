@@ -1,5 +1,5 @@
 {
-  "generated_from": "docs/THIRD_PARTY.md",
+  "generated_from": "project/docs/THIRD_PARTY.md",
   "note": "TalkTeach is GPL-3.0-or-later; these are its third-party components.",
   "components": [
     {

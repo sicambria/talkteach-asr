@@ -4,7 +4,7 @@ Giving a child a sentence to read ("karaoke") is the fastest way to collect
 clean, *labelled* audio: the prompt IS the transcript, so Screen 2 has a ground
 truth to check against. We ship a small, CC0 / public-domain starter set per
 language here; the full product seeds these from the Common Voice CC0 sentence
-corpus (see docs/PROMPTS.md). All sentences here are short, kid-friendly, and
+corpus (see project/docs/PROMPTS.md). All sentences here are short, kid-friendly, and
 phonetically varied.
 """
 

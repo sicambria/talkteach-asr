@@ -4,7 +4,7 @@ These cover the logic most likely to harbour bugs — plan → training-args map
 WER/CER, the smartness mapping, the simulate/real dispatch policy, checkpoint
 discovery, and the NaN-rollback guard — with NO torch/transformers/network/GPU.
 The end-to-end fine-tune itself is covered by the opt-in `integration` marker
-(see DECISIONS.md D-002 and tests/test_integration_train.py).
+(see project/docs/DECISIONS.md D-002 and tests/test_integration_train.py).
 
 jiwer is light (no torch); the two WER/CER tests skip cleanly if it's absent.
 """

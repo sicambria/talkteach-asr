@@ -4,7 +4,7 @@
 Every threshold in `director/policy.py` and `audio/quality.py` is a *proposed
 default* (report B.5), not empirically tuned. This harness sweeps a constant over
 a labelled dataset and reports the metric so a human can pick a calibrated value,
-then records the result. See docs/CALIBRATION.md for the full protocol.
+then records the result. See project/docs/CALIBRATION.md for the full protocol.
 
 It is a scaffold: the sweep loop and reporting are real, but running a meaningful
 sweep needs labelled audio + the `[ml]` extras, so it's part of the calibration
@@ -38,7 +38,7 @@ def sweep(constant: str, values: list[float], data_dir: str) -> list[dict]:
                 "constant": constant,
                 "value": v,
                 "metric": None,  # ← filled by a real evaluation against data_dir
-                "note": "scaffold — wire the real evaluator (see docs/CALIBRATION.md)",
+                "note": "scaffold — wire the real evaluator (see project/docs/CALIBRATION.md)",
             }
         )
     return results

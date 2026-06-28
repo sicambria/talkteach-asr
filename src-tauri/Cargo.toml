@@ -7,7 +7,7 @@ edition = "2021"
 rust-version = "1.77"
 
 # The Tauri shell. Spawns the Python FastAPI backend as a sidecar so the user
-# never starts a server (see src/lib.rs and docs/SIDECAR.md).
+# never starts a server (see src/lib.rs and project/docs/SIDECAR.md).
 
 [lib]
 name = "talkteach_lib"

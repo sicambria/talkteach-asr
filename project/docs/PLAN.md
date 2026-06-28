@@ -15,7 +15,7 @@ P0 promise (make training real + secure), then P1 product, then P2/P3 breadth.
    invariant and we keep it.
 3. **Honest tiers.** Code that can't run here (network/GPU/root) is written,
    guarded, and documented with a "how to verify," not faked. See
-   [`DECISIONS.md`](../DECISIONS.md) D-001/D-002.
+   [`DECISIONS.md`](DECISIONS.md) D-001/D-002.
 4. **Logical commits.** One coherent unit per commit, message explains *why*.
 5. **Document as we go.** Plans here, decisions in `DECISIONS.md`, errors and
    insights in [`LEARNINGS.md`](LEARNINGS.md).

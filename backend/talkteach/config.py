@@ -21,7 +21,7 @@ TARGET_GOOD_MINUTES = float(os.environ.get("TALKTEACH_TARGET_MINUTES", "30"))
 
 # --- Upload safety (security #7/#9) -------------------------------------------
 # Reject oversized/empty uploads early, and never trust a client-supplied
-# filename as a path component (path-traversal). See DECISIONS.md D-004.
+# filename as a path component (path-traversal). See project/docs/DECISIONS.md D-004.
 MAX_UPLOAD_BYTES = int(os.environ.get("TALKTEACH_MAX_UPLOAD_MB", "100")) * 1024 * 1024
 
 # Extensions we recognise as audio. A client name is used ONLY to recover a

@@ -1,6 +1,6 @@
 """Observability — structured logging + a help-bundle exporter (roadmap #41).
 
-Privacy posture (DECISIONS.md D-008): logs are **local-only**, off no network.
+Privacy posture (project/docs/DECISIONS.md D-008): logs are **local-only**, off no network.
 There is no telemetry. When something goes wrong, a grown-up can export a "help
 bundle" (a zip of logs + redacted environment) to share *deliberately* — never an
 automatic phone-home. This matters doubly for a kids' app handling voice.

@@ -12,7 +12,7 @@ pack.zip
 └── model/…             # the portable export (CTranslate2 by default; ONNX optional)
 ```
 
-`pack_model.py` zips an existing export dir (`docs/EXPORT.md`) plus a
+`pack_model.py` zips an existing export dir (`EXPORT.md`) plus a
 `model_card.json`. The card records the **measured WER** (so a recipient knows how
 good it is), the engine/format, and licensing: the app is GPL-3.0-or-later, but
 the model *weights* inherit the base model's license — the card states both, so
@@ -31,7 +31,7 @@ internet. So HF upload is its own button with its own gate:
   a public website where anyone can download it.* Never silent, never default.
   Especially important because the model encodes a child's voice characteristics.
 - **CSP widening (D-005).** The Tauri CSP is locked to the local backend
-  (`docs/SIDECAR.md`). Talking to `huggingface.co` is a new network target, so the
+  (`SIDECAR.md`). Talking to `huggingface.co` is a new network target, so the
   publish feature **must explicitly widen `connect-src`** to the HF API origin —
   and only that — shipped with the feature and scoped narrowly.
 - **Flow.** `huggingface_hub` login token (entered by a grown-up, stored

@@ -4,7 +4,7 @@
 Tauri's `externalBin` expects an executable named with the Rust target triple,
 e.g. `binaries/talkteach-backend-x86_64-unknown-linux-gnu`. This script uses
 PyInstaller to produce that single-file binary so the desktop app can spawn the
-backend with zero install on the user's machine (DECISIONS.md D-001 Tier C: the
+backend with zero install on the user's machine (project/docs/DECISIONS.md D-001 Tier C: the
 script is real; running it needs the [ml] toolchain + PyInstaller on each target
 OS, so it's part of the release pipeline, not the sandbox).
 

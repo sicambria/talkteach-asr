@@ -29,11 +29,11 @@ Keeping the state machine now means swapping art later changes assets, not logic
   and offline.
 - A short **sound** per celebratory state (success chime, gentle "oops"), kept
   optional and respectful of reduced-motion / quiet settings
-  (`docs/ACCESSIBILITY.md`).
+  (`ACCESSIBILITY.md`).
 - Assets live under `ui/src/assets/mascot/`; `Mascot.svelte` maps `mood → asset`
   exactly as it maps `mood → emoji` today.
 - Licensing: commissioned or CC0/permissive art, recorded in
-  `docs/THIRD_PARTY.md`; the project is GPL-3.0-or-later.
+  `THIRD_PARTY.md`; the project is GPL-3.0-or-later.
 
 ## Gamification (light, never coercive)
 

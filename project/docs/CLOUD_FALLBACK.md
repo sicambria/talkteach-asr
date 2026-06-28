@@ -21,7 +21,7 @@ The remote runs the **identical** `ASREngine.train(plan, manifest, workdir)` —
 director still decides the plan locally, so behaviour matches the on-device path
 exactly. Only the execution host changes. Progress streams back over the same
 `TrainProgress` shape the UI already renders; the result returns as the same
-exportable model (`docs/EXPORT.md`).
+exportable model (`EXPORT.md`).
 
 ## Privacy — the hard part (D-008)
 
@@ -40,7 +40,7 @@ Children's voice data leaving the device is a serious step, so:
 The Tauri CSP is locked to the local backend origin (`127.0.0.1:8756` + `ws:`).
 A remote endpoint is a *new network target*, so enabling cloud fallback **must
 explicitly widen `connect-src`** to that endpoint — and only that endpoint. This
-is the precedent set in `docs/SIDECAR.md` ("a future remote feature must widen the
+is the precedent set in `SIDECAR.md` ("a future remote feature must widen the
 CSP explicitly"); the widening ships with the feature, scoped as narrowly as
 possible, and is documented in its own decision entry.
 

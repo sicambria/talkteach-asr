@@ -53,4 +53,4 @@ uv pip install whisperx          # or a NeMo-FA build
 **Tier C** (#12). The adapter boundary and the sentence-grouping logic are
 written and tested; `align()` is a guarded scaffold pending one of the aligner
 backends (which need `[ml]` + a model download). Verified licenses are tracked in
-`docs/THIRD_PARTY.md`.
+`THIRD_PARTY.md`.

@@ -37,7 +37,7 @@ adjacent prior art (and cite it fairly).
 
 ## Cadence & recording the result
 
-- **Quarterly** (and before any tagged release, `docs/RELEASING.md`).
+- **Quarterly** (and before any tagged release, `RELEASING.md`).
 - Re-run the relevant slice of the companion report's verification, then append a
   dated row below: date, who checked, sources scanned, verdict
   (**holds / weakened / falsified**), and any adjacent tools found.

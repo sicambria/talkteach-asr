@@ -18,7 +18,7 @@ matrix:
 | `windows-latest` | `x86_64-pc-windows-msvc` |
 
 Each job: build the **backend sidecar** with PyInstaller per target
-(`scripts/build_sidecar.py`, see `docs/SIDECAR.md`), install the OS toolchain
+(`scripts/build_sidecar.py`, see `SIDECAR.md`), install the OS toolchain
 (Linux gets the WebKit/GTK dev libs), then `npm run tauri build` to bundle the
 app + sidecar into an installer, and upload the artifact.
 
@@ -41,8 +41,8 @@ These cannot live in the sandbox; a maintainer adds them once, in repo settings.
 
 The installer must be self-contained (Report B.7): no "install Python first". The
 sidecar build freezes the FastAPI backend + pinned wheels into a per-target binary
-(`docs/SIDECAR.md`); the no-install runtime story (ffmpeg, CPU/CUDA libs via `uv`)
-is `docs/BUNDLING.md`. The release job runs the sidecar build *before*
+(`SIDECAR.md`); the no-install runtime story (ffmpeg, CPU/CUDA libs via `uv`)
+is `BUNDLING.md`. The release job runs the sidecar build *before*
 `tauri build` so the binary is present for `bundle.externalBin`.
 
 ## Versioning & changelog

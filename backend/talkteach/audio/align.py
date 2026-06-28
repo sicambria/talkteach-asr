@@ -2,10 +2,10 @@
 
 When a child reads a paragraph in one take, forced alignment maps each word to a
 timestamp so we can cut clean per-sentence training clips on Screen 2. This is a
-**Tier C scaffold** (see docs/ROADMAP_STATUS.md): the adapter boundary and the
+**Tier C scaffold** (see project/docs/ROADMAP_STATUS.md): the adapter boundary and the
 pure sentence-grouping logic are here and tested; the heavy aligner backends
 (NeMo Forced Aligner / WhisperX) are wired behind guarded imports and documented
-in docs/ALIGNMENT.md.
+in project/docs/ALIGNMENT.md.
 
 The pure part — turning word-level (word, start, end) timings + a target
 transcript into sentence-bounded :class:`talkteach.audio.vad.Segment` cuts — is
@@ -64,9 +64,9 @@ def align(audio_path: str, transcript: str, language: str | None = None) -> list
     """Force-align ``transcript`` to ``audio_path`` → word timings (Tier C).
 
     Raises ImportError when no aligner backend is installed; callers fall back to
-    VAD-only segmentation. See docs/ALIGNMENT.md for the backend wiring plan.
+    VAD-only segmentation. See project/docs/ALIGNMENT.md for the backend wiring plan.
     """
     raise ImportError(
         "Forced alignment needs a backend (WhisperX or NeMo Forced Aligner). "
-        "See docs/ALIGNMENT.md. Falling back to VAD segmentation for now."
+        "See project/docs/ALIGNMENT.md. Falling back to VAD segmentation for now."
     )

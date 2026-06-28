@@ -31,7 +31,7 @@ npm run tauri build                          # bundles it into the installer
 complete and idiomatic, but not compiled in the sandbox (the Linux Tauri build
 needs root-only WebKit/GTK dev libs, and PyInstaller must run per target OS). The
 CI `rust` job (`.github/workflows/ci.yml`) runs `cargo fmt/clippy/check`, and the
-release matrix (`docs/RELEASING.md`) produces the per-OS sidecars + installers.
+release matrix (`RELEASING.md`) produces the per-OS sidecars + installers.
 
 ## Backend bind + CSP
 

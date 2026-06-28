@@ -18,7 +18,7 @@ WAV**, the one canonical form the quality checker and trainer expect
 `decode_to_wav`/`decode_to_samples` run it and raise `AudioDecodeError` (caught by
 `/api/clips/analyze`, which then marks the clip "not checked yet") when ffmpeg is
 absent. **Tier B** here: ffmpeg isn't installed in the sandbox, so bundling is via
-`scripts/fetch_runtime.py` + `docs/BUNDLING.md`.
+`scripts/fetch_runtime.py` + `BUNDLING.md`.
 
 ## #11 — Silero VAD (`audio/vad.py`)
 
@@ -33,7 +33,7 @@ long take into reviewable clips. `detect_speech` is the guarded backend call.
 sentence-bounded clips for Screen 2. The aligner backends (WhisperX / NeMo Forced
 Aligner) are wired behind a guarded `align()` that currently raises a friendly
 ImportError → callers fall back to VAD-only segmentation. See
-`docs/ALIGNMENT.md` for backend selection.
+`ALIGNMENT.md` for backend selection.
 
 ## #13 — Live recording-quality feedback (`audio/quality.py::live_meter`)
 
@@ -48,7 +48,7 @@ live, not just a post-hoc verdict. The full post-hoc check stays in
 cd backend && .venv/bin/python -m pytest tests/test_audio_pipeline.py -q   # pure cores
 # With backends:
 uv pip install -e '.[ml,vad]'   # silero + torch
-sudo apt install ffmpeg          # or bundle it (docs/BUNDLING.md)
+sudo apt install ffmpeg          # or bundle it (BUNDLING.md)
 .venv/bin/python -m pytest -m ffmpeg -q
 ```
 </content>

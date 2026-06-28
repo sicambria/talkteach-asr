@@ -12,7 +12,7 @@ what's behind an optional dependency, and what's a tracked gap (new roadmap item
 | webm / opus (browser `MediaRecorder`) | ✅ with ffmpeg | `audio/decode.py` → 16 kHz mono WAV (#10/#20) |
 | mp3, m4a/mp4, ogg, flac, aac | ✅ with ffmpeg | same decode path; allow-list in `config.ALLOWED_AUDIO_EXTENSIONS` |
 | anything else ffmpeg reads | ✅ with ffmpeg | ffmpeg is the universal front door |
-| (no ffmpeg installed) | ⚠️ graceful | non-WAV is accepted but marked "not checked yet"; bundling = `docs/BUNDLING.md` |
+| (no ffmpeg installed) | ⚠️ graceful | non-WAV is accepted but marked "not checked yet"; bundling = `BUNDLING.md` |
 
 **Out of the box:** WAV always; everything else once ffmpeg is on PATH (bundled
 in a packaged build, Tier B in this sandbox). Sample rate, channel count, and

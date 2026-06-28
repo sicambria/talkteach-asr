@@ -15,7 +15,7 @@ Two things shape almost every decision here, and they should shape your PR too:
    Don't break that invariant.
 2. **It handles children's voice recordings.** Recordings never leave the device
    by default; there is no telemetry without explicit opt-in. Keep it that way
-   (see [`SECURITY.md`](SECURITY.md) and `DECISIONS.md` D-008).
+   (see [`SECURITY.md`](SECURITY.md) and `project/docs/DECISIONS.md` D-008).
 
 This repo is **literate**: we explain *why*, not just *what*. Code comments,
 commit bodies, and the decision log all favour the reasoning behind a choice.
@@ -30,18 +30,18 @@ Please match that voice.
 | `backend/talkteach/` | The Python backend — director, audio, data, reliability, engines, FastAPI app |
 | `ui/` | Svelte 4 four-screen wizard + typed API client |
 | `src-tauri/` | Tauri v2 desktop shell (sidecar-spawns the backend) |
-| `docs/` | All the prose. Start here. |
+| `project/docs/` | All the prose. Start here. |
 
 Docs you'll likely touch:
 
-- [`docs/PLAN.md`](docs/PLAN.md) — the working plan and the canonical
+- [`project/docs/PLAN.md`](../project/docs/PLAN.md) — the working plan and the canonical
   **verification commands** (kept in sync with reality).
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — the prioritized list (P0–P3 + X).
-- [`docs/ROADMAP_STATUS.md`](docs/ROADMAP_STATUS.md) — the traceability matrix;
+- [`project/docs/ROADMAP.md`](../project/docs/ROADMAP.md) — the prioritized list (P0–P3 + X).
+- [`project/docs/ROADMAP_STATUS.md`](../project/docs/ROADMAP_STATUS.md) — the traceability matrix;
   **update it if your change moves a roadmap item's tier or status.**
-- [`DECISIONS.md`](DECISIONS.md) — the decision log (read the tier system below).
-- [`docs/PHASE0_STATUS.md`](docs/PHASE0_STATUS.md) — what is real vs. simulated.
-- [`CHANGELOG.md`](CHANGELOG.md) — add a line under `[Unreleased]`.
+- [`project/docs/DECISIONS.md`](../project/docs/DECISIONS.md) — the decision log (read the tier system below).
+- [`project/docs/PHASE0_STATUS.md`](../project/docs/PHASE0_STATUS.md) — what is real vs. simulated.
+- [`CHANGELOG.md`](../CHANGELOG.md) — add a line under `[Unreleased]`.
 
 ---
 
@@ -124,7 +124,7 @@ cd ui && npm run build && npx svelte-check
 ### The heavy, opt-in paths
 
 End-to-end ML and ffmpeg work can't run in a vanilla CI box, so it's gated
-behind markers (see `DECISIONS.md` D-002). On a machine with `[ml]` installed
+behind markers (see `project/docs/DECISIONS.md` D-002). On a machine with `[ml]` installed
 and ffmpeg on `PATH`:
 
 ```bash
@@ -143,7 +143,7 @@ level.
 TalkTeach is built under a sandbox where some things *cannot* be run to
 completion (signed installers, real GPU training, compiling the Tauri shell).
 Rather than fake "done," every roadmap item is assigned an honest **tier** —
-this is decision **D-001** in [`DECISIONS.md`](DECISIONS.md):
+this is decision **D-001** in [`project/docs/DECISIONS.md`](../project/docs/DECISIONS.md):
 
 - **Tier A — done & verified here:** real code + tests that pass in this
   environment.
@@ -154,7 +154,7 @@ this is decision **D-001** in [`DECISIONS.md`](DECISIONS.md):
   the full build needs hardware/certs/art outside the sandbox.
 
 When you contribute, say which tier your work lands in, and update the
-traceability matrix (`docs/ROADMAP_STATUS.md`) so it stays the authoritative
+traceability matrix (`project/docs/ROADMAP_STATUS.md`) so it stays the authoritative
 spine. A Tier-B feature without a "how to verify" note isn't finished.
 
 ---
@@ -165,7 +165,7 @@ This project follows an unusual but deliberate convention. When a non-obvious
 choice comes up, **generate the top ~5 options, score them 0–100 against this
 project's constraints (child-proof, offline-first, GPL-3.0, integration-not-
 research, must degrade on a GPU-less laptop), pick the best, and append an entry
-to [`DECISIONS.md`](DECISIONS.md)** — don't open a discussion thread to ask.
+to [`project/docs/DECISIONS.md`](../project/docs/DECISIONS.md)** — don't open a discussion thread to ask.
 
 The log is append-only; if a decision is later reversed, a new entry supersedes
 it and links back. Read a few existing entries (D-001 … D-010) before adding
@@ -196,7 +196,7 @@ footgun and keeps everything offline on 127.0.0.1:8756.
 2. You added or updated tests for the behaviour you changed.
 3. You added a line under `[Unreleased]` in `CHANGELOG.md`.
 4. If a roadmap item changed tier or status, you updated
-   `docs/ROADMAP_STATUS.md`.
+   `project/docs/ROADMAP_STATUS.md`.
 5. Your PR title is a valid conventional-commit subject.
 
 The pull-request template will walk you through this checklist.
@@ -206,9 +206,9 @@ The pull-request template will walk you through this checklist.
 ## License
 
 By contributing you agree your contributions are licensed under
-**GPL-3.0-or-later**, the project license (see [`LICENSE`](LICENSE) and the
+**GPL-3.0-or-later**, the project license (see [`LICENSE`](../LICENSE) and the
 rationale in `README.md` / report B.6). Third-party components and their
-verified licenses are tracked in [`docs/THIRD_PARTY.md`](docs/THIRD_PARTY.md);
+verified licenses are tracked in [`project/docs/THIRD_PARTY.md`](../project/docs/THIRD_PARTY.md);
 if you add a dependency, add it there too.
 
 Questions that aren't a bug or a feature request? The maintainer is **Gaspar

@@ -50,4 +50,4 @@ uv pip install deepfilternet     # then denoise_file() enhances instead of copyi
 **Tier C** (#30). The guarded `audio/denoise.py` step exists with the DeepFilterNet
 path scaffolded and a safe passthrough fallback; pipeline wiring (the opt-in
 prompt + inserting the step before quality analysis) and a real backend install
-are pending. Licenses are tracked in `docs/THIRD_PARTY.md`.
+are pending. Licenses are tracked in `THIRD_PARTY.md`.

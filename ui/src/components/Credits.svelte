@@ -1,6 +1,6 @@
 <script>
   // In-app third-party credits (roadmap #28). Data is generated from
-  // docs/THIRD_PARTY.md by scripts/gen_credits.py into lib/credits.json, so the
+  // project/docs/THIRD_PARTY.md by scripts/gen_credits.py into lib/credits.json, so the
   // attribution shown here can never drift from the documented licences.
   import credits from '../lib/credits.json';
 </script>

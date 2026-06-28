@@ -31,9 +31,9 @@ This is the working checklist: what's in place and what's still owed.
   legible/OpenDyslexic-style face) and adjustable text size; the `font-size`
   values already in the styles make this a CSS-variable change.
 - **Reduced motion**: honour `prefers-reduced-motion` — the mascot's bob animation
-  (`docs/MASCOT.md`) and transitions should calm down for users who need it.
+  (`MASCOT.md`) and transitions should calm down for users who need it.
 - **i18n interplay**: labels read by AT must come from the catalog
-  (`docs/I18N.md`), so accessibility and translation land together.
+  (`I18N.md`), so accessibility and translation land together.
 
 ## How to verify
 

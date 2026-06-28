@@ -109,7 +109,7 @@ Newest entries at the top of each section.
 ## Calibration debt (carried from report B.5)
 
 Every threshold in `director/policy.py` and `audio/quality.py` is a *proposed
-default*, not empirically tuned. `docs/CALIBRATION.md` defines the protocol to
+default*, not empirically tuned. `CALIBRATION.md` defines the protocol to
 turn these into measured values; until then they are marked as proposed in code
 and here. This is tracked as ROADMAP #6 (Tier C).
 </content>

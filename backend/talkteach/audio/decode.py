@@ -2,8 +2,8 @@
 
 Browser ``MediaRecorder`` emits webm/opus; users also drag in mp3/m4a/ogg. The
 training and quality pipelines want 16 kHz mono PCM WAV. ffmpeg (LGPL build,
-invoked as a subprocess — see docs/THIRD_PARTY.md) is the one canonical converter
-shared by uploads and recordings (DECISIONS.md D-010).
+invoked as a subprocess — see project/docs/THIRD_PARTY.md) is the one canonical converter
+shared by uploads and recordings (project/docs/DECISIONS.md D-010).
 
 ffmpeg is an external binary, not a Python package, so we never import it; we
 shell out and degrade gracefully when it's absent. The command-building and

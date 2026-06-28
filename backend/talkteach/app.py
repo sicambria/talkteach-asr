@@ -119,7 +119,7 @@ def _safe_clip_name(filename: str | None) -> str:
 
     A crafted filename like ``../../etc/passwd`` cannot escape the clip dir
     because the client string is discarded entirely; only a validated extension
-    survives, appended to a random uuid. See DECISIONS.md D-004.
+    survives, appended to a random uuid. See project/docs/DECISIONS.md D-004.
     """
     return f"clip_{uuid.uuid4().hex}.{_safe_ext(filename)}"
 
@@ -592,7 +592,7 @@ def help_bundle() -> Response:
     """Export a local, redacted help bundle (logs + system report) as a zip (#41).
 
     Nothing is sent anywhere — the grown-up downloads it and shares it
-    deliberately (privacy posture, DECISIONS.md D-008).
+    deliberately (privacy posture, project/docs/DECISIONS.md D-008).
     """
     from .obs.logging import help_bundle_bytes
 
