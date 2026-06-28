@@ -26,6 +26,12 @@ from talkteach.tts.dataset import synthesize_dataset
 
 _HAS_ESPEAK = EspeakProvider._binary() is not None
 _HAS_PIPER = importlib.util.find_spec("piper") is not None
+# These tests synthesize *and* run the audio-quality gate, which decodes via
+# soundfile — an [ml] extra. The espeak marker means "binary + [ml]" (see
+# pyproject markers); without soundfile the test would ImportError instead of
+# skipping on a box that has the binary but not the ML extras.
+_HAS_SOUNDFILE = importlib.util.find_spec("soundfile") is not None
+_HAS_ESPEAK_ML = _HAS_ESPEAK and _HAS_SOUNDFILE
 
 
 def _write_wav(path: str, freq: float, rate: int, seconds: float = 1.0, channels: int = 1) -> None:
@@ -74,7 +80,7 @@ def test_normalize_wav_downsamples_to_16k_mono(tmp_path):
 
 
 @pytest.mark.espeak
-@pytest.mark.skipif(not _HAS_ESPEAK, reason="espeak-ng binary not installed")
+@pytest.mark.skipif(not _HAS_ESPEAK_ML, reason="needs espeak-ng binary + [ml] (soundfile)")
 def test_espeak_synthesizes_good_clip(tmp_path):
     out = str(tmp_path / "hello.wav")
     get_tts_provider("espeak").synthesize("the cat sat on the warm mat", out)
@@ -85,7 +91,7 @@ def test_espeak_synthesizes_good_clip(tmp_path):
 
 
 @pytest.mark.espeak
-@pytest.mark.skipif(not _HAS_ESPEAK, reason="espeak-ng binary not installed")
+@pytest.mark.skipif(not _HAS_ESPEAK_ML, reason="needs espeak-ng binary + [ml] (soundfile)")
 def test_synthesize_dataset_returns_manifest(tmp_path):
     mani = synthesize_dataset(get_tts_provider("espeak"), tmp_path, language="en", n=3)
     assert len(mani) == 3
