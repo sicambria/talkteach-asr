@@ -178,6 +178,51 @@ def test_full_training_flow():
         assert "path" in e.json() and "format" in e.json()
 
 
+def test_clips_list_and_save_correction():
+    with TestClient(app) as client:
+        # Add a clip, then list it and correct its transcript (#19).
+        files = {"audio": ("good.wav", _good_wav_bytes(), "audio/wav")}
+        cid = client.post("/api/clips/analyze", files=files).json()["clip_id"]
+
+        listed = client.get("/api/clips").json()["clips"]
+        assert any(c["id"] == cid for c in listed)
+
+        r = client.post(f"/api/clips/{cid}/transcript", json={"text": "hello world"})
+        assert r.status_code == 200 and r.json()["transcript"] == "hello world"
+
+        again = client.get("/api/clips").json()["clips"]
+        assert next(c for c in again if c["id"] == cid)["transcript"] == "hello world"
+
+
+def test_save_correction_unknown_clip_404():
+    with TestClient(app) as client:
+        r = client.post("/api/clips/999999/transcript", json={"text": "x"})
+        assert r.status_code == 404
+
+
+def test_prompts_endpoint_returns_karaoke_sentences():
+    with TestClient(app) as client:
+        body = client.get("/api/prompts", params={"lang": "en", "n": 3}).json()
+        assert len(body["prompts"]) == 3
+        assert "en" in body["languages"]
+        # Unknown language falls back to English, never empty.
+        assert client.get("/api/prompts", params={"lang": "zz"}).json()["prompts"]
+
+
+def test_plan_preview_has_rationale():
+    with TestClient(app) as client:
+        body = client.get("/api/plan").json()
+        assert body["plan"]["rationale"], "grown-up mode needs the why"
+        assert "engine" in body["plan"] and "hardware" in body
+
+
+def test_selftest_seeds_clips_and_unblocks_flow():
+    with TestClient(app) as client:
+        n = client.post("/api/selftest").json()["seeded"]
+        assert n > 0
+        assert len(client.get("/api/clips").json()["clips"]) >= n
+
+
 def test_train_blocked_without_data():
     # NOTE: this reloads `config`/`app` in place, mutating shared module state.
     # It must run AFTER the seeded-data tests above (relies on file definition

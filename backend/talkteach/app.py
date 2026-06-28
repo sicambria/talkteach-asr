@@ -184,6 +184,10 @@ class DraftIn(BaseModel):
     clip_id: int
 
 
+class TranscriptIn(BaseModel):
+    text: str
+
+
 class ExportIn(BaseModel):
     run_id: int
     fmt: str = "ctranslate2"
@@ -274,6 +278,86 @@ def sufficiency_status() -> dict:
         "fraction": res.fraction,
         "messages": res.messages,
     }
+
+
+@app.get("/api/clips")
+def list_clips() -> dict:
+    """Screen 2's clip list — every recorded clip with its current transcript (#19)."""
+    with _db() as db:
+        clips = db.list_clips()
+    return {
+        "clips": [
+            {
+                "id": c["id"],
+                "duration_s": c["duration_s"],
+                "is_good": c["is_good"],
+                "issues": c["issues"],
+                "transcript": c["transcript"] or "",
+            }
+            for c in clips
+        ]
+    }
+
+
+@app.post("/api/clips/{clip_id}/transcript")
+def save_transcript(clip_id: int, body: TranscriptIn) -> dict:
+    """Persist a child's corrected transcript for one clip (#19)."""
+    with _db() as db:
+        if not any(c["id"] == clip_id for c in db.list_clips()):
+            raise HTTPException(status_code=404, detail="That recording wasn't found.")
+        db.update_transcript(clip_id, body.text)
+    return {"ok": True, "clip_id": clip_id, "transcript": body.text}
+
+
+@app.get("/api/prompts")
+def prompts(lang: str | None = None, n: int | None = None) -> dict:
+    """Karaoke sentences to read aloud (#21). The prompt is also the transcript."""
+    from .prompts import available_languages, get_prompts
+
+    return {"language": lang, "prompts": get_prompts(lang, n), "languages": available_languages()}
+
+
+@app.get("/api/plan")
+def plan_preview() -> dict:
+    """The director's plan + plain-language rationale for Grown-up mode (#23).
+
+    Built from the current hardware, recorded data, and language — the same plan
+    "Teach!" would use — so a grown-up can see *why* before training starts.
+    """
+    with _db() as db:
+        project = db.get_project() or {}
+        profile = _current_data_profile(db)
+    hw = probe_hardware(str(config.DEFAULT_PROJECT_DIR))
+    lang = probe_language(project.get("language_code"))
+    plan = build_plan(hw, profile, lang)
+    return {
+        "plan": _plan_to_dict(plan),
+        "hardware": {
+            "compute": hw.compute.value,
+            "gpu_name": hw.gpu_name,
+            "vram_gib": hw.vram_gib,
+            "ram_gib": hw.ram_gib,
+        },
+    }
+
+
+@app.post("/api/selftest")
+def selftest() -> dict:
+    """Seed a tiny toy dataset so 'Teach!' is verifiable on first run (#22)."""
+    from .selftest import make_toy_dataset
+
+    project_dir = config.DEFAULT_PROJECT_DIR
+    manifest = make_toy_dataset(project_dir / "selftest", language=None)
+    with _db() as db:
+        for item in manifest:
+            db.add_clip(
+                item["path"],
+                duration_s=item["duration_s"],
+                is_good=True,
+                issues=[],
+                transcript=item["text"],
+            )
+    return {"seeded": len(manifest), "message": "Added a few practice sounds so you can try Teach!"}
 
 
 @app.post("/api/transcribe/draft")
