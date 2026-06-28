@@ -108,5 +108,5 @@ no ML framework required.**
   `package.json` orchestrator exposing `npm run tauri`. Build-ready; native
   compile needs system WebKit/GTK dev libraries.
 
-[Unreleased]: https://github.com/inczegaspar/speechrecog-teach/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/inczegaspar/speechrecog-teach/releases/tag/v0.1.0
+[Unreleased]: https://github.com/inczegaspar/talkteach-asr/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/inczegaspar/talkteach-asr/releases/tag/v0.1.0
