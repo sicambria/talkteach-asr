@@ -24,18 +24,49 @@ app + sidecar into an installer, and upload the artifact.
 
 ## Secrets needed for real signing
 
-The matrix builds today produce **unsigned** artifacts. Signing is wired by
-adding these repo secrets (referenced as comments in the workflow):
+**Golden rule: signing material lives *only* in GitHub Actions encrypted secrets —
+never in the repo.** Two guards enforce this: `.gitignore` blocks key/cert
+extensions (`*.p12`, `*.pfx`, `*.pem`, `*.key`, …) and the `detect-private-key`
+pre-commit hook refuses any commit containing a private key. Set every secret with
+`gh secret set` reading from a file **outside** the repo (or piped via stdin);
+GitHub stores it encrypted and never prints it in logs.
 
-- **macOS notarization** — `APPLE_CERTIFICATE` (base64 .p12) +
-  `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific) /
-  `APPLE_TEAM_ID`. Tauri signs the `.app`/`.dmg`, then `notarytool` staples.
-- **Windows code-signing** — `WINDOWS_CERTIFICATE` (base64 PFX) +
-  `WINDOWS_CERTIFICATE_PASSWORD` for Authenticode on the `.msi`/`.exe`.
-- **Tauri updater** — `TAURI_SIGNING_PRIVATE_KEY` (already referenced) signs the
-  update bundle if/when auto-update is enabled.
+| Secret | Purpose | Status |
+| --- | --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Sign the auto-update bundle | **✅ configured** |
+| `APPLE_CERTIFICATE` (base64 .p12) + `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific), `APPLE_TEAM_ID` | macOS sign `.app`/`.dmg` + `notarytool` staple | ⬜ needs your Apple Developer cert |
+| `WINDOWS_CERTIFICATE` (base64 PFX) + `WINDOWS_CERTIFICATE_PASSWORD` | Authenticode on `.msi`/`.exe` | ⬜ needs your code-signing cert |
 
-These cannot live in the sandbox; a maintainer adds them once, in repo settings.
+### Tauri updater key (done)
+
+Generated with `npm run tauri signer generate` (private key never written into the
+repo); the private key + password are in the secrets above. The **public** key is
+safe to publish and goes into `tauri.conf.json` → `plugins.updater.pubkey` when the
+auto-update feed is wired:
+
+```
+dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVBMTExRkUyRDY2OEE0REUKUldUZXBHalc0aDhSV2srOTgxRFo5alJxZzk4RXBYVU5wc3p0M0pmTkg0QUdCQ21NZ3gxL1ZUcVMK
+```
+
+### Setting the macOS / Windows secrets safely
+
+Run these on your machine with the cert files kept **outside** any git repo:
+
+```bash
+# macOS: export your Developer ID cert as a .p12, then base64 it from /tmp (not the repo)
+base64 -i ~/secure/developerID.p12 | gh secret set APPLE_CERTIFICATE -R sicambria/talkteach-asr
+gh secret set APPLE_CERTIFICATE_PASSWORD -R sicambria/talkteach-asr   # prompts / reads stdin
+gh secret set APPLE_ID -R sicambria/talkteach-asr
+gh secret set APPLE_PASSWORD -R sicambria/talkteach-asr               # app-specific password
+gh secret set APPLE_TEAM_ID -R sicambria/talkteach-asr
+
+# Windows: base64 your code-signing PFX (kept outside the repo)
+base64 -i ~/secure/codesign.pfx | gh secret set WINDOWS_CERTIFICATE -R sicambria/talkteach-asr
+gh secret set WINDOWS_CERTIFICATE_PASSWORD -R sicambria/talkteach-asr
+```
+
+`release.yml` already references all of these via `${{ secrets.* }}`; unset ones
+are empty, so the build stays green (just unsigned) until you add the cert.
 
 ## How sidecar + bundled runtime fit
 
@@ -56,7 +87,8 @@ is `BUNDLING.md`. The release job runs the sidecar build *before*
 
 ## Status
 
-**Tier C** (#24). The matrix workflow is a real scaffold that builds (unsigned)
-artifacts on tag; signing/notarization is pending the secrets above and three
-build hosts, which can't be exercised in this environment. The companion CI
-(`.github/workflows/ci.yml`, #38) already gates every PR.
+**Tier C** (#24). The matrix workflow builds per-OS artifacts on tag. The Tauri
+updater signing secret is **configured**; macOS/Windows code-signing await the
+maintainer's certs (recipes above). Until then the build produces working but
+**unsigned** installers. The companion CI (`.github/workflows/ci.yml`, #38)
+already gates every PR.

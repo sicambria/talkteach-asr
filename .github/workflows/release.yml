@@ -56,11 +56,22 @@ jobs:
           npm install
           npm --prefix ui install
           npm run tauri build
-        # Signing/notarization secrets (see project/docs/RELEASING.md) would be wired here:
-        #   APPLE_CERTIFICATE / APPLE_ID / APPLE_PASSWORD  (macOS notarize)
-        #   WINDOWS_CERTIFICATE / WINDOWS_CERTIFICATE_PASSWORD  (Authenticode)
+        # All signing material comes from GitHub Actions encrypted secrets — never
+        # the repo (see project/docs/RELEASING.md). Unset secrets are empty, so the
+        # build still succeeds (just unsigned) until each is configured.
         env:
+          # Tauri updater signature (configured ✅).
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # macOS code-signing + notarization (set these to enable).
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows Authenticode (set these to enable).
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
 
       - uses: actions/upload-artifact@v4
         with:

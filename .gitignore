@@ -34,3 +34,24 @@ piper_voices/
 *.swp
 .idea/
 .vscode/
+
+# Secrets & signing material — NEVER commit. These live ONLY in GitHub Actions
+# encrypted secrets (see project/docs/RELEASING.md). The patterns below are a
+# safety net; the `detect-private-key` pre-commit hook is the second line.
+.env
+.env.*
+!.env.example
+secrets/
+.tauri/
+*.p12
+*.pfx
+*.pem
+*.key
+*.cer
+*.crt
+*.der
+*.p8
+*.jks
+*.keystore
+*.mobileprovision
+*.asc
