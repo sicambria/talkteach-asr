@@ -33,6 +33,11 @@
   $: running = status === 'running';
   $: comboCount = langPick.size * ttsPick.size * enginePick.size;
   $: board = report?.scoreboard ?? [];
+  // Fairness brackets: each has its own podium + leaderboard so a small CPU model
+  // is never ranked against a large GPU one. Older payloads (no `brackets`) fall
+  // back to one "default" bracket holding the whole flat board.
+  $: brackets = report?.brackets ?? (board.length ? [{ category: 'default', board }] : []);
+  $: multiBracket = brackets.length > 1;
   $: extremes = report?.clip_extremes ?? {};
   $: perVoice = report?.per_voice ?? {};
   $: matrix = report?.matrix ?? [];
@@ -118,7 +123,7 @@
           .map((t) => ({ provider: t.provider, voice: t.voice })),
         engines: options.engines
           .filter((e) => enginePick.has(e.name))
-          .map((e) => ({ name: e.name, plan: e.plan })),
+          .map((e) => ({ name: e.name, category: e.category, plan: e.plan })),
         train_clips: trainClips,
         eval_clips: evalClips,
       };
@@ -237,12 +242,24 @@
 
   <!-- Results -->
   {#if report && board.length}
-    <Podium {board} />
+    {#if multiBracket}
+      <p class="bracket-note">
+        Engines are split into fairness brackets by size/compute class — each has its own podium, so
+        a small CPU model is never ranked against a large GPU one.
+      </p>
+    {/if}
 
-    <div class="card">
-      <h2>Leaderboard</h2>
-      <Scoreboard {board} />
-    </div>
+    {#each brackets as bk (bk.category)}
+      {#if multiBracket}
+        <h2 class="bracket-title">Bracket: <span>{bk.category}</span></h2>
+      {/if}
+      <Podium board={bk.board} />
+
+      <div class="card">
+        <h2>Leaderboard{multiBracket ? ` — ${bk.category}` : ''}</h2>
+        <Scoreboard board={bk.board} />
+      </div>
+    {/each}
 
     <div class="card">
       <h2>Head-to-head</h2>
@@ -466,5 +483,21 @@
     font-size: 0.85rem;
     text-align: center;
     margin-top: 18px;
+  }
+
+  .bracket-note {
+    color: var(--tt-ink-soft);
+    text-align: center;
+    margin: 4px 0 0;
+  }
+
+  .bracket-title {
+    text-align: center;
+    margin: 28px 0 6px;
+  }
+
+  .bracket-title span {
+    color: var(--tt-primary-dark);
+    text-transform: capitalize;
   }
 </style>

@@ -19,6 +19,7 @@ from talkteach.benchmark import (
     per_engine_conditions,
     report_markdown,
     scoreboard,
+    scoreboard_brackets,
     scoreboard_payload,
 )
 
@@ -186,6 +187,7 @@ def test_scoreboard_payload_shape():
     assert set(p) == {
         "meta",
         "scoreboard",
+        "brackets",
         "matrix",
         "head_to_head",
         "clip_extremes",
@@ -194,6 +196,10 @@ def test_scoreboard_payload_shape():
         "eval_prompts_by_lang",
     }
     assert p["scoreboard"][0]["medal"] == "gold"
+    assert p["scoreboard"][0]["category"] == "default"
+    # One bracket for an untagged run; its board mirrors the flat scoreboard.
+    assert [b["category"] for b in p["brackets"]] == ["default"]
+    assert p["brackets"][0]["board"][0]["engine"] == "good"
     assert p["meta"]["eval_clips"] == 4
     assert p["eval_prompts"] == _PROMPTS
     # Must be JSON-serializable (it crosses the HTTP boundary verbatim).
@@ -254,12 +260,83 @@ def test_multilang_groups_and_uses_each_languages_prompts():
     assert {r["language"] for r in conds["whisper"]} == {"en", "hu"}
 
 
-def _score(engine: str, *, elo: int):
+# -- fairness brackets (categories) -------------------------------------------
+
+
+def _bracketed_report() -> BenchmarkReport:
+    """Four engines in two brackets. In each bracket one engine clearly beats the
+    other; across brackets engines must NEVER be compared (different size class)."""
+
+    def cell(engine, category, wers):
+        return CellResult(
+            tts="piper",
+            engine=engine,
+            status="ok",
+            category=category,
+            voice="en_US-lessac-low",
+            wer=sum(wers) / len(wers),
+            cer=0.05,
+            per_clip_wer=wers,
+        )
+
+    return BenchmarkReport(
+        name="brk",
+        language="en",
+        train_clips=4,
+        eval_clips=4,
+        cells=[
+            # small bracket: tiny beats base
+            cell("tiny", "small", [0.0, 0.1, 0.1, 0.2]),
+            cell("base", "small", [0.4, 0.4, 0.5, 0.5]),
+            # large bracket: large-v3 beats parakeet — but note its raw WER is WORSE
+            # than the small-bracket winner, which must not cost it a medal.
+            cell("large-v3", "large", [0.2, 0.25, 0.25, 0.3]),
+            cell("parakeet", "large", [0.45, 0.5, 0.5, 0.55]),
+        ],
+        eval_prompts=_PROMPTS,
+    )
+
+
+def test_matches_never_cross_brackets():
+    from talkteach.benchmark import _clip_matches
+
+    pairs = {(a, b) for a, b, _ in _clip_matches(_bracketed_report())}
+    flat = {e for pair in pairs for e in pair}
+    # Only same-bracket pairs exist; no small-vs-large engine ever appears together.
+    small, large = {"tiny", "base"}, {"large-v3", "parakeet"}
+    assert flat == small | large
+    for a, b, _ in _clip_matches(_bracketed_report()):
+        assert ({a, b} <= small) or ({a, b} <= large)
+
+
+def test_each_bracket_gets_its_own_gold():
+    brackets = scoreboard_brackets(_bracketed_report())
+    by_cat = {b["category"]: b["board"] for b in brackets}
+    assert set(by_cat) == {"small", "large"}
+    # Each bracket has its own winner with a gold medal.
+    assert by_cat["small"][0].engine == "tiny" and by_cat["small"][0].medal == "gold"
+    assert by_cat["large"][0].engine == "large-v3" and by_cat["large"][0].medal == "gold"
+    # The large-bracket gold has a worse raw WER than the small-bracket runner-up,
+    # proving medals are awarded within-bracket, not on a global WER ranking.
+    assert by_cat["large"][0].mean_wer > by_cat["small"][0].mean_wer
+
+
+def test_flat_scoreboard_is_grouped_by_bracket():
+    board = scoreboard(_bracketed_report())
+    cats = [r.category for r in board]
+    # Rows are contiguous per bracket (config order: small first, then large).
+    assert cats == ["small", "small", "large", "large"]
+    # Two golds — one per bracket.
+    assert sum(1 for r in board if r.medal == "gold") == 2
+
+
+def _score(engine: str, *, elo: int, category: str = "default"):
     """A bare EngineScore for medal-logic tests (only engine+elo matter)."""
     from talkteach.benchmark import EngineScore
 
     return EngineScore(
         engine=engine,
+        category=category,
         elo=elo,
         wins=0,
         losses=0,

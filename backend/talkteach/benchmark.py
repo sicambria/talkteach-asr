@@ -58,6 +58,11 @@ class CellResult:
     engine: str
     status: str  # "ok" | "skipped" | "error"
     detail: str = ""
+    # Fairness bracket: engines only ever play head-to-heads (and share a podium)
+    # against others in the SAME category, so a 39M CPU model is never ranked
+    # against a 1.1B GPU model. "default" = one pool (the back-compat behaviour for
+    # configs that don't tag categories). See benchmarks/full.yaml + BENCHMARKING.md.
+    category: str = "default"
     language: str | None = None  # the language this cell was spoken/scored in
     voice: str | None = None  # the TTS voice this cell was spoken with (for breakdowns)
     wer: float | None = None
@@ -190,6 +195,7 @@ def run_benchmark(
                             eng_spec.get("name", "?"),
                             "skipped",
                             f"{tts_name} has no voice for '{lang}'",
+                            category=eng_spec.get("category", "default"),
                             language=lang,
                         ),
                         report,
@@ -213,6 +219,7 @@ def run_benchmark(
                             eng_spec.get("name", "?"),
                             "skipped",
                             f"TTS: {msg}",
+                            category=eng_spec.get("category", "default"),
                             language=lang,
                             voice=voice,
                         ),
@@ -254,6 +261,7 @@ def run_benchmark(
                     refs,
                     workdir=run_dir,
                     train_good_fraction=train_gf,
+                    category=eng_spec.get("category", "default"),
                     language=lang,
                     voice=voice,
                     should_stop=stop,
@@ -310,6 +318,7 @@ def _run_cell(
     *,
     workdir: Path,
     train_good_fraction: float,
+    category: str = "default",
     language: str | None = None,
     voice: str | None = None,
     should_stop: Callable[[], bool] | None = None,
@@ -318,12 +327,20 @@ def _run_cell(
         plan = plan_from_config(plan_cfg)
         engine = get_engine(plan.engine)
     except (KeyError, NotImplementedError) as exc:
-        return CellResult(tts_name, eng_name, "error", str(exc), language=language, voice=voice)
+        return CellResult(
+            tts_name, eng_name, "error", str(exc), category=category, language=language, voice=voice
+        )
 
     available, msg = engine.is_available()
     if not available:
         return CellResult(
-            tts_name, eng_name, "skipped", f"engine: {msg}", language=language, voice=voice
+            tts_name,
+            eng_name,
+            "skipped",
+            f"engine: {msg}",
+            category=category,
+            language=language,
+            voice=voice,
         )
 
     workdir.mkdir(parents=True, exist_ok=True)
@@ -341,6 +358,7 @@ def _run_cell(
             eng_name,
             "error",
             f"{type(exc).__name__}: {exc}",
+            category=category,
             language=language,
             voice=voice,
         )
@@ -352,6 +370,7 @@ def _run_cell(
         tts=tts_name,
         engine=eng_name,
         status="ok",
+        category=category,
         language=language,
         voice=voice,
         wer=round(wer_v, 4),
@@ -388,7 +407,10 @@ def format_table(report: BenchmarkReport) -> str:
     """Render the report as a plain-text table (the human-facing matrix)."""
     header = f"Benchmark '{report.name}'  lang={report.language}  "
     header += f"train={report.train_clips} eval={report.eval_clips} clips"
-    cols = ["Lang", "TTS", "Engine", "Status", "WER", "CER", "Smartness", "Train(s)", "Detail"]
+    cols = [
+        "Lang", "TTS", "Engine", "Bracket", "Status",
+        "WER", "CER", "Smartness", "Train(s)", "Detail",
+    ]
     rows = [cols]
     for c in report.cells:
         rows.append(
@@ -396,6 +418,7 @@ def format_table(report: BenchmarkReport) -> str:
                 c.language or "-",
                 c.tts,
                 c.engine,
+                c.category,
                 c.status,
                 "" if c.wer is None else f"{c.wer:.3f}",
                 "" if c.cer is None else f"{c.cer:.3f}",
@@ -430,6 +453,7 @@ class EngineScore:
     """Aggregated leaderboard row for one engine across all conditions it ran."""
 
     engine: str
+    category: str
     elo: int
     wins: int
     losses: int
@@ -444,19 +468,20 @@ class EngineScore:
 
 
 def _clip_matches(report: BenchmarkReport, eps: float = 1e-9) -> list[tuple[str, str, float]]:
-    """Per-(language, TTS, clip) head-to-head outcomes: (engineA, engineB, scoreA).
+    """Per-(category, language, TTS, clip) head-to-head outcomes: (engineA, engineB, scoreA).
 
-    Within each (language, TTS) condition every pair of completed engines is compared
-    on each shared eval clip; the lower WER wins (0.5 on a tie). Engines that appear
-    under several conditions (more voices, more languages) play more matches — more
-    signal. Grouping includes the language so clips from different languages (which
-    have different prompts) are never wrongly compared.
+    Within each (category, language, TTS) condition every pair of completed engines is
+    compared on each shared eval clip; the lower WER wins (0.5 on a tie). Engines that
+    appear under several conditions (more voices, more languages) play more matches —
+    more signal. Grouping includes the **category** so a small CPU model is never
+    matched against a large GPU one (fairness brackets), and the language so clips from
+    different languages (which have different prompts) are never wrongly compared.
     """
     matches: list[tuple[str, str, float]] = []
-    by_cond: dict[tuple[str | None, str], list[CellResult]] = {}
+    by_cond: dict[tuple[str, str | None, str], list[CellResult]] = {}
     for c in report.cells:
         if c.status == "ok" and c.per_clip_wer:
-            by_cond.setdefault((c.language, c.tts), []).append(c)
+            by_cond.setdefault((c.category, c.language, c.tts), []).append(c)
     for cells in by_cond.values():
         if len(cells) < 2:
             continue  # need ≥2 engines on the same clips to have a match
@@ -518,10 +543,34 @@ def _mean(xs: list[float]) -> float | None:
 def scoreboard(report: BenchmarkReport, *, medals: int = 3) -> list[EngineScore]:
     """Aggregate the matrix into a per-engine leaderboard, sorted best-first.
 
-    Sort key: ELO desc, then mean WER asc (the objective tie-breaker). The top
-    ``medals`` engines get gold/silver/bronze via :func:`assign_medals`.
+    Ranking is **per fairness bracket** (``CellResult.category``): engines are sorted
+    and awarded medals only against others in the same category, so each bracket gets
+    its own podium and a small CPU model never loses a medal to a large GPU one. The
+    returned list is flat (back-compat) but ordered bracket-by-bracket, each bracket
+    internally sorted by ELO desc then mean WER asc. Use :func:`scoreboard_brackets`
+    for the grouped view. A config with no categories is one ``"default"`` bracket,
+    so the order and medals match the pre-bracket behaviour exactly.
     """
+    rows = _engine_scores(report)
+    # Preserve the order categories first appear in the matrix (config order), then
+    # rank within each bracket and hand out that bracket's medals independently.
+    cat_order: list[str] = []
+    for c in report.cells:
+        if c.status == "ok" and c.category not in cat_order:
+            cat_order.append(c.category)
+    ordered: list[EngineScore] = []
+    for cat in cat_order:
+        bracket = [r for r in rows if r.category == cat]
+        bracket.sort(key=lambda r: (-r.elo, r.mean_wer if r.mean_wer is not None else 1e9))
+        assign_medals(bracket, n=medals)
+        ordered.extend(bracket)
+    return ordered
+
+
+def _engine_scores(report: BenchmarkReport) -> list[EngineScore]:
+    """One unranked :class:`EngineScore` per engine (ELO + aggregated metrics)."""
     elo = compute_elo(report)
+    cat_of = {c.engine: c.category for c in report.cells if c.status == "ok"}
     rows: list[EngineScore] = []
     engines = sorted({c.engine for c in report.cells if c.status == "ok"})
     for e in engines:
@@ -532,6 +581,7 @@ def scoreboard(report: BenchmarkReport, *, medals: int = 3) -> list[EngineScore]
         rows.append(
             EngineScore(
                 engine=e,
+                category=cat_of.get(e, "default"),
                 elo=round(st["elo"]),
                 wins=wins,
                 losses=losses,
@@ -546,9 +596,25 @@ def scoreboard(report: BenchmarkReport, *, medals: int = 3) -> list[EngineScore]
                 mean_delta_wer=_mean([c.delta_wer for c in cells if c.delta_wer is not None]),
             )
         )
-    rows.sort(key=lambda r: (-r.elo, r.mean_wer if r.mean_wer is not None else 1e9))
-    assign_medals(rows, n=medals)
     return rows
+
+
+def scoreboard_brackets(report: BenchmarkReport, *, medals: int = 3) -> list[dict[str, Any]]:
+    """The leaderboard split into fairness brackets: ``[{category, board}, …]``.
+
+    Each ``board`` is the ranked, medal-assigned :class:`EngineScore` list for that
+    category. Brackets are ordered by first appearance in the matrix (config order).
+    This is what the in-app Arena renders as one podium per bracket.
+    """
+    flat = scoreboard(report, medals=medals)
+    out: list[dict[str, Any]] = []
+    seen: dict[str, list[EngineScore]] = {}
+    for r in flat:
+        if r.category not in seen:
+            seen[r.category] = []
+            out.append({"category": r.category, "board": seen[r.category]})
+        seen[r.category].append(r)
+    return out
 
 
 _MEDALS = ("gold", "silver", "bronze")
@@ -658,6 +724,10 @@ def scoreboard_payload(report: BenchmarkReport, *, medals: int = 3) -> dict[str,
     the CLI report and the in-app Arena always show identical numbers.
     """
     board = scoreboard(report, medals=medals)
+    brackets = [
+        {"category": b["category"], "board": [asdict(r) for r in b["board"]]}
+        for b in scoreboard_brackets(report, medals=medals)
+    ]
     return {
         "meta": {
             "name": report.name,
@@ -665,7 +735,10 @@ def scoreboard_payload(report: BenchmarkReport, *, medals: int = 3) -> dict[str,
             "train_clips": report.train_clips,
             "eval_clips": report.eval_clips,
         },
+        # Flat board (back-compat) plus the same rows grouped into fairness brackets;
+        # the Arena renders one podium per bracket from `brackets`.
         "scoreboard": [asdict(r) for r in board],
+        "brackets": brackets,
         "matrix": [asdict(c) for c in report.cells],
         "head_to_head": head_to_head(report),
         "clip_extremes": per_engine_clip_extremes(report),
@@ -676,41 +749,51 @@ def scoreboard_payload(report: BenchmarkReport, *, medals: int = 3) -> dict[str,
 
 
 def format_scoreboard(report: BenchmarkReport, *, medals: int = 3) -> str:
-    """Plain-text leaderboard (ranked by ELO, with raw WER/CER/time alongside)."""
-    board = scoreboard(report, medals=medals)
-    cols = ["#", "", "Engine", "ELO", "W-L-T", "Win%", "MeanWER", "MeanCER", "Train(s)", "Conds"]
-    rows = [cols]
-    for i, r in enumerate(board, 1):
-        rows.append(
-            [
-                str(i),
-                _MEDAL_EMOJI.get(r.medal or "", ""),
-                r.engine,
-                str(r.elo),
-                f"{r.wins}-{r.losses}-{r.ties}",
-                "—" if r.win_rate is None else f"{r.win_rate * 100:.0f}%",
-                "—" if r.mean_wer is None else f"{r.mean_wer:.3f}",
-                "—" if r.mean_cer is None else f"{r.mean_cer:.3f}",
-                "—" if r.mean_train_seconds is None else f"{r.mean_train_seconds:.1f}",
-                str(r.cells),
-            ]
-        )
-    if len(rows) == 1:
+    """Plain-text leaderboard (ranked by ELO, with raw WER/CER/time alongside).
+
+    One sub-table per fairness bracket; the bracket header is omitted when the whole
+    run is the single ``"default"`` bracket (the back-compat layout).
+    """
+    brackets = scoreboard_brackets(report, medals=medals)
+    if not brackets:
         return "Scoreboard: no completed engine cells."
-    widths = [max(len(r[i]) for r in rows) for i in range(len(cols))]
+    single_default = len(brackets) == 1 and brackets[0]["category"] == "default"
+    cols = ["#", "", "Engine", "ELO", "W-L-T", "Win%", "MeanWER", "MeanCER", "Train(s)", "Conds"]
     out = ["SCOREBOARD (ranked by ELO; WER is the ground truth)", ""]
-    for ri, row in enumerate(rows):
-        out.append("  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
-        if ri == 0:
-            out.append("  ".join("-" * widths[i] for i in range(len(cols))))
-    return "\n".join(out)
+    for bracket in brackets:
+        if not single_default:
+            out += [f"— bracket: {bracket['category']} —"]
+        rows = [cols]
+        for i, r in enumerate(bracket["board"], 1):
+            rows.append(
+                [
+                    str(i),
+                    _MEDAL_EMOJI.get(r.medal or "", ""),
+                    r.engine,
+                    str(r.elo),
+                    f"{r.wins}-{r.losses}-{r.ties}",
+                    "—" if r.win_rate is None else f"{r.win_rate * 100:.0f}%",
+                    "—" if r.mean_wer is None else f"{r.mean_wer:.3f}",
+                    "—" if r.mean_cer is None else f"{r.mean_cer:.3f}",
+                    "—" if r.mean_train_seconds is None else f"{r.mean_train_seconds:.1f}",
+                    str(r.cells),
+                ]
+            )
+        widths = [max(len(r[i]) for r in rows) for i in range(len(cols))]
+        for ri, row in enumerate(rows):
+            out.append("  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
+            if ri == 0:
+                out.append("  ".join("-" * widths[i] for i in range(len(cols))))
+        out.append("")
+    return "\n".join(out).rstrip()
 
 
 def report_markdown(
     report: BenchmarkReport, *, generated_at: str | None = None, medals: int = 3
 ) -> str:
     """Full Markdown report: scoreboard + matrix + detail views + methodology."""
-    board = scoreboard(report, medals=medals)
+    brackets = scoreboard_brackets(report, medals=medals)
+    single_default = len(brackets) == 1 and brackets and brackets[0]["category"] == "default"
     lines = [
         f"# TTS × ASR benchmark report — `{report.name}`",
         "",
@@ -719,26 +802,34 @@ def report_markdown(
     ]
     if generated_at:
         lines.append(f"- Generated: {generated_at}")
-    lines += [
-        "",
-        "## Scoreboard (ranked by ELO)",
-        "",
-        "| # | | Engine | ELO | W-L-T | Win% | Mean WER | Mean CER | Δ vs base "
-        "| Mean train(s) | Conditions |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
-    ]
-    for i, r in enumerate(board, 1):
-        win = "—" if r.win_rate is None else f"{r.win_rate * 100:.0f}%"
-        mwer = "—" if r.mean_wer is None else f"{r.mean_wer:.3f}"
-        mcer = "—" if r.mean_cer is None else f"{r.mean_cer:.3f}"
-        mtr = "—" if r.mean_train_seconds is None else f"{r.mean_train_seconds:.1f}"
-        delta = "—" if r.mean_delta_wer is None else f"{r.mean_delta_wer:+.3f}"
-        medal = _MEDAL_EMOJI.get(r.medal or "", "")
+    lines += ["", "## Scoreboard (ranked by ELO)", ""]
+    if not single_default:
         lines.append(
-            f"| {i} | {medal} | {r.engine} | **{r.elo}** | {r.wins}-{r.losses}-{r.ties} | "
-            f"{win} | {mwer} | {mcer} | {delta} | {mtr} | {r.cells} |"
+            "Ranked within **fairness brackets** — engines only compete against others "
+            "in the same category (size / compute class), so comparisons stay apples-to-apples."
         )
-    lines += ["", "## Full matrix (per TTS × engine cell)", ""]
+        lines.append("")
+    for bracket in brackets:
+        if not single_default:
+            lines += [f"### Bracket: `{bracket['category']}`", ""]
+        lines += [
+            "| # | | Engine | ELO | W-L-T | Win% | Mean WER | Mean CER | Δ vs base "
+            "| Mean train(s) | Conditions |",
+            "|---|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        for i, r in enumerate(bracket["board"], 1):
+            win = "—" if r.win_rate is None else f"{r.win_rate * 100:.0f}%"
+            mwer = "—" if r.mean_wer is None else f"{r.mean_wer:.3f}"
+            mcer = "—" if r.mean_cer is None else f"{r.mean_cer:.3f}"
+            mtr = "—" if r.mean_train_seconds is None else f"{r.mean_train_seconds:.1f}"
+            delta = "—" if r.mean_delta_wer is None else f"{r.mean_delta_wer:+.3f}"
+            medal = _MEDAL_EMOJI.get(r.medal or "", "")
+            lines.append(
+                f"| {i} | {medal} | {r.engine} | **{r.elo}** | {r.wins}-{r.losses}-{r.ties} | "
+                f"{win} | {mwer} | {mcer} | {delta} | {mtr} | {r.cells} |"
+            )
+        lines.append("")
+    lines += ["## Full matrix (per TTS × engine cell)", ""]
     lines += ["```", format_table(report), "```", ""]
     lines += _detail_markdown(report)
     lines += [

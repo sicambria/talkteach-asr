@@ -1,12 +1,29 @@
-# Full TTS × ASR benchmark — broader matrix for a real comparison.
+# Full TTS × ASR benchmark — the broad, categorized matrix for a real comparison.
 #
-# Heavier than quick.yaml: more clips, more epochs, multiple voices, and the
-# GPU/opt-in NeMo engine included (it self-skips without a GPU + nemo_toolkit).
-# Intended for a provisioned machine, not CI.
+# Ten ASR models, sorted into three **fairness brackets** (`category:`). Engines
+# only ever play head-to-heads — and share a podium — against others in the SAME
+# bracket, so a 39 M CPU model is never ranked against a 1.1 B GPU model. The
+# bracket axis is model capacity (parameter / size class), which is what bounds
+# achievable WER; compute target (CPU vs GPU) and decoder type follow from it.
+#
+#   small   ≤ ~170 M   CPU / laptop / edge   — runs in CI and on any machine
+#   medium  ~240–320 M GPU recommended       — still CPU-capable, just slow
+#   large   ≥ ~600 M   GPU required          — flagship accuracy / streaming
+#
+# Every model below was checked to actually load in its engine's real train path
+# (Whisper → WhisperForConditionalGeneration + LoRA; wav2vec2 → Wav2Vec2ForCTC,
+# which needs a checkpoint that already carries a CTC head + processor; NeMo →
+# ASRModel, GPU-only). Models the leaderboard ranks above these (IBM Granite-Speech,
+# NVIDIA Canary, Moonshine) are proprietary or need a new engine adapter — see
+# project/docs/BENCHMARKING.md ("Reachable models vs the leaderboard").
+#
+# Cells whose deps are missing self-skip (NeMo without a GPU; an espeak/piper voice
+# that isn't installed) rather than failing the run. On a CPU-only box the `small`
+# and `medium` brackets populate fully; `large` needs a GPU.
 #
 #   python scripts/benchmark.py --config benchmarks/full.yaml --out results/full.json
 #
-# Requires: backend[ml,tts]; espeak cells need espeak-ng; the nemo cell needs
+# Requires: backend[ml,tts]; espeak cells need espeak-ng; `large`/NeMo cells need
 # backend[nemo] + CUDA (see project/docs/BENCHMARKING.md).
 
 name: full
@@ -14,7 +31,7 @@ language: en
 train_clips: 10
 eval_clips: 4
 sample_rate: 16000
-medals: 3               # how many top engines get 🥇🥈🥉 (ties share a medal)
+medals: 3               # top engines per bracket get 🥇🥈🥉 (ties share a medal)
 
 tts:
   - provider: espeak
@@ -23,10 +40,36 @@ tts:
     voice: en_US-lessac-medium   # 22 kHz neural voice, resampled to 16 kHz
 
 engines:
+  # ── small — CPU / edge (≤ ~170 M params), the CI-runnable bracket ───────────
   - name: whisper-tiny
+    category: small
     plan:
       engine: whisper_lora
-      base_checkpoint: openai/whisper-tiny
+      base_checkpoint: openai/whisper-tiny          # 39 M, multilingual
+      compute: cpu
+      precision: fp32
+      epochs: 5
+      batch_size: 4
+      learning_rate: 0.0001
+      lora_rank: 8
+
+  - name: whisper-base
+    category: small
+    plan:
+      engine: whisper_lora
+      base_checkpoint: openai/whisper-base          # 74 M, multilingual
+      compute: cpu
+      precision: fp32
+      epochs: 5
+      batch_size: 4
+      learning_rate: 0.0001
+      lora_rank: 8
+
+  - name: distil-whisper-small.en
+    category: small
+    plan:
+      engine: whisper_lora
+      base_checkpoint: distil-whisper/distil-small.en  # 166 M, English, ~6× faster
       compute: cpu
       precision: fp32
       epochs: 5
@@ -35,19 +78,82 @@ engines:
       lora_rank: 8
 
   - name: wav2vec2-base
+    category: small
     plan:
       engine: wav2vec2_ctc
-      base_checkpoint: facebook/wav2vec2-base-960h
+      base_checkpoint: facebook/wav2vec2-base-960h  # 95 M, English CTC
       compute: cpu
       precision: fp32
       epochs: 5
       batch_size: 4
       learning_rate: 0.0001
 
-  - name: nemo-rnnt
+  # ── medium — GPU recommended (~240–320 M params), CPU-capable but slow ──────
+  - name: whisper-small
+    category: medium
+    plan:
+      engine: whisper_lora
+      base_checkpoint: openai/whisper-small         # 244 M, multilingual
+      compute: cpu
+      precision: fp32
+      epochs: 5
+      batch_size: 4
+      learning_rate: 0.0001
+      lora_rank: 8
+
+  - name: wav2vec2-large
+    category: medium
+    plan:
+      engine: wav2vec2_ctc
+      base_checkpoint: facebook/wav2vec2-large-960h-lv60-self  # 315 M, English CTC
+      compute: cpu
+      precision: fp32
+      epochs: 5
+      batch_size: 4
+      learning_rate: 0.0001
+
+  - name: wav2vec2-xlsr-53-en
+    category: medium
+    plan:
+      engine: wav2vec2_ctc
+      # XLS-R-53 fine-tuned to English — ships a CTC head + processor, so it loads
+      # in the CTC path (the bare facebook/wav2vec2-xls-r-300m pre-train does not).
+      base_checkpoint: jonatasgrosman/wav2vec2-large-xlsr-53-english  # 315 M
+      compute: cpu
+      precision: fp32
+      epochs: 5
+      batch_size: 4
+      learning_rate: 0.0001
+
+  # ── large — GPU required (≥ ~600 M params), flagship accuracy / streaming ────
+  - name: whisper-large-v3
+    category: large
+    plan:
+      engine: whisper_lora
+      base_checkpoint: openai/whisper-large-v3      # 1.55 B, multilingual, SOTA-open
+      compute: cuda
+      precision: fp16
+      epochs: 5
+      batch_size: 4
+      learning_rate: 0.0001
+      lora_rank: 8
+
+  - name: parakeet-rnnt-0.6b
+    category: large
     plan:
       engine: nemo_rnnt
-      base_checkpoint: nvidia/parakeet-rnnt-0.6b
+      base_checkpoint: nvidia/parakeet-rnnt-0.6b    # 0.6 B, streaming RNN-T
+      compute: cuda
+      precision: fp16
+      epochs: 5
+      batch_size: 4
+      learning_rate: 0.0001
+
+  - name: parakeet-rnnt-1.1b
+    category: large
+    plan:
+      engine: nemo_rnnt
+      base_checkpoint: nvidia/parakeet-rnnt-1.1b    # 1.1 B, streaming RNN-T, top RTFx
       compute: cuda
       precision: fp16
       epochs: 5

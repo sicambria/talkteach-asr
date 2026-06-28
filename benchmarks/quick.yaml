@@ -24,8 +24,11 @@ tts:
   - provider: piper
     voice: en_US-lessac-low   # 16 kHz native, small + fast to download
 
+# Both engines are in the same `small` (CPU/edge) fairness bracket, so they compete
+# head-to-head here. benchmarks/full.yaml shows the full small/medium/large matrix.
 engines:
   - name: whisper
+    category: small
     plan:
       engine: whisper_lora
       base_checkpoint: openai/whisper-tiny
@@ -38,6 +41,7 @@ engines:
       freeze_encoder: true
 
   - name: wav2vec2
+    category: small
     plan:
       engine: wav2vec2_ctc
       base_checkpoint: facebook/wav2vec2-base-960h

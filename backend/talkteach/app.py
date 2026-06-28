@@ -633,10 +633,14 @@ _BENCH_DEFAULT_TTS: list[dict] = [
     {"provider": "espeak", "voice": "en"},
     {"provider": "piper", "voice": "en_US-lessac-low"},
 ]
+# The interactive Arena offers a quick, CPU-runnable set (both in the `small`
+# fairness bracket). The full small/medium/large matrix lives in benchmarks/full.yaml
+# for a CLI run on a provisioned box — see project/docs/BENCHMARKING.md.
 _BENCH_ENGINE_CATALOG: list[dict] = [
     {
         "name": "whisper",
         "label": "Whisper (LoRA)",
+        "category": "small",
         "plan": {
             "engine": "whisper_lora",
             "base_checkpoint": "openai/whisper-tiny",
@@ -652,6 +656,7 @@ _BENCH_ENGINE_CATALOG: list[dict] = [
     {
         "name": "wav2vec2",
         "label": "wav2vec2 (CTC)",
+        "category": "small",
         "plan": {
             "engine": "wav2vec2_ctc",
             "base_checkpoint": "facebook/wav2vec2-base-960h",
@@ -753,6 +758,7 @@ def benchmark_options() -> dict:
             {
                 "name": spec["name"],
                 "label": spec["label"],
+                "category": spec.get("category", "default"),
                 "plan": spec["plan"],
                 "available": ok,
                 "detail": msg,
@@ -787,7 +793,10 @@ def start_benchmark(body: BenchmarkIn) -> dict:
         "languages": languages,
         "tts": body.tts or _BENCH_DEFAULT_TTS,
         "engines": body.engines
-        or [{k: s[k] for k in ("name", "plan")} for s in _BENCH_ENGINE_CATALOG],
+        or [
+            {"name": s["name"], "category": s.get("category", "default"), "plan": s["plan"]}
+            for s in _BENCH_ENGINE_CATALOG
+        ],
         "medals": _BENCH_MEDALS,
     }
     if body.train_clips is not None:

@@ -31,9 +31,35 @@ alongside and 🥇🥈🥉 on the top engines:
 
 **Medals** are awarded by *competition ranking* (`benchmark.assign_medals`): engines
 tied on ELO share a medal and the next distinct ELO takes the one below, so two engines
-tied for first both get gold and silver is skipped. A two-engine matrix never reaches
-bronze; widen it (e.g. `benchmarks/full.yaml` adds the GPU NeMo cell) for a full podium.
-Control how many medals are handed out with the `medals:` config key or `--medals N`.
+tied for first both get gold and silver is skipped. A two-engine bracket never reaches
+bronze; widen it for a full podium. Control how many medals are handed out **per
+bracket** with the `medals:` config key or `--medals N`.
+
+Medals — and ELO head-to-heads — are scoped to a **fairness bracket** (see below), so
+each size/compute class gets its own 🥇🥈🥉 rather than a tiny CPU model losing gold to
+a 1.1 B GPU one.
+
+### Fairness brackets (`category`)
+
+Comparing a 39 M CPU model against a 1.1 B GPU model on one leaderboard isn't fair — the
+bigger model wins on capacity, not on what the benchmark is trying to isolate. So each
+engine entry carries a `category` (a **fairness bracket**), and engines only ever play
+head-to-heads — and share a podium — against others in the **same** bracket. The bracket
+axis is **model capacity (parameter / size class)**, which is what bounds achievable WER;
+compute target (CPU vs GPU) and decoder type (CTC / seq2seq / RNN-T) follow from it.
+`benchmarks/full.yaml` ships three:
+
+| Bracket | Capacity | Compute | Example models |
+|---|---|---|---|
+| `small`  | ≤ ~170 M   | CPU / edge (runs in CI) | whisper-tiny, whisper-base, distil-whisper-small.en, wav2vec2-base |
+| `medium` | ~240–320 M | GPU recommended, CPU-capable | whisper-small, wav2vec2-large, wav2vec2-xlsr-53-en |
+| `large`  | ≥ ~600 M   | GPU required | whisper-large-v3, parakeet-rnnt-0.6b, parakeet-rnnt-1.1b |
+
+Mechanically, `category` rides on each `CellResult`; `_clip_matches` groups outcomes by
+`(category, language, TTS)` so cross-bracket pairs never form; `scoreboard` ranks and
+medals each bracket independently. The payload exposes both a flat `scoreboard` (back-compat)
+and a `brackets: [{category, board}]` grouping — the Arena renders one podium per bracket.
+A config that tags no categories is one `"default"` bracket, identical to the old behaviour.
 
 ### Detail views
 
@@ -55,8 +81,8 @@ language picker) and every (language × TTS × engine) cell runs, each spoken an
 **that language's own sentences** (`talkteach.prompts`, written per language — never an
 English stand-in). espeak speaks any language by its code; piper runs only where a voice
 is known (`benchmark._PIPER_VOICES`), others self-skip. ELO head-to-heads are grouped per
-`(language, TTS)` so clips from different languages are never wrongly compared. Single
-`language:` still works as the one-language default.
+`(category, language, TTS)` so clips from different brackets or languages are never wrongly
+compared. Single `language:` still works as the one-language default.
 
 ### In the app: the Arena
 
@@ -120,6 +146,7 @@ tts:
     voice: en_US-lessac-low
 engines:
   - name: whisper       # label shown in the report
+    category: small     # fairness bracket (optional; defaults to "default")
     plan:               # forwarded verbatim to plan_from_config (any TrainingPlan field)
       engine: whisper_lora
       base_checkpoint: openai/whisper-tiny
@@ -151,11 +178,31 @@ check, and prints the workdir size at the end.
 
 ## Engine tiering (what "all real" actually means)
 
-| Engine | Real training | CPU / CI-runnable | Notes |
+Three **engine adapters** back every model in the matrix. A model is reachable only if
+it actually loads in that engine's real train path (a "same family" name is not enough):
+
+| Engine | Real training | CPU / CI-runnable | Loads checkpoints that… |
 |---|---|---|---|
-| **whisper_lora** | ✅ | ✅ (whisper-tiny) | PEFT/LoRA `Seq2SeqTrainer`; default engine |
-| **wav2vec2_ctc** | ✅ | ✅ (wav2vec2-base) | `Wav2Vec2ForCTC` + CTC loss |
-| **nemo_rnnt** | ✅ (real path) | ❌ GPU/opt-in only | needs `[nemo]` + CUDA; self-skips otherwise — never gates CI |
+| **whisper_lora** | ✅ | ✅ (whisper-tiny) | are Whisper-architecture (`WhisperForConditionalGeneration` + `WhisperProcessor`) — `openai/whisper-*` **and** `distil-whisper/*`; PEFT/LoRA `Seq2SeqTrainer` |
+| **wav2vec2_ctc** | ✅ | ✅ (wav2vec2-base) | already carry a **CTC head + `Wav2Vec2Processor`** — `wav2vec2-*-960h`, `…xlsr-53-english`. A bare pre-train (`xls-r-300m`), MMS adapters, or HuBERT do **not** load here |
+| **nemo_rnnt** | ✅ (real path) | ❌ GPU/opt-in only | NeMo `ASRModel` (Parakeet RNN-T); needs `[nemo]` + CUDA, self-skips otherwise — never gates CI |
+
+### Reachable models vs the leaderboard
+
+`benchmarks/full.yaml`'s ten models are the **best the three engines above can actually
+fine-tune today**, spread across the fairness brackets — *not* a copy of the public
+[Open ASR Leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard) top
+ten. The two diverge on purpose:
+
+- **Proprietary** leaders (Zoom Scribe, Cohere Transcribe) have no open weights to fine-tune.
+- **Open but unreachable** leaders need a **new engine adapter**: IBM Granite-Speech
+  (speech-LLM), NVIDIA Canary (AED multitask, not RNN-T), and Moonshine each use an
+  architecture none of the three current adapters load. They're tracked as follow-up work
+  — adding a `granite_speech` / `canary` / `moonshine` adapter would let them join the
+  `large` (or a new) bracket.
+
+So treat the leaderboard as "best fine-tunable on our stack," and grow it by adding
+adapters, not just YAML rows.
 
 ## CI
 
