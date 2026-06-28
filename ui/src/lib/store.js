@@ -16,3 +16,7 @@ export const currentRun = writable(null);
 // Hidden "Grown-up mode" — when true, screens reveal technical detail panels.
 // Off by default so kids only ever see plain language.
 export const grownUpMode = writable(false);
+
+// The TTS×ASR "Arena" benchmark currently running (or just finished).
+// Shape: { benchmark_id, status, report } where report is the scoreboard payload.
+export const benchmark = writable(null);

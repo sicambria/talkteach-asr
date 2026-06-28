@@ -41,7 +41,7 @@
       mediaRecorder.start();
       recording = true;
     } catch {
-      micError = "I couldn't use the microphone. Can a grown-up help?";
+      micError = "I couldn't use the microphone. Please allow microphone access.";
     }
   }
 
@@ -142,7 +142,7 @@
 
   {#if $grownUpMode}
     <div class="grownup">
-      <h3>Grown-up mode</h3>
+      <h3>Advanced</h3>
       run: {JSON.stringify($currentRun)}
       {'\n'}heard: {heardText}
     </div>

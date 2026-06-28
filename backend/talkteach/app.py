@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import dataclasses
 import io
+import shutil
 import threading
 import uuid
 import wave
@@ -26,6 +27,7 @@ from pydantic import BaseModel
 
 from . import __version__, config
 from .audio.quality import ClipQuality, analyze_samples
+from .benchmark import BenchmarkReport, run_benchmark, scoreboard_payload
 from .data.project import ProjectDB
 from .director import (
     DataProfile,
@@ -39,6 +41,7 @@ from .director import (
 from .engines import get_engine
 from .engines.base import EngineUnavailableError, TrainProgress
 from .reliability.preflight import run_preflight
+from .tts import available_providers, get_tts_provider
 
 
 @asynccontextmanager
@@ -212,6 +215,20 @@ class TranscriptIn(BaseModel):
 class ExportIn(BaseModel):
     run_id: int
     fmt: str = "ctranslate2"
+
+
+class BenchmarkIn(BaseModel):
+    """A request to run the TTS×ASR Arena. ``tts``/``engines`` are spec dicts in the
+    same shape ``benchmarks/*.yaml`` use (the subset the user ticked); empty lists
+    fall back to the built-in defaults. Clip counts override the defaults too."""
+
+    tts: list[dict] = []
+    engines: list[dict] = []
+    languages: list[str] = []  # languages to cover; empty → the project/`language`
+    language: str | None = None
+    train_clips: int | None = None
+    eval_clips: int | None = None
+    name: str = "arena"
 
 
 # --- endpoints ----------------------------------------------------------------
@@ -598,6 +615,230 @@ def list_runs() -> dict:
             for r in runs
         ]
     }
+
+
+# --- benchmark "Arena" jobs ---------------------------------------------------
+#
+# A grown-up tool that runs the full TTS×ASR matrix and ranks the engines on an ELO
+# podium (see talkteach.benchmark). It mirrors the training-job pattern above, but
+# benchmarks are transient comparisons, so the registry is in-memory only (keyed by
+# a UUID) — no SQLite run row and no startup reconciliation. Lazy/partial results
+# stream as each cell completes; cross-thread access is guarded by _bench_lock.
+
+# Always award a 3-deep podium (🥇🥈🥉); ties share a medal (assign_medals).
+_BENCH_MEDALS = 3
+
+# Built-in defaults (lifted from benchmarks/quick.yaml) so a minimal request runs.
+_BENCH_DEFAULT_TTS: list[dict] = [
+    {"provider": "espeak", "voice": "en"},
+    {"provider": "piper", "voice": "en_US-lessac-low"},
+]
+_BENCH_ENGINE_CATALOG: list[dict] = [
+    {
+        "name": "whisper",
+        "label": "Whisper (LoRA)",
+        "plan": {
+            "engine": "whisper_lora",
+            "base_checkpoint": "openai/whisper-tiny",
+            "compute": "cpu",
+            "precision": "fp32",
+            "epochs": 1,
+            "batch_size": 2,
+            "learning_rate": 0.001,
+            "lora_rank": 4,
+            "freeze_encoder": True,
+        },
+    },
+    {
+        "name": "wav2vec2",
+        "label": "wav2vec2 (CTC)",
+        "plan": {
+            "engine": "wav2vec2_ctc",
+            "base_checkpoint": "facebook/wav2vec2-base-960h",
+            "compute": "cpu",
+            "precision": "fp32",
+            "epochs": 1,
+            "batch_size": 2,
+            "learning_rate": 0.0001,
+        },
+    },
+]
+
+_bench_jobs: dict[str, _BenchJob] = {}
+_bench_lock = threading.Lock()
+
+
+@dataclasses.dataclass
+class _BenchJob:
+    id: str
+    status: str  # "running" | "done" | "failed" | "cancelled"
+    report: BenchmarkReport
+    message: str
+    medals: int
+    cancel: threading.Event
+    error: str | None = None
+
+
+def _run_benchmark_job(job_id: str, cfg: dict, workdir: str) -> None:
+    job = _bench_jobs[job_id]
+
+    def on_cell(cell) -> None:
+        # Stream partial progress: append under the lock the poll endpoint also
+        # holds, so a concurrent read never sees a half-mutated cell list.
+        with _bench_lock:
+            job.report.cells.append(cell)
+            job.message = f"Scored {len(job.report.cells)} combination(s)…"
+
+    try:
+        final = run_benchmark(cfg, workdir, on_cell=on_cell, should_stop=job.cancel.is_set)
+        with _bench_lock:
+            cancelled = job.cancel.is_set()
+            job.report = final  # the full report carries eval_prompts + every cell
+            job.status = "cancelled" if cancelled else "done"
+            job.message = "Stopped." if cancelled else "Done — here are the results."
+    except Exception as e:  # never let the thread die silently
+        with _bench_lock:
+            job.status = "failed"
+            job.error = str(e)
+            job.message = f"Something went wrong: {e}"
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def _engine_available(plan_cfg: dict) -> tuple[bool, str]:
+    """Best-effort availability for an engine spec (so the picker can grey it out)."""
+    from .director.plan_config import plan_from_config
+
+    try:
+        engine = get_engine(plan_from_config(plan_cfg).engine)
+    except (KeyError, NotImplementedError) as exc:
+        return False, str(exc)
+    return engine.is_available()
+
+
+# Display names for the languages we ship real prompt sets for (the only ones the
+# Arena offers, so every contest reads sentences written in that language).
+_LANG_NAMES = {
+    "en": "English",
+    "es": "Spanish",
+    "de": "German",
+    "hu": "Hungarian",
+    "fr": "French",
+    "it": "Italian",
+}
+
+
+@app.get("/api/benchmark/options")
+def benchmark_options() -> dict:
+    """What the Arena picker offers: TTS providers, ASR engines, and the languages we
+    have real prompts for — each with an ``available`` flag so missing deps show
+    disabled. ``default_language`` is the project's language, pre-selected if covered."""
+    from .prompts import available_languages
+
+    tts = []
+    for name in available_providers():
+        try:
+            ok, msg = get_tts_provider(name).is_available()
+        except Exception as exc:  # noqa: BLE001 - a bad provider shouldn't 500 the picker
+            ok, msg = False, str(exc)
+        default_voice = next(
+            (t.get("voice") for t in _BENCH_DEFAULT_TTS if t["provider"] == name), None
+        )
+        tts.append({"provider": name, "available": ok, "detail": msg, "voice": default_voice})
+
+    engines = []
+    for spec in _BENCH_ENGINE_CATALOG:
+        ok, msg = _engine_available(spec["plan"])
+        engines.append(
+            {
+                "name": spec["name"],
+                "label": spec["label"],
+                "plan": spec["plan"],
+                "available": ok,
+                "detail": msg,
+            }
+        )
+
+    languages = [{"code": c, "name": _LANG_NAMES.get(c, c)} for c in available_languages()]
+    with _db() as db:
+        proj = db.get_project() or {}
+    default_language = proj.get("language_code") or "en"
+
+    return {
+        "tts": tts,
+        "engines": engines,
+        "languages": languages,
+        "default_language": default_language,
+        "defaults": {"train_clips": 6, "eval_clips": 6},
+    }
+
+
+@app.post("/api/benchmark")
+def start_benchmark(body: BenchmarkIn) -> dict:
+    """Kick off a full TTS×ASR matrix run in the background; returns its id to poll."""
+    project = {}
+    with _db() as db:
+        project = db.get_project() or {}
+    language = body.language or project.get("language_code") or "en"
+    languages = body.languages or [language]
+    cfg: dict = {
+        "name": body.name,
+        "language": language,
+        "languages": languages,
+        "tts": body.tts or _BENCH_DEFAULT_TTS,
+        "engines": body.engines
+        or [{k: s[k] for k in ("name", "plan")} for s in _BENCH_ENGINE_CATALOG],
+        "medals": _BENCH_MEDALS,
+    }
+    if body.train_clips is not None:
+        cfg["train_clips"] = body.train_clips
+    if body.eval_clips is not None:
+        cfg["eval_clips"] = body.eval_clips
+
+    bench_id = uuid.uuid4().hex
+    workdir = str(config.DEFAULT_PROJECT_DIR / "benchmarks" / bench_id)
+    Path(workdir).mkdir(parents=True, exist_ok=True)
+    job = _BenchJob(
+        id=bench_id,
+        status="running",
+        report=BenchmarkReport(name=body.name, language=language, train_clips=0, eval_clips=0),
+        message="Getting the contest ready…",
+        medals=_BENCH_MEDALS,
+        cancel=threading.Event(),
+    )
+    with _bench_lock:
+        _bench_jobs[bench_id] = job
+    threading.Thread(target=_run_benchmark_job, args=(bench_id, cfg, workdir), daemon=True).start()
+    return {"benchmark_id": bench_id}
+
+
+@app.get("/api/benchmark/{bench_id}")
+def benchmark_status(bench_id: str) -> dict:
+    with _bench_lock:
+        job = _bench_jobs.get(bench_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="That benchmark wasn't found.")
+        # Snapshot the cell list under the lock so the (possibly long) ELO/payload
+        # computation below runs on a stable matrix while on_cell keeps appending.
+        snapshot = dataclasses.replace(job.report, cells=list(job.report.cells))
+        status, message, medals = job.status, job.message, job.medals
+    return {
+        "status": status,
+        "message": message,
+        "done": status in ("done", "cancelled", "failed"),
+        "failed": status == "failed",
+        "report": scoreboard_payload(snapshot, medals=medals),
+    }
+
+
+@app.post("/api/benchmark/{bench_id}/cancel")
+def cancel_benchmark(bench_id: str) -> dict:
+    with _bench_lock:
+        job = _bench_jobs.get(bench_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="That benchmark wasn't found.")
+    job.cancel.set()
+    return {"cancelled": True}
 
 
 @app.get("/api/help-bundle")

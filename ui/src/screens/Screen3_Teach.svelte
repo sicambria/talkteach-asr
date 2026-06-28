@@ -169,7 +169,7 @@
 
   {#if $grownUpMode}
     <div class="grownup">
-      <h3>Grown-up mode</h3>
+      <h3>Advanced</h3>
       {#if plan}
         <p>
           <strong>Engine:</strong>

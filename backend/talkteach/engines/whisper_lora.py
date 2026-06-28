@@ -293,15 +293,21 @@ class WhisperLoRAEngine(ASREngine):
 
     # -- Try it ---------------------------------------------------------------
 
-    def transcribe(self, audio_path: str, model_dir: str | None = None) -> str:
+    def transcribe(
+        self, audio_path: str, model_dir: str | None = None, base_checkpoint: str | None = None
+    ) -> str:
         """Transcribe one clip — fast CTranslate2 path, or a trained-adapter path.
 
-        Two cases:
+        Cases:
 
         * ``model_dir`` is a **trained run dir** (a LoRA adapter or full HF model
           saved by training, no CTranslate2 ``model.bin``): load it with
           transformers (merging the adapter) and ``generate`` — this is how the
           benchmark scores a freshly fine-tuned model without an export step.
+        * No trained ``model_dir`` but ``base_checkpoint`` given (benchmark delta
+          pass): score the **untrained** HF base via transformers, so the configured
+          base — e.g. ``openai/whisper-tiny`` — is measured (not faster-whisper's
+          hard-coded size).
         * Otherwise (a CTranslate2 export dir, or ``None``): use faster-whisper, the
           fast offline "Try it" path the product ships.
         """
@@ -313,6 +319,15 @@ class WhisperLoRAEngine(ASREngine):
             from . import _whisper_train as wt
 
             return wt.transcribe_with_transformers(audio_path, model_dir)
+
+        if not model_dir and base_checkpoint:
+            if _missing(_TRAIN_DEPS):
+                raise EngineUnavailableError(
+                    f"scoring a base model needs torch + transformers — {_INSTALL_HINT}."
+                )
+            from . import _whisper_train as wt
+
+            return wt.transcribe_with_transformers(audio_path, base_checkpoint)
 
         if not _has(_TRANSCRIBE_DEP):
             raise EngineUnavailableError(

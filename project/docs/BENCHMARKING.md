@@ -18,16 +18,63 @@ python scripts/benchmark.py --config benchmarks/quick.yaml --train-clips 4 --eva
 speech, fine-tunes every engine, scores them, prints the scoreboard, and writes
 `benchmarks/REPORT.md` (committable) plus raw `results.json` under a temp workdir.
 
-## The scoreboard (ELO)
+## The scoreboard (ELO + medals)
 
 The run prints — and records — a leaderboard ranked by **ELO**, with the raw metrics
-alongside:
+alongside and 🥇🥈🥉 on the top engines:
 
 ```
-#  Engine    ELO   W-L-T    Win%  MeanWER  MeanCER  Train(s)  Conds
-1  whisper   1043  9-2-1    82%   0.036    0.008    9.3       2
-2  wav2vec2   957  2-9-1    18%   0.179    0.039    4.8       2
+#     Engine    ELO   W-L-T    Win%  MeanWER  MeanCER  Train(s)  Conds
+1  🥇  whisper   1043  9-2-1    82%   0.036    0.008    9.3       2
+2  🥈  wav2vec2   957  2-9-1    18%   0.179    0.039    4.8       2
 ```
+
+**Medals** are awarded by *competition ranking* (`benchmark.assign_medals`): engines
+tied on ELO share a medal and the next distinct ELO takes the one below, so two engines
+tied for first both get gold and silver is skipped. A two-engine matrix never reaches
+bronze; widen it (e.g. `benchmarks/full.yaml` adds the GPU NeMo cell) for a full podium.
+Control how many medals are handed out with the `medals:` config key or `--medals N`.
+
+### Detail views
+
+Beyond the headline table, the Markdown report and the in-app Arena also surface:
+
+- **Easiest & hardest clip** per engine — the lowest- and highest-WER eval sentence it
+  hit, so you can see exactly where a model shines or struggles.
+- **Head-to-head grid** — how many shared clips each engine won against each other
+  (the same per-(TTS, clip) outcomes that feed ELO).
+- **Per-voice breakdown** — each engine's WER/CER/train-time split by TTS voice.
+- **Δ vs base** — the WER drop from the *untrained* base checkpoint to the fine-tune
+  (positive = training helped). Skipped (`—`) when the base can't be scored (e.g. NeMo)
+  or under `TALKTEACH_FORCE_SIMULATION=1`.
+
+### Multiple languages
+
+The matrix has a **language axis**: pass `languages: [en, hu, …]` (config or the Arena's
+language picker) and every (language × TTS × engine) cell runs, each spoken and scored in
+**that language's own sentences** (`talkteach.prompts`, written per language — never an
+English stand-in). espeak speaks any language by its code; piper runs only where a voice
+is known (`benchmark._PIPER_VOICES`), others self-skip. ELO head-to-heads are grouped per
+`(language, TTS)` so clips from different languages are never wrongly compared. Single
+`language:` still works as the one-language default.
+
+### In the app: the Arena
+
+The same benchmark is exposed over HTTP and as the **Arena** screen (the app's default
+landing view; 🏆 Arena / Wizard toggle in the header). Pick the languages, TTS voices, and
+ASR engines to compare, press **Run**, and watch cells stream in to a medal podium with all
+the detail views above. The top three engines always get 🥇🥈🥉 (ties share a medal). The
+API (mirrors the training-job pattern; in-memory, transient):
+
+```
+GET  /api/benchmark/options      # providers, engines, languages — each with an `available`/code
+POST /api/benchmark              # {languages, tts, engines, train_clips, eval_clips}
+GET  /api/benchmark/{id}         # status + live scoreboard payload (partial as cells finish)
+POST /api/benchmark/{id}/cancel
+```
+
+The JSON the API returns is `benchmark.scoreboard_payload(report)` — the single source the
+CLI report and the Arena both render, so their numbers never diverge.
 
 **WER/CER on the shared eval set are the ground truth; ELO is a presentation layer
 on top.** LLM arenas use ELO because they have *no* objective metric — only pairwise
@@ -60,10 +107,12 @@ stronger signal. Implementation: `talkteach.benchmark.compute_elo` / `scoreboard
 
 ```yaml
 name: quick
-language: en
+language: en            # single-language default…
+languages: [en, hu]    # …or cover several; each read in its own sentences (optional)
 train_clips: 6          # distinct karaoke prompts spoken for training
 eval_clips: 4           # disjoint prompts; the SAME eval set for every engine
 sample_rate: 16000
+medals: 3               # how many top engines get 🥇🥈🥉 (ties share a medal)
 tts:
   - provider: espeak    # any registered TTS provider
     voice: en

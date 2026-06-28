@@ -139,10 +139,16 @@ class ASREngine(abc.ABC):
         """
 
     @abc.abstractmethod
-    def transcribe(self, audio_path: str, model_dir: str | None = None) -> str:
+    def transcribe(
+        self, audio_path: str, model_dir: str | None = None, base_checkpoint: str | None = None
+    ) -> str:
         """ "Try it": transcribe one clip and return the recognised text.
 
         Uses the trained model in ``model_dir`` when given, else the base model.
+        ``base_checkpoint`` (optional) names the *untrained* base to score with when
+        no trained ``model_dir`` is supplied — the benchmark uses it to measure the
+        delta a fine-tune buys (see :mod:`talkteach.benchmark`). Engines that can't
+        score an arbitrary base may ignore it.
         Raises :class:`EngineUnavailableError` if inference deps are missing.
         """
 

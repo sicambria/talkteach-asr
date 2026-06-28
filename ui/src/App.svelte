@@ -1,7 +1,7 @@
 <script>
-  // The wizard host. Holds the current step (0..4) and shows one screen at a
-  // time, plus a friendly stepper, a mascot, and a hidden "Grown-up mode" gear.
-  // jargon-free: every visible word here is plain language.
+  // The app host. Shows either the Arena (the default landing view — compare
+  // speech engines) or the step-by-step wizard (Record → Check → Teach → Try),
+  // plus a stepper, a mascot, and an "Advanced" toggle for technical detail.
   import { STEPS } from './lib/constants.js';
   import { grownUpMode, project } from './lib/store.js';
   import Mascot from './components/Mascot.svelte';
@@ -11,9 +11,12 @@
   import Screen2_Check from './screens/Screen2_Check.svelte';
   import Screen3_Teach from './screens/Screen3_Teach.svelte';
   import Screen4_Try from './screens/Screen4_Try.svelte';
+  import Screen5_Benchmark from './screens/Screen5_Benchmark.svelte';
 
   // 0 = New project (before the stepper). 1..4 = Record/Check/Teach/Try.
   let step = 0;
+  // The Arena is the default landing view; the wizard is the other destination.
+  let arena = true;
 
   function goTo(n) {
     step = Math.max(0, Math.min(4, n));
@@ -23,8 +26,16 @@
     goTo(step + 1);
   }
 
-  function toggleGrownUp() {
+  function toggleAdvanced() {
     grownUpMode.update((v) => !v);
+  }
+
+  function openArena() {
+    arena = true;
+  }
+
+  function closeArena() {
+    arena = false;
   }
 </script>
 
@@ -54,21 +65,29 @@
     </nav>
   {/if}
 
-  <!-- Hidden "Grown-up mode": a small gear that reveals technical panels. -->
+  <nav class="dest" aria-label="Sections">
+    <!-- The Arena (compare engines) and the step-by-step wizard. -->
+    <button class="dest-btn" class:on={arena} on:click={openArena}> 🏆 Arena </button>
+    <button class="dest-btn" class:on={!arena} on:click={closeArena}> Wizard </button>
+  </nav>
+
+  <!-- "Advanced": a toggle that reveals technical detail panels. -->
   <button
     class="gear"
     class:on={$grownUpMode}
-    on:click={toggleGrownUp}
-    title="Grown-up mode"
+    on:click={toggleAdvanced}
+    title="Advanced details"
     aria-pressed={$grownUpMode}
-    aria-label="Grown-up mode"
+    aria-label="Advanced details"
   >
     ⚙
   </button>
 </header>
 
 <main>
-  {#if step === 0}
+  {#if arena}
+    <Screen5_Benchmark on:back={closeArena} />
+  {:else if step === 0}
     <Screen0_NewProject on:done={next} />
   {:else if step === 1}
     <Screen1_Record on:next={next} />
@@ -81,9 +100,9 @@
   {/if}
 </main>
 
-{#if $grownUpMode}
+{#if $grownUpMode && !arena}
   <div class="grownup" style="max-width:820px;margin:0 auto 40px;">
-    <h3>Grown-up mode</h3>
+    <h3>Advanced</h3>
     Step: {step} ({step >= 1 ? STEPS[step - 1] : 'New project'})
     {'\n'}Project: {$project ? JSON.stringify($project) : '(none yet)'}
   </div>
@@ -155,6 +174,27 @@
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.12);
     font-weight: 800;
+  }
+
+  .dest {
+    display: flex;
+    gap: 8px;
+  }
+
+  .dest-btn {
+    background: #f1f2f6;
+    color: var(--tt-ink-soft);
+    box-shadow: none;
+    font-size: 1rem;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 8px 16px;
+    min-height: 48px;
+  }
+
+  .dest-btn.on {
+    background: var(--tt-accent);
+    color: white;
   }
 
   .gear {

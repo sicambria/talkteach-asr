@@ -16,6 +16,7 @@ eval_clips: 6           # disjoint prompts, the SAME eval set for every engine
                         # (6 train + 6 eval = the full 12-prompt en set; more eval
                         #  clips → more ELO head-to-heads)
 sample_rate: 16000
+medals: 3               # how many top engines get 🥇🥈🥉 (ties share a medal)
 
 tts:
   - provider: espeak

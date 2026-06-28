@@ -229,6 +229,54 @@ export async function transcribe(audio) {
   return unwrap(res, "I couldn't understand that recording");
 }
 
+// --- Benchmark "Arena" (grown-up) -------------------------------------------
+
+/**
+ * GET /api/benchmark/options — the TTS providers and ASR engines the Arena can
+ * run, each with an `available` flag so the picker can disable missing ones.
+ * @returns {Promise<{tts: Array<{provider:string,available:boolean,detail:string,voice:string|null}>, engines: Array<{name:string,label:string,plan:object,available:boolean,detail:string}>, defaults: {train_clips:number,eval_clips:number,medals:number}}>}
+ */
+export async function getBenchmarkOptions() {
+  const res = await fetch(url('/api/benchmark/options'));
+  return unwrap(res, "I couldn't load the contest options");
+}
+
+/**
+ * POST /api/benchmark — start a full TTS×ASR matrix run.
+ * @param {{tts?: object[], engines?: object[], language?: string|null, train_clips?: number, eval_clips?: number, medals?: number, name?: string}} selection
+ * @returns {Promise<{benchmark_id: string}>}
+ */
+export async function startBenchmark(selection) {
+  const res = await fetch(url('/api/benchmark'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(selection),
+  });
+  return unwrap(res, "I couldn't start the contest");
+}
+
+/**
+ * GET /api/benchmark/{id} — progress + the live scoreboard payload.
+ * @param {string} benchmarkId
+ * @returns {Promise<{status:string,message:string,done:boolean,failed:boolean,report:object}>}
+ */
+export async function benchmarkStatus(benchmarkId) {
+  const res = await fetch(url(`/api/benchmark/${encodeURIComponent(benchmarkId)}`));
+  return unwrap(res, 'I lost track of the contest');
+}
+
+/**
+ * POST /api/benchmark/{id}/cancel — stop a running contest.
+ * @param {string} benchmarkId
+ * @returns {Promise<{cancelled: boolean}>}
+ */
+export async function cancelBenchmark(benchmarkId) {
+  const res = await fetch(url(`/api/benchmark/${encodeURIComponent(benchmarkId)}/cancel`), {
+    method: 'POST',
+  });
+  return unwrap(res, "I couldn't stop the contest");
+}
+
 // --- Export -----------------------------------------------------------------
 
 /**

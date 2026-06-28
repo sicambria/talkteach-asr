@@ -297,3 +297,107 @@ def test_transcribe_graceful_without_ml():
         assert body["available"] is False  # no faster-whisper installed
         assert body["text"] == ""
         assert "message" in body
+
+
+# --- benchmark "Arena" --------------------------------------------------------
+
+
+def _poll_benchmark(client, bench_id, tries=300):
+    final = None
+    for _ in range(tries):
+        final = client.get(f"/api/benchmark/{bench_id}").json()
+        if final["done"]:
+            break
+        time.sleep(0.02)
+    return final
+
+
+def test_benchmark_options_lists_providers_and_engines():
+    with TestClient(app) as client:
+        opts = client.get("/api/benchmark/options").json()
+        assert {t["provider"] for t in opts["tts"]} >= {"espeak", "piper"}
+        assert {e["name"] for e in opts["engines"]} >= {"whisper", "wav2vec2"}
+        # Every entry carries an availability flag so the picker can disable it.
+        assert all("available" in e and "detail" in e for e in opts["engines"])
+        assert all("available" in t for t in opts["tts"])
+        # Languages we have real prompts for, incl. Hungarian, with a default.
+        codes = {lang["code"] for lang in opts["languages"]}
+        assert {"en", "hu"} <= codes
+        assert opts["default_language"] in codes or opts["default_language"] == "en"
+
+
+def test_benchmark_podium_with_medals(monkeypatch):
+    """Drive the endpoint with a fake runner so we can assert the medal podium
+    without downloading models — exercises on_cell streaming + payload medals."""
+    import talkteach.app as appmod
+    from talkteach.benchmark import BenchmarkReport, CellResult
+
+    def fake_run(cfg, workdir, *, on_cell=None, should_stop=None):
+        prompts = ["alpha one", "beta two"]
+        cells = [
+            CellResult(
+                "piper",
+                "whisper",
+                "ok",
+                voice="v",
+                wer=0.1,
+                cer=0.02,
+                smartness=0.9,
+                train_seconds=5.0,
+                eval_clips=2,
+                base_wer=0.5,
+                delta_wer=0.4,
+                per_clip_wer=[0.0, 0.2],
+            ),
+            CellResult(
+                "piper",
+                "wav2vec2",
+                "ok",
+                voice="v",
+                wer=0.4,
+                cer=0.1,
+                smartness=0.6,
+                train_seconds=3.0,
+                eval_clips=2,
+                base_wer=0.5,
+                delta_wer=0.1,
+                per_clip_wer=[0.3, 0.5],
+            ),
+        ]
+        for c in cells:
+            if on_cell:
+                on_cell(c)
+        return BenchmarkReport("arena", "en", 2, 2, cells=cells, eval_prompts=prompts)
+
+    monkeypatch.setattr(appmod, "run_benchmark", fake_run)
+    with TestClient(appmod.app) as client:
+        bench_id = client.post("/api/benchmark", json={}).json()["benchmark_id"]
+        final = _poll_benchmark(client, bench_id)
+        assert final["done"] and not final["failed"], final
+        board = final["report"]["scoreboard"]
+        assert board[0]["engine"] == "whisper" and board[0]["medal"] == "gold"
+        assert board[1]["engine"] == "wav2vec2" and board[1]["medal"] == "silver"
+        assert final["report"]["head_to_head"]["whisper"]["wav2vec2"] == 2
+
+
+def test_benchmark_cancel_and_unknown_404(monkeypatch):
+    import talkteach.app as appmod
+    from talkteach.benchmark import BenchmarkReport
+
+    # A cooperative fake that runs until cancelled, so cancel actually transitions
+    # the job (and no real model work spawns in the background daemon thread).
+    def blocking_run(cfg, workdir, *, on_cell=None, should_stop=None):
+        for _ in range(500):
+            if should_stop and should_stop():
+                break
+            time.sleep(0.01)
+        return BenchmarkReport("arena", "en", 0, 0)
+
+    monkeypatch.setattr(appmod, "run_benchmark", blocking_run)
+    with TestClient(appmod.app) as client:
+        bench_id = client.post("/api/benchmark", json={}).json()["benchmark_id"]
+        assert client.post(f"/api/benchmark/{bench_id}/cancel").json()["cancelled"] is True
+        final = _poll_benchmark(client, bench_id)
+        assert final["status"] == "cancelled", final
+        assert client.get("/api/benchmark/does-not-exist").status_code == 404
+        assert client.post("/api/benchmark/does-not-exist/cancel").status_code == 404

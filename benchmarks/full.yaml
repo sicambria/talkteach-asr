@@ -14,6 +14,7 @@ language: en
 train_clips: 10
 eval_clips: 4
 sample_rate: 16000
+medals: 3               # how many top engines get 🥇🥈🥉 (ties share a medal)
 
 tts:
   - provider: espeak

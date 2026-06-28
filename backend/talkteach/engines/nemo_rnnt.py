@@ -152,12 +152,16 @@ class NeMoRNNTEngine(ASREngine):
 
     # -- Try it ---------------------------------------------------------------
 
-    def transcribe(self, audio_path: str, model_dir: str | None = None) -> str:
+    def transcribe(
+        self, audio_path: str, model_dir: str | None = None, base_checkpoint: str | None = None
+    ) -> str:
         available, msg = self.is_available()
         if not available:
             raise EngineUnavailableError(msg)
         import nemo.collections.asr as nemo_asr  # type: ignore
 
+        # base_checkpoint (untrained-base delta scoring) isn't wired for NeMo's
+        # GPU/opt-in path; the benchmark records delta_wer=None for it.
         if not model_dir:
             raise EngineUnavailableError("NeMo transcribe needs a trained model_dir.")
         nemo_file = (

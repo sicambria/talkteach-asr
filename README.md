@@ -1,6 +1,6 @@
 # TalkTeach
 
-**Teach a computer to understand a voice or language — so easily a 10-year-old can.**
+**Teach a computer to understand a voice or language — simple enough for anyone.**
 
 [![CI](https://github.com/sicambria/talkteach-asr/actions/workflows/ci.yml/badge.svg)](https://github.com/sicambria/talkteach-asr/actions/workflows/ci.yml)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
@@ -52,12 +52,12 @@ for exactly that reason.
 ┌──────────────────────────────────────────────────────────────┐
 │ Shell:  Tauri (Rust)  — src-tauri/      [scaffolded]          │
 │ UI:     Svelte 4 wizard — ui/           [scaffolded]          │
-│         Record → Check → Teach → Try  + hidden Grown-up mode  │
+│  🏆 Arena (default) · Record → Check → Teach → Try wizard      │
 ├──────────────────────────────────────────────────────────────┤
 │ API:    FastAPI job server — backend/talkteach/app.py  [REAL] │
 │         health · project · preflight · clips/analyze ·        │
 │         sufficiency · transcribe/draft · train · train/{id} · │
-│         transcribe · export                                   │
+│         transcribe · export · benchmark (TTS×ASR Arena)       │
 ├──────────────────────────────────────────────────────────────┤
 │ Director — backend/talkteach/director/                 [REAL] │
 │   hardware probe · data probe · language probe ·             │
@@ -159,9 +159,9 @@ the Vite-only `npm run dev` browser preview, run the backend manually on `:8756`
 | `backend/talkteach/reliability/` | Pre-flight (disk/RAM/GPU/mic), graceful degradation | **Real + tested** |
 | `backend/talkteach/engines/` | `ASREngine` adapter + real `WhisperLoRAEngine` & `Wav2Vec2CTCEngine` (real fine-tunes) + GPU-gated NeMo | **Real training** when `[ml]` present; simulation fallback |
 | `backend/talkteach/tts/` | TTS providers (espeak + piper) — synthetic *speech* for testing/benchmarking | **Real**; `[tts]` extra / espeak-ng binary |
-| `backend/talkteach/benchmark.py` + `benchmarks/` | TTS × ASR benchmark — compare engines on real synthetic speech (WER/CER/time) | **Real**; run via `scripts/benchmark.py` |
+| `backend/talkteach/benchmark.py` + `benchmarks/` | TTS × ASR benchmark — compare engines on real synthetic speech (WER/CER/time), ranked on an ELO podium with 🥇🥈🥉 medals + detail views | **Real**; `scripts/benchmark.py`, the `/api/benchmark` endpoints, or the grown-up **Arena** screen |
 | `backend/talkteach/app.py` | FastAPI job server | **Real + tested** |
-| `ui/` | Svelte 4 four-screen wizard wired to the live API | **Builds + svelte-check/eslint/prettier clean** |
+| `ui/` | Svelte 4 four-screen wizard + grown-up **Arena** scoreboard, wired to the live API | **Builds + svelte-check/eslint/prettier clean** |
 | `src-tauri/` | Tauri v2 shell — spawns the backend as a sidecar | **Compiles + runs** (verified end-to-end); needs WebKit/GTK present |
 | `project/docs/` | Status matrix, decisions, per-feature design docs | — |
 

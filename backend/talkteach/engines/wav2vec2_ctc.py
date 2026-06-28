@@ -95,17 +95,25 @@ class Wav2Vec2CTCEngine(ASREngine):
             )
         return w2v.run_real_training(plan, manifest, workdir, progress, should_stop)
 
-    def transcribe(self, audio_path: str, model_dir: str | None = None) -> str:
-        """Greedy-decode one clip with the fine-tuned CTC model in ``model_dir``."""
+    def transcribe(
+        self, audio_path: str, model_dir: str | None = None, base_checkpoint: str | None = None
+    ) -> str:
+        """Greedy-decode one clip with the fine-tuned CTC model in ``model_dir``.
+
+        With no trained ``model_dir`` but a ``base_checkpoint`` (benchmark delta
+        pass), score the untrained base model named by the HF id instead.
+        """
         if _missing(_TRAIN_DEPS):
             raise EngineUnavailableError(f"'Try it' needs torch + transformers — {_INSTALL_HINT}.")
-        if not model_dir or not os.path.isfile(os.path.join(model_dir, "config.json")):
-            raise EngineUnavailableError(
-                "wav2vec2 transcribe needs a trained model_dir (run train first)."
-            )
         from . import _wav2vec2_train as w2v
 
-        return w2v.transcribe(audio_path, model_dir)
+        if model_dir and os.path.isfile(os.path.join(model_dir, "config.json")):
+            return w2v.transcribe(audio_path, model_dir)
+        if not model_dir and base_checkpoint:
+            return w2v.transcribe(audio_path, base_checkpoint)
+        raise EngineUnavailableError(
+            "wav2vec2 transcribe needs a trained model_dir (run train first)."
+        )
 
     def export(self, model_dir: str, out_dir: str, fmt: str = "onnx") -> ExportResult:
         """Export the fine-tuned CTC model to ONNX (sherpa-onnx streaming/edge).
