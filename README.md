@@ -2,6 +2,11 @@
 
 **Teach a computer to understand a voice or language — so easily a 10-year-old can.**
 
+[![CI](https://github.com/sicambria/talkteach-asr/actions/workflows/ci.yml/badge.svg)](https://github.com/sicambria/talkteach-asr/actions/workflows/ci.yml)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![GitHub release](https://img.shields.io/github/v/release/sicambria/talkteach-asr)](https://github.com/sicambria/talkteach-asr/releases)
+
 TalkTeach is a free, offline, cross-platform desktop app that turns the fragmented
 open-source speech-training stack (Whisper, NeMo, faster-whisper, Silero VAD,
 sherpa-onnx, …) into a single four-tap wizard — **Record → Check → Teach → Try** —
