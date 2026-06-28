@@ -244,6 +244,12 @@ PROMPT_SETS: dict[str, list[str]] = {
         "Mein Hund fängt den kleinen Ball.",
         "Wir essen mittags rote Äpfel.",
         "Der Mond scheint hell in der Nacht.",
+        "Bitte gib mir die grüne Tasse.",
+        "Die Vögel singen jeden Morgen ein fröhliches Lied.",
+        "Sie zeichnete eine gelbe Sonne und einen Baum.",
+        "Lass uns jetzt eine lustige Geschichte lesen.",
+        "Der Zug fährt schnell auf den Gleisen.",
+        "Ich kann sehr schnell bis zehn zählen.",
     ],
     "el": [
         "Η γάτα κάθισε στο ζεστό χαλί.",
