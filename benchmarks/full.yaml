@@ -10,12 +10,14 @@
 #   medium  ~240–320 M GPU recommended       — still CPU-capable, just slow
 #   large   ≥ ~600 M   GPU required          — flagship accuracy / streaming
 #
-# Every model below was checked to actually load in its engine's real train path
-# (Whisper → WhisperForConditionalGeneration + LoRA; wav2vec2 → Wav2Vec2ForCTC,
-# which needs a checkpoint that already carries a CTC head + processor; NeMo →
-# ASRModel, GPU-only). Models the leaderboard ranks above these (IBM Granite-Speech,
-# NVIDIA Canary, Moonshine) are proprietary or need a new engine adapter — see
-# project/docs/BENCHMARKING.md ("Reachable models vs the leaderboard").
+# Every CPU-reachable model below was verified by loading its processor/config (no
+# GB of weights) against its engine's real train path (Whisper →
+# WhisperForConditionalGeneration + LoRA; wav2vec2 → Wav2Vec2ForCTC, which needs a
+# checkpoint that carries a CTC head AND an uppercase-A–Z tokenizer — the case the
+# CTC normalizer targets, so a lowercase-vocab checkpoint silently trains to <unk>;
+# NeMo → ASRModel, GPU-only, unverifiable in CI). Models the leaderboard ranks above
+# these (IBM Granite-Speech, NVIDIA Canary, Moonshine) are proprietary or need a new
+# engine adapter — see project/docs/BENCHMARKING.md ("Reachable models vs the leaderboard").
 #
 # Cells whose deps are missing self-skip (NeMo without a GPU; an espeak/piper voice
 # that isn't installed) rather than failing the run. On a CPU-only box the `small`
@@ -112,13 +114,15 @@ engines:
       batch_size: 4
       learning_rate: 0.0001
 
-  - name: wav2vec2-xlsr-53-en
+  - name: wav2vec2-large-robust
     category: medium
     plan:
       engine: wav2vec2_ctc
-      # XLS-R-53 fine-tuned to English — ships a CTC head + processor, so it loads
-      # in the CTC path (the bare facebook/wav2vec2-xls-r-300m pre-train does not).
-      base_checkpoint: jonatasgrosman/wav2vec2-large-xlsr-53-english  # 315 M
+      # Robust pre-train (noisy/varied domains) fine-tuned on Libri-960h. Its tokenizer
+      # is the UPPERCASE A–Z vocab the CTC path's normalize_for_ctc targets — so labels
+      # tokenize, not collapse to <unk> (a lowercase-vocab checkpoint like
+      # jonatasgrosman/...-xlsr-53-english would silently train to garbage here).
+      base_checkpoint: facebook/wav2vec2-large-robust-ft-libri-960h  # 315 M, English CTC
       compute: cpu
       precision: fp32
       epochs: 5

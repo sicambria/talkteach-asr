@@ -52,7 +52,7 @@ compute target (CPU vs GPU) and decoder type (CTC / seq2seq / RNN-T) follow from
 | Bracket | Capacity | Compute | Example models |
 |---|---|---|---|
 | `small`  | ≤ ~170 M   | CPU / edge (runs in CI) | whisper-tiny, whisper-base, distil-whisper-small.en, wav2vec2-base |
-| `medium` | ~240–320 M | GPU recommended, CPU-capable | whisper-small, wav2vec2-large, wav2vec2-xlsr-53-en |
+| `medium` | ~240–320 M | GPU recommended, CPU-capable | whisper-small, wav2vec2-large, wav2vec2-large-robust |
 | `large`  | ≥ ~600 M   | GPU required | whisper-large-v3, parakeet-rnnt-0.6b, parakeet-rnnt-1.1b |
 
 Mechanically, `category` rides on each `CellResult`; `_clip_matches` groups outcomes by
@@ -184,7 +184,7 @@ it actually loads in that engine's real train path (a "same family" name is not 
 | Engine | Real training | CPU / CI-runnable | Loads checkpoints that… |
 |---|---|---|---|
 | **whisper_lora** | ✅ | ✅ (whisper-tiny) | are Whisper-architecture (`WhisperForConditionalGeneration` + `WhisperProcessor`) — `openai/whisper-*` **and** `distil-whisper/*`; PEFT/LoRA `Seq2SeqTrainer` |
-| **wav2vec2_ctc** | ✅ | ✅ (wav2vec2-base) | already carry a **CTC head + `Wav2Vec2Processor`** — `wav2vec2-*-960h`, `…xlsr-53-english`. A bare pre-train (`xls-r-300m`), MMS adapters, or HuBERT do **not** load here |
+| **wav2vec2_ctc** | ✅ | ✅ (wav2vec2-base) | carry a **CTC head + `Wav2Vec2Processor`** *and* an **uppercase-A–Z tokenizer** (what `normalize_for_ctc` targets) — the `wav2vec2-*-960h` / `…-robust-ft-libri-960h` family. A bare pre-train (`xls-r-300m`), MMS adapters, or HuBERT don't load; a **lowercase-vocab** checkpoint (e.g. `jonatasgrosman/…-xlsr-53-english`) loads but trains every label to `<unk>` — silent garbage, so it's excluded |
 | **nemo_rnnt** | ✅ (real path) | ❌ GPU/opt-in only | NeMo `ASRModel` (Parakeet RNN-T); needs `[nemo]` + CUDA, self-skips otherwise — never gates CI |
 
 ### Reachable models vs the leaderboard
