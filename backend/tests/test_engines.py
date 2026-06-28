@@ -160,6 +160,13 @@ def test_get_engine_whisper_returns_adapter():
     assert isinstance(get_engine(EngineKind.WHISPER_LORA), WhisperLoRAEngine)
 
 
-def test_get_engine_nemo_not_implemented():
-    with pytest.raises(NotImplementedError):
-        get_engine(EngineKind.NEMO_RNNT)
+def test_get_engine_scaffolds_report_unavailable():
+    # NeMo / wav2vec2 are Phase-2 scaffolds: real adapters that report themselves
+    # unavailable (so the app falls back to Whisper-LoRA) rather than crashing.
+    for kind in (EngineKind.NEMO_RNNT, EngineKind.WAV2VEC2_CTC):
+        eng = get_engine(kind)
+        assert isinstance(eng, ASREngine)
+        ok, msg = eng.is_available()
+        assert ok is False and "Phase 2" in msg
+        with pytest.raises(EngineUnavailableError):
+            eng.transcribe("a.wav")

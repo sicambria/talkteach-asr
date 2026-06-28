@@ -36,6 +36,22 @@ _TIER_PARAKEET = 16.0
 _TIER_WHISPER_SMALL = 6.0
 
 
+def adaptive_target(lang: LanguageProfile) -> float:
+    """Heuristic data-sufficiency target (minutes) by language difficulty (#35).
+
+    Replaces the one-size 20–30 min floor: a language Whisper already knows well
+    needs less new data to adapt; a language outside Whisper's set (we'd train a
+    CTC head from a self-supervised base) needs more. Auto-detect leans easy
+    (Whisper figures out the language). All values stay at/above the
+    :data:`MIN_TARGET_MINUTES` floor and remain *proposed defaults* to calibrate
+    (report B.5); a future version can learn this from telemetry.
+    """
+    if lang.auto_detect or lang.is_whisper_supported:
+        return max(MIN_TARGET_MINUTES, 25.0)
+    # Outside Whisper's set → adapting a base model needs noticeably more audio.
+    return max(MIN_TARGET_MINUTES, 45.0)
+
+
 def sufficiency(data: DataProfile, target_minutes: float = 30.0) -> SufficiencyResult:
     """Drive the friendly meter and the Teach! gate.
 

@@ -1,0 +1,68 @@
+name: Release
+
+# Signed installers for Windows + macOS + Linux on a version tag (roadmap #24).
+# SCAFFOLD: builds run on the matrix, but real code-signing/notarization need
+# secrets (see docs/RELEASING.md). Without them, unsigned artifacts are produced.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  installers:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build the backend sidecar (PyInstaller, per target)
+        run: |
+          uv venv backend/.venv
+          VIRTUAL_ENV=backend/.venv uv pip install -e 'backend[ml,export]' pyinstaller
+          backend/.venv/bin/python scripts/build_sidecar.py --triple ${{ matrix.target }}
+        shell: bash
+
+      - name: Install Linux WebKit/GTK deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build + bundle the desktop app
+        run: |
+          npm install
+          npm --prefix ui install
+          npm run tauri build
+        # Signing/notarization secrets (see docs/RELEASING.md) would be wired here:
+        #   APPLE_CERTIFICATE / APPLE_ID / APPLE_PASSWORD  (macOS notarize)
+        #   WINDOWS_CERTIFICATE / WINDOWS_CERTIFICATE_PASSWORD  (Authenticode)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: talkteach-${{ matrix.target }}
+          path: src-tauri/target/release/bundle/

@@ -2,9 +2,10 @@
 ML decision from the user (hardware probe, data probe, language probe,
 sufficiency gate, and the policy that combines them into a TrainingPlan)."""
 
+from .active_learning import ClipUncertainty, rank_clips
 from .hardware import probe_hardware
 from .language import probe_language
-from .policy import build_plan, sufficiency
+from .policy import adaptive_target, build_plan, sufficiency
 from .types import (
     Compute,
     DataProfile,
@@ -22,6 +23,9 @@ __all__ = [
     "probe_language",
     "build_plan",
     "sufficiency",
+    "adaptive_target",
+    "rank_clips",
+    "ClipUncertainty",
     "Compute",
     "DataProfile",
     "EngineKind",

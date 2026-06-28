@@ -1,0 +1,111 @@
+{
+  "generated_from": "docs/THIRD_PARTY.md",
+  "note": "TalkTeach is GPL-3.0-or-later; these are its third-party components.",
+  "components": [
+    {
+      "name": "Tauri",
+      "role": "Desktop shell (one installer per OS)",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "name": "Svelte / Vite",
+      "role": "Wizard UI",
+      "license": "MIT"
+    },
+    {
+      "name": "FastAPI / Starlette / Uvicorn",
+      "role": "Job server",
+      "license": "MIT / BSD-3-Clause"
+    },
+    {
+      "name": "NumPy",
+      "role": "Audio DSP",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "name": "HF Transformers + PEFT",
+      "role": "Default training engine (Whisper-LoRA)",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "faster-whisper",
+      "role": "Draft transcripts + \"Try it\" inference",
+      "license": "MIT"
+    },
+    {
+      "name": "CTranslate2",
+      "role": "Export runtime",
+      "license": "MIT"
+    },
+    {
+      "name": "NVIDIA NeMo (Phase 2)",
+      "role": "Streaming/edge engine (Parakeet)",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "NeMo Forced Aligner (Phase 2)",
+      "role": "Auto-segment long audio",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "WhisperX (Phase 2 alt aligner)",
+      "role": "Forced alignment",
+      "license": "BSD-2-Clause"
+    },
+    {
+      "name": "SpeechBrain / wav2vec2-XLS-R",
+      "role": "Low-resource engine",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "Silero VAD (Phase 1)",
+      "role": "Trim silence / auto-segment",
+      "license": "MIT"
+    },
+    {
+      "name": "librosa",
+      "role": "Audio quality metrics (optional)",
+      "license": "ISC"
+    },
+    {
+      "name": "soundfile",
+      "role": "Audio I/O (optional)",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "name": "DeepFilterNet (optional denoise)",
+      "role": "Noise cleanup",
+      "license": "MIT OR Apache-2.0 (dual; weights separate)"
+    },
+    {
+      "name": "Demucs (optional denoise)",
+      "role": "Noise cleanup",
+      "license": "MIT"
+    },
+    {
+      "name": "sherpa-onnx (Phase 2)",
+      "role": "Streaming ONNX export + tiny runner",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "Label Studio (Phase 3 option)",
+      "role": "Rich correction UI",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "uv",
+      "role": "No-install Python runtime bundling",
+      "license": "Apache-2.0 OR MIT"
+    },
+    {
+      "name": "ffmpeg (Phase 1, subprocess)",
+      "role": "Audio decode/resample",
+      "license": "LGPL-2.1+ base; GPL only if built --enable-gpl"
+    },
+    {
+      "name": "sox (optional, subprocess)",
+      "role": "Audio I/O",
+      "license": "GPL"
+    }
+  ]
+}

@@ -427,10 +427,14 @@ class _Job:
 
 def _run_training(run_id: int, plan, manifest: list[dict], workdir: str) -> None:
     cancel = _jobs[run_id].cancel
-    # Director may select an engine not yet implemented (Phase 2); fall back to
-    # the Whisper-LoRA simulation so the flow always completes in Phase 0.
+    # The director may select an engine that's only a Phase-2 scaffold (NeMo /
+    # wav2vec2). If it isn't available, fall back to Whisper-LoRA so the flow
+    # always completes rather than dead-ending (graceful-degradation contract).
     try:
         engine = get_engine(plan.engine)
+        available, _why = engine.is_available()
+        if not available and plan.engine != EngineKind.WHISPER_LORA:
+            engine = get_engine(EngineKind.WHISPER_LORA)
     except NotImplementedError:
         engine = get_engine(EngineKind.WHISPER_LORA)
 

@@ -36,13 +36,21 @@ __all__ = [
 def get_engine(kind: EngineKind) -> ASREngine:
     """Return the engine adapter for ``kind``.
 
-    Only :attr:`EngineKind.WHISPER_LORA` is wired up (Phase 0/1). The NeMo-RNNT
-    and Wav2Vec2-CTC adapters are Phase 2 and raise :class:`NotImplementedError`
-    with a clear message so callers fail loudly rather than silently.
+    :attr:`EngineKind.WHISPER_LORA` is fully implemented (Phase 0/1). The
+    NeMo-RNNT and Wav2Vec2-CTC adapters are **Phase 2 scaffolds** that satisfy the
+    :class:`ASREngine` contract but report themselves unavailable (their heavy
+    methods raise :class:`EngineUnavailableError`). The app's training loop checks
+    ``is_available()`` and gracefully falls back to Whisper-LoRA, so a
+    director-selected-but-unbuilt engine never dead-ends a child's flow.
     """
     if kind == EngineKind.WHISPER_LORA:
         return WhisperLoRAEngine()
-    raise NotImplementedError(
-        f"The '{kind.value}' engine is planned for Phase 2 and is not available yet. "
-        "Phase 0/1 ships the Whisper+LoRA engine."
-    )
+    if kind == EngineKind.NEMO_RNNT:
+        from .nemo_rnnt import NeMoRNNTEngine
+
+        return NeMoRNNTEngine()
+    if kind == EngineKind.WAV2VEC2_CTC:
+        from .wav2vec2_ctc import Wav2Vec2CTCEngine
+
+        return Wav2Vec2CTCEngine()
+    raise NotImplementedError(f"Unknown engine kind: {kind!r}")
