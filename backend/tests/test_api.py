@@ -23,8 +23,9 @@ import pytest
 # model), so the "graceful without ML" assertion only holds when it's absent.
 _FASTER_WHISPER = importlib.util.find_spec("faster_whisper") is not None
 
-# Point the backend at a throwaway data dir BEFORE importing the app/config.
-os.environ["TALKTEACH_DATA"] = tempfile.mkdtemp(prefix="talkteach-test-")
+# The throwaway data dir is set in conftest.py at import time (before *any* test
+# module imports talkteach.config, which caches DATA_ROOT once). Doing it here too
+# would only win when this file happens to import config first — see conftest.
 
 from fastapi.testclient import TestClient  # noqa: E402
 
