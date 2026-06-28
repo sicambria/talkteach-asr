@@ -19,7 +19,7 @@ loop (in :mod:`talkteach.engines._whisper_train`) when the training deps are
 installed and the manifest points at real audio on disk; otherwise it falls back
 to a dependency-light *simulation* (see :meth:`_simulate_train` and the dispatch
 in :meth:`train`; the policy is :func:`_whisper_train.should_simulate`, recorded
-in DECISIONS.md D-012). The simulation walks the plan's epochs, streams a rising
+in project/docs/DECISIONS.md D-012). The simulation walks the plan's epochs, streams a rising
 "smartness" curve, honours cooperative cancellation, and writes one JSON
 checkpoint per epoch — enough to exercise the FastAPI ``/train`` endpoint and the
 whole UI on a GPU-less machine. Its checkpoints carry a ``"mode": "SIMULATION"``
@@ -74,6 +74,34 @@ def _has(module: str) -> bool:
     return not _missing((module,))
 
 
+def _is_trained_hf_dir(model_dir: str) -> bool:
+    """True if ``model_dir`` holds a trained HF model/adapter (not a CT2 export).
+
+    A CTranslate2 export is distinguished by its ``model.bin``; a trained run dir has
+    a PEFT ``adapter_config.json`` or HF weights. This routes a freshly fine-tuned
+    model to the transformers ``generate`` path instead of faster-whisper.
+    """
+    if os.path.isfile(os.path.join(model_dir, "model.bin")):
+        return False  # CTranslate2 export → faster-whisper handles it
+    return any(
+        os.path.isfile(os.path.join(model_dir, name))
+        for name in ("adapter_config.json", "model.safetensors", "pytorch_model.bin")
+    )
+
+
+def _has_real_model(model_dir: str) -> bool:
+    """True if ``model_dir`` holds a real model to export (not a simulation run).
+
+    The simulation writes only ``checkpoint_epoch_*.json`` markers — there's nothing
+    to convert — so export should fall back to a dry-run manifest rather than handing
+    a fake directory to a real converter (which fails confusingly).
+    """
+    return any(
+        os.path.isfile(os.path.join(model_dir, name))
+        for name in ("adapter_config.json", "config.json", "model.safetensors", "pytorch_model.bin")
+    )
+
+
 class WhisperLoRAEngine(ASREngine):
     """Whisper-with-LoRA adapter. See module docstring for the dep policy."""
 
@@ -107,7 +135,7 @@ class WhisperLoRAEngine(ASREngine):
     ) -> TrainProgress:
         """Run the teaching job: the real PEFT/LoRA loop, or the simulation.
 
-        Dispatch (see DECISIONS.md D-012): the real ``Seq2SeqTrainer`` loop runs
+        Dispatch (see project/docs/DECISIONS.md D-012): the real ``Seq2SeqTrainer`` loop runs
         when the training deps are present, the run isn't force-simulated, and at
         least one manifest clip exists on disk. Otherwise we fall back to the
         dependency-free simulation so the whole app stays exercisable on a
@@ -266,10 +294,26 @@ class WhisperLoRAEngine(ASREngine):
     # -- Try it ---------------------------------------------------------------
 
     def transcribe(self, audio_path: str, model_dir: str | None = None) -> str:
-        """Transcribe one clip with faster-whisper (real inference).
+        """Transcribe one clip — fast CTranslate2 path, or a trained-adapter path.
 
-        Raises :class:`EngineUnavailableError` if faster_whisper is not installed.
+        Two cases:
+
+        * ``model_dir`` is a **trained run dir** (a LoRA adapter or full HF model
+          saved by training, no CTranslate2 ``model.bin``): load it with
+          transformers (merging the adapter) and ``generate`` — this is how the
+          benchmark scores a freshly fine-tuned model without an export step.
+        * Otherwise (a CTranslate2 export dir, or ``None``): use faster-whisper, the
+          fast offline "Try it" path the product ships.
         """
+        if model_dir and _is_trained_hf_dir(model_dir):
+            if _missing(_TRAIN_DEPS):
+                raise EngineUnavailableError(
+                    f"scoring a trained model needs torch + transformers — {_INSTALL_HINT}."
+                )
+            from . import _whisper_train as wt
+
+            return wt.transcribe_with_transformers(audio_path, model_dir)
+
         if not _has(_TRANSCRIBE_DEP):
             raise EngineUnavailableError(
                 f"'Try it' needs the {_TRANSCRIBE_DEP} package — ask a grown-up to {_INSTALL_HINT}."
@@ -325,12 +369,14 @@ class WhisperLoRAEngine(ASREngine):
         (:meth:`_resolve_full_model`). The default ``ctranslate2`` target gives
         the fastest CPU inference and pairs with the faster-whisper "Try it" path;
         ``onnx`` is the streaming/edge target via sherpa-onnx (Phase 2 scaffold,
-        DECISIONS.md D-006). When the needed dep is missing we write a manifest
+        project/docs/DECISIONS.md D-006). When the needed dep is missing we write a manifest
         describing what *would* be produced so the flow never dead-ends.
         """
         os.makedirs(out_dir, exist_ok=True)
 
-        if fmt in ("ctranslate2", "ct2") and _has(_EXPORT_DEP) and _has("transformers"):
+        real_model = _has_real_model(model_dir)
+        ct2_ready = _has(_EXPORT_DEP) and _has("transformers")
+        if real_model and fmt in ("ctranslate2", "ct2") and ct2_ready:
             from ctranslate2.converters import TransformersConverter  # type: ignore
 
             source = self._resolve_full_model(model_dir)
@@ -341,7 +387,7 @@ class WhisperLoRAEngine(ASREngine):
                 notes="Converted to CTranslate2 (int8). Copy this folder to use offline.",
             )
 
-        if fmt == "onnx" and _has("optimum") and _has("transformers"):
+        if real_model and fmt == "onnx" and _has("optimum") and _has("transformers"):
             # sherpa-onnx consumes ONNX exported via 🤗 optimum. Scaffolded path:
             # merge LoRA, then `optimum.exporters.onnx` the Whisper model.
             from optimum.exporters.onnx import main_export  # type: ignore
@@ -354,9 +400,14 @@ class WhisperLoRAEngine(ASREngine):
                 notes="Exported to ONNX. Run with sherpa-onnx for streaming/edge use.",
             )
 
-        # Dry-run placeholder so the "Use on my computer" flow is exercisable.
+        # Dry-run placeholder so the "Use on my computer" flow is exercisable —
+        # taken when the export dep is missing OR there's no real model to convert
+        # (e.g. a simulation run).
         manifest_path = os.path.join(out_dir, "export_manifest.json")
-        needed = _EXPORT_DEP if fmt == "ctranslate2" else f"a converter for '{fmt}'"
+        if not real_model:
+            needed = "a real trained model (this run dir holds only a simulation checkpoint)"
+        else:
+            needed = _EXPORT_DEP if fmt == "ctranslate2" else f"a converter for '{fmt}'"
         manifest = {
             "would_export": {"source_model_dir": model_dir, "format": fmt},
             "status": "dry-run",

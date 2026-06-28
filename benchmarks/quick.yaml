@@ -1,0 +1,47 @@
+# Quick TTS × ASR benchmark — small, CPU-runnable smoke comparison.
+#
+# Pairs each available TTS engine with each ASR engine, trains a 1-epoch fit on a
+# handful of clips, and reports WER/CER on a shared held-out eval set. Cells whose
+# deps are missing (no espeak-ng binary, no piper, an unbuilt engine) are reported
+# as "skipped" rather than failing the run.
+#
+#   python scripts/benchmark.py --config benchmarks/quick.yaml
+#
+# Requires: backend[ml,tts]; espeak cells also need the espeak-ng system binary.
+
+name: quick
+language: en
+train_clips: 6          # distinct karaoke prompts spoken for training
+eval_clips: 6           # disjoint prompts, the SAME eval set for every engine
+                        # (6 train + 6 eval = the full 12-prompt en set; more eval
+                        #  clips → more ELO head-to-heads)
+sample_rate: 16000
+
+tts:
+  - provider: espeak
+    voice: en
+  - provider: piper
+    voice: en_US-lessac-low   # 16 kHz native, small + fast to download
+
+engines:
+  - name: whisper
+    plan:
+      engine: whisper_lora
+      base_checkpoint: openai/whisper-tiny
+      compute: cpu
+      precision: fp32
+      epochs: 1
+      batch_size: 2
+      learning_rate: 0.001
+      lora_rank: 4
+      freeze_encoder: true
+
+  - name: wav2vec2
+    plan:
+      engine: wav2vec2_ctc
+      base_checkpoint: facebook/wav2vec2-base-960h
+      compute: cpu
+      precision: fp32
+      epochs: 1
+      batch_size: 2
+      learning_rate: 0.0001

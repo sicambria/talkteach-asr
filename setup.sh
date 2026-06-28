@@ -44,23 +44,25 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 # --- 1. system packages (sudo) ----------------------------------------------
 install_system() {
-  log "Installing system dependencies (Tauri WebKit/GTK + ffmpeg)"
+  log "Installing system dependencies (Tauri WebKit/GTK + ffmpeg + espeak-ng TTS)"
+  # espeak-ng is the system TTS binary the benchmark's espeak provider shells out to
+  # (project/docs/TTS.md). Tiny; installed here so the benchmark fast-path works.
   if have apt-get; then
     sudo apt-get update
     sudo apt-get install -y \
       build-essential curl wget file pkg-config \
       libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
-      librsvg2-dev libssl-dev libxdo-dev libsoup-3.0-dev ffmpeg
+      librsvg2-dev libssl-dev libxdo-dev libsoup-3.0-dev ffmpeg espeak-ng
   elif have dnf; then
     sudo dnf install -y webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel \
       librsvg2-devel openssl-devel libxdo-devel libsoup3-devel \
-      @development-tools curl wget file ffmpeg
+      @development-tools curl wget file ffmpeg espeak-ng
   elif have pacman; then
     sudo pacman -S --needed --noconfirm webkit2gtk-4.1 gtk3 libappindicator-gtk3 \
-      librsvg openssl base-devel curl wget file ffmpeg
+      librsvg openssl base-devel curl wget file ffmpeg espeak-ng
   elif have brew; then
     xcode-select --install 2>/dev/null || true
-    brew install ffmpeg
+    brew install ffmpeg espeak-ng
   else
     warn "No known package manager (apt/dnf/pacman/brew). Install the Tauri prereqs manually:"
     warn "  https://tauri.app/start/prerequisites/  — then re-run with --skip-system"
@@ -109,8 +111,10 @@ install_python() {
   cd "$REPO_ROOT/backend"
   [ -d .venv ] || uv venv .venv
   if [ "$WITH_ML" -eq 1 ]; then
-    log "Installing backend with ML + export + dev extras (large download)"
-    uv pip install --python .venv -e '.[ml,export,dev]'
+    log "Installing backend with ML + export + tts + dev extras (large download)"
+    # tts = piper neural voice for the benchmark; export now also pulls optimum
+    # (ONNX export for wav2vec2/Whisper). espeak-ng comes from the system step.
+    uv pip install --python .venv -e '.[ml,export,tts,dev]'
   else
     log "Installing backend (light: dev extras only — no GPU/ML framework)"
     uv pip install --python .venv -e '.[dev]'
@@ -144,4 +148,5 @@ Next:
   UI (web)       : cd ui && npm run dev
   Desktop app    : npm run tauri dev          (needs system deps + Rust)
   Real training  : re-run with --with-ml
+  Benchmark      : python scripts/benchmark.py --config benchmarks/quick.yaml  (needs --with-ml)
 EOF

@@ -31,7 +31,7 @@ not research, must degrade gracefully on a GPU-less laptop), not abstract merit.
 
 ## D-001 — Definition of "implement all ROADMAP items" under sandbox limits
 
-Context: the goal says "implement all items in `docs/ROADMAP.md`." Several items
+Context: the goal says "implement all items in `ROADMAP.md`." Several items
 are physically impossible to *run to completion* in this environment: signed
 installers for three OSes (#24) need code-signing certs and three build hosts;
 compiling the Tauri shell (#14) needs root to install WebKit/GTK dev libs;
@@ -45,7 +45,7 @@ Options (score /100):
    an honest status: Tier A (code + tests verified here), Tier B (code written &
    guarded; integration deferred behind a marker because it needs
    network/GPU/root), Tier C (design doc + scaffolding + script). The matrix
-   (`docs/ROADMAP_STATUS.md`) is the spine that proves coverage.
+   (`ROADMAP_STATUS.md`) is the spine that proves coverage.
 2. Implement only the feasible subset, mark the rest "won't do" — 60 — honest but
    abandons the breadth the goal asked for; loses design value.
 3. Stub every item to "done" — 20 — fails coherence, dishonest.
@@ -216,7 +216,7 @@ Decision: **Option 1.** `structlog`-style JSON logs to the project dir, rotating
 no network by default; a help-bundle exporter zips logs + redacted env.
 
 Consequence: telemetry remains a non-feature until/unless a user opts in; documented
-in `docs/OBSERVABILITY.md`.
+in `OBSERVABILITY.md`.
 
 ## D-009 — Python lint/format/type stack (#39)
 
@@ -233,7 +233,7 @@ Decision: **ruff + mypy**, configured in `backend/pyproject.toml`, gated in CI a
 pre-commit.
 
 Consequence: existing code must pass; findings fixed as part of the guardrails
-commit (tracked in `docs/LEARNINGS.md`).
+commit (tracked in `LEARNINGS.md`).
 
 ## D-010 — UI audio capture → trainable format (#20)
 
@@ -280,7 +280,7 @@ Options (score /100):
    awkward middle ground.
 
 Decision: **Option 1** now; **Option 3 (TS migration)** noted as a future
-follow-up in `docs/I18N.md`-adjacent backlog. svelte-check gates template
+follow-up in `I18N.md`-adjacent backlog. svelte-check gates template
 correctness; ESLint + Prettier cover JS hygiene and style.
 
 Consequence: `npm run check` is a real, green gate. A future TS migration can
@@ -319,5 +319,45 @@ Consequence: the real `Seq2SeqTrainer` path is the default for a real install
 with real recordings, while the test suite stays fast, deterministic, and green
 without modification. Pure helpers (args-from-plan, WER, NaN-guard, checkpoint
 discovery) are unit-tested directly.
+
+## D-013 — TTS-backed benchmark: how do we compare ASR engines "for real"?
+
+Context: the end-to-end automated path trained on sine *tones* — which have no
+phonetic content, so any WER measured on them was noise, not recognition. We could
+not validate that a model learned words, nor compare OSS engines on equal footing.
+We want synthetic *speech* (known transcript) → train each engine → measure WER on
+a shared eval set, with all hyperparameters pinned.
+
+Options (score /100):
+1. **Pluggable `TTSProvider` (espeak + piper) feeding a config-driven TTS×ASR
+   benchmark with a shared, held-out eval set and `plan_from_config`-pinned
+   hyperparameters** — 92 — mirrors the `ASREngine` adapter pattern; espeak (system
+   binary, no download) is the CI fast-path, piper (neural) the fidelity end; new
+   OSS engines plug in with one registry entry. WER is meaningful because the prompt
+   *is* the transcript and the eval clips never overlap training.
+2. One TTS engine only (piper) — 70 — simpler, but can't show that a result is
+   robust across voices/synthesizers, and piper needs a model download (bad for CI).
+3. Reuse the director to pick hyperparameters per cell — 45 — defeats comparison:
+   the director would vary params by detected hardware, so cells wouldn't be
+   comparable. Pinning via `plan_from_config` is the whole point.
+4. Assert a tiny fine-tune *lowers* WER in CI — 40 — too noisy on a few clips;
+   flaky. We instead assert the *measurement discriminates* (clean speech → low WER,
+   tones → high WER) with no training, and keep training-improvement opt-in/loose.
+
+Engine tiering (what "all real" means): **whisper_lora** and **wav2vec2_ctc** are
+real fine-tunes, CPU-runnable and CI-able; **nemo_rnnt** is a real but GPU-only,
+opt-in path (needs `[nemo]` + CUDA) that self-skips otherwise and never gates CI.
+Comparable axes are WER/CER/train-time — export formats differ per engine
+(Whisper→CTranslate2, wav2vec2→ONNX, NeMo→`.nemo`).
+
+Decision: **Option 1.** See `BENCHMARKING.md` and `TTS.md`. wav2vec2 fine-tuning
+disables SpecAugment and sets `ctc_zero_infinity` (both needed for stability on
+short clips). The espeak measurement-is-real test runs in a dedicated
+`benchmark-smoke` CI job (`[ml,tts]` + espeak-ng); the default `pytest -q` stays
+ML-free.
+
+Consequence: a single `scripts/benchmark.py --config benchmarks/*.yaml` run yields a
+real, reproducible TTS×ASR WER/CER/time matrix; the tone fixtures remain only for
+plumbing/simulation tests where intelligibility doesn't matter.
 </content>
 </invoke>

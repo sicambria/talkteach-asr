@@ -1,0 +1,54 @@
+# Full TTS × ASR benchmark — broader matrix for a real comparison.
+#
+# Heavier than quick.yaml: more clips, more epochs, multiple voices, and the
+# GPU/opt-in NeMo engine included (it self-skips without a GPU + nemo_toolkit).
+# Intended for a provisioned machine, not CI.
+#
+#   python scripts/benchmark.py --config benchmarks/full.yaml --out results/full.json
+#
+# Requires: backend[ml,tts]; espeak cells need espeak-ng; the nemo cell needs
+# backend[nemo] + CUDA (see project/docs/BENCHMARKING.md).
+
+name: full
+language: en
+train_clips: 10
+eval_clips: 4
+sample_rate: 16000
+
+tts:
+  - provider: espeak
+    voice: en
+  - provider: piper
+    voice: en_US-lessac-medium   # 22 kHz neural voice, resampled to 16 kHz
+
+engines:
+  - name: whisper-tiny
+    plan:
+      engine: whisper_lora
+      base_checkpoint: openai/whisper-tiny
+      compute: cpu
+      precision: fp32
+      epochs: 5
+      batch_size: 4
+      learning_rate: 0.0001
+      lora_rank: 8
+
+  - name: wav2vec2-base
+    plan:
+      engine: wav2vec2_ctc
+      base_checkpoint: facebook/wav2vec2-base-960h
+      compute: cpu
+      precision: fp32
+      epochs: 5
+      batch_size: 4
+      learning_rate: 0.0001
+
+  - name: nemo-rnnt
+    plan:
+      engine: nemo_rnnt
+      base_checkpoint: nvidia/parakeet-rnnt-0.6b
+      compute: cuda
+      precision: fp16
+      epochs: 5
+      batch_size: 4
+      learning_rate: 0.0001

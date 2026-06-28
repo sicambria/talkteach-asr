@@ -36,12 +36,12 @@ __all__ = [
 def get_engine(kind: EngineKind) -> ASREngine:
     """Return the engine adapter for ``kind``.
 
-    :attr:`EngineKind.WHISPER_LORA` is fully implemented (Phase 0/1). The
-    NeMo-RNNT and Wav2Vec2-CTC adapters are **Phase 2 scaffolds** that satisfy the
-    :class:`ASREngine` contract but report themselves unavailable (their heavy
-    methods raise :class:`EngineUnavailableError`). The app's training loop checks
-    ``is_available()`` and gracefully falls back to Whisper-LoRA, so a
-    director-selected-but-unbuilt engine never dead-ends a child's flow.
+    :attr:`EngineKind.WHISPER_LORA` and :attr:`EngineKind.WAV2VEC2_CTC` are **real**
+    fine-tune engines (Tier A/B) and are compared head-to-head by the benchmark.
+    :attr:`EngineKind.NEMO_RNNT` is a **real but GPU/opt-in** path: it needs
+    ``nemo_toolkit`` + CUDA and self-reports unavailable otherwise, so the app's
+    training loop falls back to Whisper-LoRA and a child's flow never dead-ends.
+    See project/docs/BENCHMARKING.md for the engine tiering.
     """
     if kind == EngineKind.WHISPER_LORA:
         return WhisperLoRAEngine()

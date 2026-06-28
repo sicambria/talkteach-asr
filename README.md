@@ -21,11 +21,11 @@ GUI that actually trains state-of-the-art ASR models.* TalkTeach is mostly
 > and safety rails, verified end-to-end on `whisper-tiny` via the opt-in
 > `integration` test. It trains for real when the `[ml]` extra is installed and
 > real recordings exist, and otherwise falls back to a clearly-marked simulation
-> (see [`DECISIONS.md`](DECISIONS.md) D-012). The Svelte UI is wired to the live
+> (see [`project/docs/DECISIONS.md`](project/docs/DECISIONS.md) D-012). The Svelte UI is wired to the live
 > API; the Tauri shell spawns the backend as a sidecar (build-ready, not compiled
 > here — needs WebKit/GTK dev libs). See
-> [`docs/ROADMAP_STATUS.md`](docs/ROADMAP_STATUS.md) for the per-item status
-> matrix and [`docs/PHASE0_STATUS.md`](docs/PHASE0_STATUS.md) for real vs.
+> [`project/docs/ROADMAP_STATUS.md`](project/docs/ROADMAP_STATUS.md) for the per-item status
+> matrix and [`project/docs/PHASE0_STATUS.md`](project/docs/PHASE0_STATUS.md) for real vs.
 > scaffolded.
 
 ---
@@ -137,11 +137,13 @@ automatically as a Tauri sidecar — see `src-tauri/src/lib.rs`).
 | `backend/talkteach/audio/` | Clip quality (clipping/SNR/silence), sufficiency aggregation | **Real + tested** |
 | `backend/talkteach/data/` | One-SQLite-per-project store (WAL, autosave) | **Real + tested** |
 | `backend/talkteach/reliability/` | Pre-flight (disk/RAM/GPU/mic), graceful degradation | **Real + tested** |
-| `backend/talkteach/engines/` | `ASREngine` adapter + `WhisperLoRAEngine` (real LoRA loop) + NeMo/wav2vec2 scaffolds | **Real training** when `[ml]` present; simulation fallback |
+| `backend/talkteach/engines/` | `ASREngine` adapter + real `WhisperLoRAEngine` & `Wav2Vec2CTCEngine` (real fine-tunes) + GPU-gated NeMo | **Real training** when `[ml]` present; simulation fallback |
+| `backend/talkteach/tts/` | TTS providers (espeak + piper) — synthetic *speech* for testing/benchmarking | **Real**; `[tts]` extra / espeak-ng binary |
+| `backend/talkteach/benchmark.py` + `benchmarks/` | TTS × ASR benchmark — compare engines on real synthetic speech (WER/CER/time) | **Real**; run via `scripts/benchmark.py` |
 | `backend/talkteach/app.py` | FastAPI job server | **Real + tested** |
 | `ui/` | Svelte 4 four-screen wizard wired to the live API | **Builds + svelte-check/eslint/prettier clean** |
 | `src-tauri/` | Tauri v2 shell — spawns the backend as a sidecar | Build-ready; native compile needs WebKit dev libs |
-| `docs/` | Status matrix, decisions, per-feature design docs | — |
+| `project/docs/` | Status matrix, decisions, per-feature design docs | — |
 
 ## Testing
 
@@ -149,18 +151,26 @@ automatically as a Tauri sidecar — see `src-tauri/src/lib.rs`).
 cd backend && pytest -q
 ```
 
-97 fast tests cover the director's decision boundaries, the audio DSP + pipeline
-helpers, the SQLite layer (incl. WAL persistence + SQL-injection guard), the
-engine simulation + the *pure* real-training helpers (args-from-plan, WER,
-NaN-guard, checkpoint discovery), security (path-traversal/upload validation),
-job durability + the redacted help bundle, pre-flight degradation, and the full
-HTTP flow. All run with **no GPU and no ML framework installed**. The real
-end-to-end fine-tune is an opt-in `integration` test:
+Over 100 fast tests cover the director's decision boundaries, the audio DSP +
+pipeline helpers, the SQLite layer (incl. WAL persistence + SQL-injection guard),
+the engine simulation + the *pure* real-training helpers (args-from-plan, WER,
+NaN-guard, checkpoint discovery), the TTS resampler/registry, security
+(path-traversal/upload validation), job durability + the redacted help bundle,
+pre-flight degradation, and the full HTTP flow. All run with **no GPU and no ML
+framework installed**. The real fine-tunes and the TTS→ASR benchmark are opt-in:
 
 ```bash
-cd backend && pytest -q                                   # 97 fast tests
+cd backend && pytest -q                                   # 100+ fast tests (no ML)
 TALKTEACH_RUN_INTEGRATION=1 pytest -m integration         # real whisper-tiny fit ([ml] + net)
+pytest -m espeak                                           # measurement-is-real ([ml] + espeak-ng)
+
+# Compare ASR engines for real on synthetic speech (espeak + piper):
+python scripts/benchmark.py --config benchmarks/quick.yaml   # needs backend[ml,tts]
 ```
+
+See [project/docs/BENCHMARKING.md](project/docs/BENCHMARKING.md) for the
+engine-comparison methodology and [project/docs/TTS.md](project/docs/TTS.md) for the
+speech generators.
 
 Lint/type/format gates: `ruff check`, `ruff format --check`, `mypy talkteach`
 (or just `make check`); UI: `cd ui && npm run build && npm run check && npm run lint`.
@@ -170,5 +180,5 @@ Lint/type/format gates: `ruff check`, `ruff format --check`, `mypy talkteach`
 **GPL-3.0-or-later** (see [`LICENSE`](LICENSE)) — the lowest-friction path given
 the project reuses copyleft-adjacent tooling and the maintainer approved GPL (see
 report B.6). Third-party components and their **verified** licenses are listed in
-[`docs/THIRD_PARTY.md`](docs/THIRD_PARTY.md); a credits screen will surface these
+[`project/docs/THIRD_PARTY.md`](project/docs/THIRD_PARTY.md); a credits screen will surface these
 in-app per Phase 2.

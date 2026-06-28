@@ -14,7 +14,7 @@ director, and the whole test suite import and run on a plain laptop with no GPU.
 | `is_available() -> (bool, str)` | "Teach!" awake/asleep + Grown-up mode | reports missing deps in plain language |
 | `train(plan, manifest, workdir, progress, should_stop)` | **Teach!** | runs the job, streams `TrainProgress` (a "smartness" meter, never a loss curve), checkpoints to `workdir`, resumes on restart, cancels cleanly |
 | `transcribe(audio_path, model_dir=None)` | **Try it** | one clip → recognised text |
-| `export(model_dir, out_dir, fmt)` | **Use on my computer** | portable offline runtime (see `docs/EXPORT.md`) |
+| `export(model_dir, out_dir, fmt)` | **Use on my computer** | portable offline runtime (see `EXPORT.md`) |
 
 The framework-free `TrainingPlan` (from the director) is the only input — the
 engine never asks the user a question. Heavy imports are function-local so this
@@ -25,9 +25,14 @@ package imports with zero ML deps; unmet deps raise `EngineUnavailableError`
 
 | `EngineKind` | Engine | Use | State |
 |---|---|---|---|
-| `WHISPER_LORA` | Whisper + PEFT/LoRA | default; multilingual, low-VRAM | **built** (`engines/whisper_lora.py`, Tier B) |
-| `NEMO_RNNT` | NeMo Parakeet / FastConformer-Transducer | streaming / edge export | scaffold (`engines/nemo_rnnt.py`, #25) |
-| `WAV2VEC2_CTC` | wav2vec2 / XLS-R + CTC head | low-resource / unseen languages | scaffold (`engines/wav2vec2_ctc.py`, #26) |
+| `WHISPER_LORA` | Whisper + PEFT/LoRA | default; multilingual, low-VRAM | **built** (`engines/whisper_lora.py`, Tier A/B) |
+| `WAV2VEC2_CTC` | wav2vec2 / XLS-R + CTC head | low-resource / unseen languages | **built** (`engines/wav2vec2_ctc.py`, Tier B; real CTC fine-tune, CPU/CI-runnable) |
+| `NEMO_RNNT` | NeMo Parakeet / FastConformer-Transducer | streaming / edge export | **built, GPU-only** (`engines/nemo_rnnt.py`; needs `[nemo]` + CUDA, self-skips otherwise) |
+
+The three engines are compared head-to-head on real synthetic speech by the
+benchmark — see [BENCHMARKING.md](BENCHMARKING.md). Comparable axes are
+WER/CER/train-time (export formats differ: Whisper→CTranslate2, wav2vec2→ONNX,
+NeMo→`.nemo`).
 
 ## How the director selects (`director/policy.py::_choose_engine_and_model`)
 

@@ -160,13 +160,26 @@ def test_get_engine_whisper_returns_adapter():
     assert isinstance(get_engine(EngineKind.WHISPER_LORA), WhisperLoRAEngine)
 
 
-def test_get_engine_scaffolds_report_unavailable():
-    # NeMo / wav2vec2 are Phase-2 scaffolds: real adapters that report themselves
-    # unavailable (so the app falls back to Whisper-LoRA) rather than crashing.
-    for kind in (EngineKind.NEMO_RNNT, EngineKind.WAV2VEC2_CTC):
-        eng = get_engine(kind)
-        assert isinstance(eng, ASREngine)
-        ok, msg = eng.is_available()
-        assert ok is False and "Phase 2" in msg
-        with pytest.raises(EngineUnavailableError):
-            eng.transcribe("a.wav")
+def test_get_engine_nemo_is_gpu_gated():
+    # NeMo is a real engine but GPU/opt-in: unavailable without nemo_toolkit + CUDA,
+    # so the app falls back to Whisper-LoRA rather than crashing.
+    eng = get_engine(EngineKind.NEMO_RNNT)
+    assert isinstance(eng, ASREngine)
+    ok, msg = eng.is_available()
+    assert ok is False and ("GPU" in msg or "nemo" in msg.lower())
+    with pytest.raises(EngineUnavailableError):
+        eng.transcribe("a.wav")
+
+
+def test_get_engine_wav2vec2_reflects_environment():
+    # wav2vec2-CTC is a real engine now: available when torch+transformers are present.
+    eng = get_engine(EngineKind.WAV2VEC2_CTC)
+    assert isinstance(eng, ASREngine)
+    ok, msg = eng.is_available()
+    if _have("torch", "transformers"):
+        assert ok is True and msg == ""
+    else:
+        assert ok is False and ("torch" in msg or "transformers" in msg)
+    # transcribe always needs a trained model_dir; without one it errors gracefully.
+    with pytest.raises(EngineUnavailableError):
+        eng.transcribe("a.wav")

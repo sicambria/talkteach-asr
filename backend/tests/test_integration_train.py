@@ -7,7 +7,7 @@ Run it explicitly on a provisioned machine:
     TALKTEACH_RUN_INTEGRATION=1 .venv/bin/python -m pytest -m integration -q
 
 It is the proof that the Tier-B training/eval/export code paths actually work
-(DECISIONS.md D-002); CI and the sandbox skip it.
+(project/docs/DECISIONS.md D-002); CI and the sandbox skip it.
 """
 
 from __future__ import annotations

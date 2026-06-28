@@ -31,7 +31,14 @@ ml = [
 export = [
     "ctranslate2>=4.0",
     "onnxruntime>=1.17",
+    "optimum[onnxruntime]>=1.20",   # ONNX export for wav2vec2/Whisper (benchmark)
 ]
+# Synthetic speech for testing/benchmarking (roadmap #6). espeak-ng is a *system*
+# binary (apt-get install espeak-ng); only the neural piper voice is a pip dep.
+tts = ["piper-tts>=1.2"]
+# NeMo is GPU-only and heavy; isolated so the base/[ml] installs stay light. The
+# NeMo engine self-skips without a GPU (see project/docs/BENCHMARKING.md).
+nemo = ["nemo_toolkit[asr]>=1.23"]
 # Heavier optional capability extras (kept separate so the base stays light).
 vad = ["silero-vad>=5.0"]          # Silero VAD trim/segment (roadmap #11)
 denoise = ["deepfilternet>=0.5"]   # optional noise cleanup (roadmap #30)
@@ -53,21 +60,25 @@ packages = ["talkteach"]
 testpaths = ["tests"]
 pythonpath = ["."]
 # Markers for paths that need heavy deps / network / a GPU and so are opt-in
-# (see DECISIONS.md D-002). Default `pytest -q` skips none of the light tests.
+# (see project/docs/DECISIONS.md D-002). Default `pytest -q` skips none of the light tests.
 markers = [
     "integration: end-to-end run needing [ml] deps + network/GPU (opt-in)",
     "ffmpeg: needs the ffmpeg binary on PATH (opt-in)",
+    "espeak: needs the espeak-ng binary on PATH + [ml] (benchmark fast-path, opt-in)",
 ]
 # Starlette's TestClient emits a deprecation about httpx (roadmap #42). It's a
 # test-only transport detail we don't control; silence the noise so a real
-# warning stands out. Tracked in docs/DEPENDENCIES.md.
+# warning stands out. Tracked in project/docs/DEPENDENCIES.md. audioop is a stdlib
+# module the TTS resampler uses on 3.10–3.12 (numpy fallback on 3.13+); its
+# deprecation is expected and not actionable here.
 filterwarnings = [
     "ignore:Using `httpx`:DeprecationWarning",
     "ignore:Using `httpx`:UserWarning",
+    "ignore:'audioop' is deprecated:DeprecationWarning",
 ]
 
 # --- Lint / format (ruff) -----------------------------------------------------
-# Single fast tool replacing flake8/isort/black/pyupgrade (DECISIONS.md D-009).
+# Single fast tool replacing flake8/isort/black/pyupgrade (project/docs/DECISIONS.md D-009).
 [tool.ruff]
 line-length = 100
 target-version = "py310"
@@ -102,10 +113,11 @@ no_implicit_optional = true
 module = ["talkteach.engines.*", "talkteach.audio.decode", "talkteach.audio.vad"]
 disallow_untyped_defs = false
 
-# The real-training wrapper is a thin shim over torch/transformers/peft whose
+# The real-training wrappers are thin shims over torch/transformers/peft whose
 # stubs are incomplete and rename APIs across versions (e.g. tokenizer →
-# processing_class, evaluation_strategy → eval_strategy). It is verified by the
-# `integration` test, not the type checker; don't gate CI on its dynamic surface.
+# processing_class, evaluation_strategy → eval_strategy; TrainingArguments rejects
+# a **dict[str, object]). They are verified by the `integration`/benchmark tests,
+# not the type checker; don't gate CI on their dynamic surface.
 [[tool.mypy.overrides]]
-module = ["talkteach.engines._whisper_train"]
+module = ["talkteach.engines._whisper_train", "talkteach.engines._wav2vec2_train"]
 ignore_errors = true

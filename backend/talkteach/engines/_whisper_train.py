@@ -1,6 +1,6 @@
 """Real Whisper + LoRA fine-tuning — the parts that make training *real* (#1–3).
 
-This module is split into two layers on purpose (see DECISIONS.md D-002):
+This module is split into two layers on purpose (see project/docs/DECISIONS.md D-002):
 
 * **Pure helpers** (top of file) — derive ``Seq2SeqTrainingArguments`` kwargs from
   a :class:`TrainingPlan`, compute WER/CER, map WER → "smartness", run the
@@ -24,6 +24,18 @@ from typing import TYPE_CHECKING, Any
 
 from talkteach.director.types import Precision, TrainingPlan
 
+# Engine-agnostic pure helpers live in `_train_common` (shared with the wav2vec2-CTC
+# engine); re-exported here so existing call sites/tests using `wt.wer`,
+# `wt.should_simulate`, etc. keep working unchanged.
+from ._train_common import (
+    NanRollbackGuard,
+    cer,
+    find_latest_checkpoint,
+    should_simulate,  # noqa: F401  (re-exported for whisper_lora/tests)
+    smartness_from_wer,
+    wer,
+)
+
 if TYPE_CHECKING:
     from .base import ProgressCallback, ShouldStop, TrainProgress
 
@@ -34,26 +46,10 @@ TARGET_SAMPLE_RATE = 16_000
 
 
 # =============================================================================
-# Pure helpers — unit-tested without torch/transformers/network (DECISIONS D-002)
+# Whisper-specific pure helper — unit-tested without torch (DECISIONS.md D-002).
+# The engine-agnostic helpers (should_simulate/wer/cer/…) are imported above from
+# `_train_common`.
 # =============================================================================
-
-
-def should_simulate(manifest: list[dict], *, has_train_deps: bool) -> tuple[bool, str]:
-    """Decide whether ``train()`` must fall back to the simulation (D-012).
-
-    Returns ``(simulate, reason)``. We simulate when the training deps are
-    missing, when ``TALKTEACH_FORCE_SIMULATION=1``, or when none of the manifest
-    clips actually exist on disk (we cannot really train on audio we can't load).
-    """
-    if not has_train_deps:
-        return True, "training deps (torch/transformers/peft) not installed"
-    if os.environ.get("TALKTEACH_FORCE_SIMULATION") == "1":
-        return True, "TALKTEACH_FORCE_SIMULATION=1"
-    if not manifest:
-        return True, "no training clips"
-    if not any(os.path.isfile(item.get("path", "")) for item in manifest):
-        return True, "no manifest clip exists on disk"
-    return False, ""
 
 
 def training_arguments_kwargs(plan: TrainingPlan, workdir: str) -> dict[str, Any]:
@@ -84,93 +80,9 @@ def training_arguments_kwargs(plan: TrainingPlan, workdir: str) -> dict[str, Any
         "load_best_model_at_end": True,
         "metric_for_best_model": "wer",
         "greater_is_better": False,  # lower WER is better
-        "report_to": [],  # no telemetry (DECISIONS.md D-008)
+        "report_to": [],  # no telemetry (project/docs/DECISIONS.md D-008)
         "remove_unused_columns": False,  # Whisper passes a feature dict, not columns
     }
-
-
-def _normalise(text: str) -> str:
-    """Light normalisation for WER/CER: lowercase + collapse whitespace."""
-    return " ".join(text.lower().split())
-
-
-def wer(references: list[str], hypotheses: list[str]) -> float:
-    """Word Error Rate in [0, ~]. Thin, normalised wrapper over jiwer."""
-    import jiwer
-
-    refs = [_normalise(r) for r in references]
-    hyps = [_normalise(h) for h in hypotheses]
-    # jiwer treats an empty reference as undefined; guard so a degenerate eval
-    # set returns a sane 1.0 (everything wrong) rather than raising.
-    if not any(refs):
-        return 1.0
-    return float(jiwer.wer(refs, hyps))
-
-
-def cer(references: list[str], hypotheses: list[str]) -> float:
-    """Character Error Rate in [0, ~]. Thin, normalised wrapper over jiwer."""
-    import jiwer
-
-    refs = [_normalise(r) for r in references]
-    hyps = [_normalise(h) for h in hypotheses]
-    if not any(refs):
-        return 1.0
-    return float(jiwer.cer(refs, hyps))
-
-
-def smartness_from_wer(wer_value: float) -> float:
-    """Map WER → the child-facing "smartness" meter = clamp(1 − WER, 0, 1) (#2).
-
-    This replaces the Phase-0 synthetic curve with a measured signal.
-    """
-    return max(0.0, min(1.0, 1.0 - wer_value))
-
-
-def find_latest_checkpoint(workdir: str) -> str | None:
-    """Return the newest HF ``checkpoint-<step>`` dir in ``workdir`` (or None).
-
-    Used for ``resume_from_checkpoint`` so a closed/crashed app picks the run back
-    up where it left off (#1, #17).
-    """
-    if not os.path.isdir(workdir):
-        return None
-    best_step, best_path = -1, None
-    for name in os.listdir(workdir):
-        if name.startswith("checkpoint-"):
-            tail = name[len("checkpoint-") :]
-            if tail.isdigit() and os.path.isdir(os.path.join(workdir, name)):
-                step = int(tail)
-                if step > best_step:
-                    best_step, best_path = step, os.path.join(workdir, name)
-    return best_path
-
-
-class NanRollbackGuard:
-    """Safety rail #3: detect a NaN/inf loss and roll back to the last good state.
-
-    HF's ``Seq2SeqTrainer`` already skips an individual non-finite *gradient*
-    step, but a run that diverges into NaN should stop and restore the best
-    checkpoint rather than save garbage. This pure helper holds that policy so it
-    can be unit-tested without a trainer: feed it observed losses/checkpoints; ask
-    whether to stop and which checkpoint to restore.
-    """
-
-    def __init__(self) -> None:
-        self.last_good_checkpoint: str | None = None
-        self.tripped = False
-
-    def observe_good_checkpoint(self, path: str) -> None:
-        self.last_good_checkpoint = path
-
-    def is_finite(self, loss: float) -> bool:
-        return loss == loss and loss not in (float("inf"), float("-inf"))
-
-    def should_rollback(self, loss: float) -> bool:
-        """True if ``loss`` is non-finite (NaN/inf) → caller stops + restores."""
-        if not self.is_finite(loss):
-            self.tripped = True
-            return True
-        return False
 
 
 # =============================================================================
@@ -441,3 +353,46 @@ def run_real_training(
         done=not cancelled,
         failed=guard.tripped,
     )
+
+
+def transcribe_with_transformers(
+    audio_path: str, model_dir: str, language: str | None = None
+) -> str:
+    """Decode one clip with a trained Whisper model in ``model_dir`` (no CT2 export).
+
+    Loads the processor saved alongside the run; if ``model_dir`` is a LoRA adapter,
+    loads the base and merges the adapter in (so ``generate`` works), else loads the
+    full model directly. Used by the benchmark to score a freshly fine-tuned model.
+    """
+    import json as _json
+
+    import soundfile as sf
+    import torch
+    from transformers import WhisperForConditionalGeneration, WhisperProcessor
+
+    processor = WhisperProcessor.from_pretrained(model_dir)
+    adapter_cfg = os.path.join(model_dir, "adapter_config.json")
+    if os.path.isfile(adapter_cfg):
+        from peft import PeftModel
+
+        with open(adapter_cfg, encoding="utf-8") as fh:
+            base_id = _json.load(fh).get("base_model_name_or_path", "openai/whisper-tiny")
+        base = WhisperForConditionalGeneration.from_pretrained(base_id)
+        model = PeftModel.from_pretrained(base, model_dir).merge_and_unload()
+    else:
+        model = WhisperForConditionalGeneration.from_pretrained(model_dir)
+    model.eval()
+
+    audio, sr = sf.read(audio_path, dtype="float32", always_2d=False)
+    if getattr(audio, "ndim", 1) == 2:
+        audio = audio.mean(axis=1)
+    if int(sr) != TARGET_SAMPLE_RATE:
+        import librosa
+
+        audio = librosa.resample(audio, orig_sr=int(sr), target_sr=TARGET_SAMPLE_RATE)
+    feats = processor.feature_extractor(
+        audio, sampling_rate=TARGET_SAMPLE_RATE, return_tensors="pt"
+    ).input_features
+    with torch.no_grad():
+        generated = model.generate(feats)
+    return processor.batch_decode(generated, skip_special_tokens=True)[0].strip()

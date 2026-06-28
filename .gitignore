@@ -20,6 +20,11 @@ src-tauri/target/
 *.db-wal
 *.db-shm
 
+# Benchmark outputs + downloaded TTS voices / model caches (never committed)
+*.results.json
+benchmarks/results/
+piper_voices/
+
 # OS / editor
 .DS_Store
 *.swp

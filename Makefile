@@ -8,7 +8,7 @@ PY := backend/.venv/bin/python
 RUFF := backend/.venv/bin/ruff
 MYPY := backend/.venv/bin/mypy
 
-.PHONY: help setup test lint format check ui-check rust-check integration all
+.PHONY: help setup setup-ml test lint format check ui-check rust-check integration benchmark report all
 
 help:  ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -18,11 +18,21 @@ setup:  ## Create the backend venv and install dev + light deps.
 	uv venv backend/.venv
 	VIRTUAL_ENV=backend/.venv uv pip install -e 'backend[dev]'
 
+setup-ml:  ## Install the full benchmark stack ([ml,export,tts,dev]); needs espeak-ng for espeak cells.
+	uv venv backend/.venv
+	VIRTUAL_ENV=backend/.venv uv pip install -e 'backend[ml,export,tts,dev]'
+
 test:  ## Run the fast Python test suite (no ML deps / GPU / network needed).
 	cd backend && .venv/bin/python -m pytest -q
 
 integration:  ## Run the opt-in heavy paths (needs [ml] + network/GPU).
 	cd backend && TALKTEACH_RUN_INTEGRATION=1 .venv/bin/python -m pytest -m integration
+
+benchmark:  ## Run the TTS×ASR benchmark + print the ELO scoreboard (needs setup-ml).
+	backend/.venv/bin/python scripts/benchmark.py --config benchmarks/quick.yaml
+
+report:  ## Run the full benchmark fully automatically and RECORD benchmarks/REPORT.md.
+	bash scripts/full_report.sh
 
 lint:  ## Lint Python (ruff) without modifying files.
 	$(RUFF) check backend/talkteach backend/tests
