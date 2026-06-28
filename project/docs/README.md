@@ -9,7 +9,7 @@ need no manual. Start with the [root README](../../README.md) for the overview.
 | Doc | What it is |
 | --- | --- |
 | [DECISIONS.md](DECISIONS.md) | Decision log (ADR-lite) — the top-5-scored choices and why. |
-| [ROADMAP.md](ROADMAP.md) | Prioritized P0–P3 + X roadmap from Phase 0 to world-class. |
+| [ROADMAP.md](ROADMAP.md) | Prioritized P0–P3 + X roadmap from Phase 0 onward. |
 | [ROADMAP_STATUS.md](ROADMAP_STATUS.md) | Per-item status matrix: tier + evidence + commit. The authoritative "what's real". |
 | [PHASE0_STATUS.md](PHASE0_STATUS.md) | What is real vs. simulated vs. scaffolded. |
 | [PLAN.md](PLAN.md) | The implementation plan / commit sequence (internal working doc). |

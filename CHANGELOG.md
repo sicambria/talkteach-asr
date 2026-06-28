@@ -16,14 +16,14 @@ _Nothing yet._
 
 The first public release. **Phase 0 built a tested vertical slice** that validates
 the hard part (the director + reliability + dependency plumbing) for real, with
-tests, before the wizard polish; the **"Phase 0 → world-class"** build-out then
+tests, before the wizard polish; the **Phase 0** build-out then
 turned the simulated edges into real product behaviour, gated behind honest tiers
 (see `project/docs/DECISIONS.md` D-001 and `project/docs/ROADMAP_STATUS.md`).
 **110+ passing fast tests, no GPU and no ML framework required.**
 
 ### Added
 
-- **Director (the IP):** probes hardware (CUDA → nvidia-smi → CPU fallback), data,
+- **Director:** probes hardware (CUDA → nvidia-smi → CPU fallback), data,
   and language, and maps `(hardware, data, language)` to a complete, zero-config
   `TrainingPlan` (engine, base checkpoint, precision, batch/grad-accum, epochs,
   LR, LoRA rank, freeze, safety rails) with a human-readable rationale; plus a

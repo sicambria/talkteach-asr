@@ -19,7 +19,7 @@ plumbing. It does so by building those parts first, for real, with tests.
 Verified live: `python -m talkteach.app` boots under uvicorn and serves
 `/api/health`, `/api/preflight`, `/api/sufficiency`.
 
-> **Update (Phase 0 → world-class):** several items below have since been built.
+> **Update (Phase 0):** several items below have since been built.
 > The authoritative, per-item status is now [`ROADMAP_STATUS.md`](ROADMAP_STATUS.md).
 > This section is kept for the original Phase-0 framing.
 

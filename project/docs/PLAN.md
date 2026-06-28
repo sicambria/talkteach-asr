@@ -1,4 +1,4 @@
-# Implementation plan — Phase 0 → world-class
+# Implementation plan — Phase 0
 
 This is the working plan for the effort tracked in
 [`ROADMAP_STATUS.md`](ROADMAP_STATUS.md). It is ordered by the tightest

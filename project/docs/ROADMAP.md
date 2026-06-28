@@ -1,12 +1,12 @@
-# TalkTeach roadmap — from Phase 0 to state-of-the-art, world-class
+# TalkTeach roadmap
 
 Phase 0 (this commit) is a tested vertical slice. This document is the full,
-prioritized list of what stands between here and a *world-class* product:
-an easy-to-use, offline, cross-platform GUI that genuinely trains state-of-the-art
+prioritized list of what stands between here and a finished product:
+an easy-to-use, offline, cross-platform GUI that trains state-of-the-art
 ASR models. Tiers map to the design report's phases (B.8). "✱" = grounded in an
 explicit code marker (`grep -rn TODO|SIMULATION`).
 
-Legend: **P0** = makes training *real* (the core promise) · **P1** = world-class MVP ·
+Legend: **P0** = makes training *real* (the core promise) · **P1** = MVP ·
 **P2** = robust & cross-platform · **P3** = delight & scale · **X** = cross-cutting quality.
 
 ---
@@ -46,7 +46,7 @@ with `[ml]` installed.
 
 ---
 
-## P1 — World-class MVP (real product, one or two OSes)
+## P1 — MVP (real product, one or two OSes)
 
 ### Audio pipeline (closes the "data-sufficiency/quality" gap)
 10. **Bundle ffmpeg (LGPL build)** → decode webm/ogg/mp3 and resample to 16 kHz.
@@ -163,7 +163,7 @@ ML research; formats/use-case coverage is mapped in [`FORMATS.md`](FORMATS.md).
 ### The honest one-liner
 
 Phase 0 proved the **integration + director + reliability plumbing** (the report's
-named real risk). The road to world-class is mostly **P0 (make training real +
+named real risk). The road ahead is mostly **P0 (make training real +
 secure)** and **P1 (audio pipeline + bundled, sidecar-driven desktop app)**; P2–P3
 are breadth and delight. Nothing here is new ML research — it is disciplined
 engineering, UX, and packaging.

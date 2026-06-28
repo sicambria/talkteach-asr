@@ -1,7 +1,7 @@
 # ROADMAP traceability matrix
 
 Authoritative status of every item in [`ROADMAP.md`](ROADMAP.md). This is the
-spine of the "Phase 0 → world-class" effort: each item maps to a **tier**, the
+spine of the Phase 0 effort: each item maps to a **tier**, the
 **evidence** (file/test/doc), and the **commit** that delivered it.
 
 Tiers (see [`DECISIONS.md`](DECISIONS.md) D-001):

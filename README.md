@@ -15,11 +15,11 @@ guardrails that make a doomed training run impossible to start, and bundled
 dependencies that remove install pain.
 
 It exists to close the exact gap documented in the companion research report
-(see **Provenance** below): *there is no end-to-end, open-source, "next-next-finish"
+(see **Why it exists** below): *there is no end-to-end, open-source, "next-next-finish"
 GUI that actually trains state-of-the-art ASR models.* TalkTeach is mostly
 **integration and UX**, not new ML.
 
-> **Status: Phase 0 → world-class, in progress.** The Python backend (director,
+> **Status: Phase 0, in progress.** The Python backend (director,
 > audio pipeline, data layer, reliability pre-flight, FastAPI job server) is real
 > and tested: **110+ passing fast tests** (no GPU or ML deps). **Real Whisper-LoRA
 > training is implemented** — a PEFT/LoRA `Seq2SeqTrainer` loop with measured WER
@@ -35,13 +35,13 @@ GUI that actually trains state-of-the-art ASR models.* TalkTeach is mostly
 
 ---
 
-## Why it exists (provenance)
+## Why it exists
 
 The design is the direct implementation of **Part B** of the research report
 [`reports/ASR_training_GUI_wizard_research_and_design_2026-06-27.md`](reports/ASR_training_GUI_wizard_research_and_design_2026-06-27.md),
 included in this repo. That report (Part A) verified — across a deep-research run,
 48 claims adversarially 3-vote-checked — that no open-source tool ships a
-genuinely easy GUI that trains the best models end-to-end, and (Part C) names the
+easy GUI that trains the best models end-to-end, and (Part C) names the
 strongest counter-argument: the hard part isn't the wizard, it's the *director +
 reliability engineering*. TalkTeach builds the director **first and with tests**
 for exactly that reason.
@@ -59,7 +59,7 @@ for exactly that reason.
 │         sufficiency · transcribe/draft · train · train/{id} · │
 │         transcribe · export                                   │
 ├──────────────────────────────────────────────────────────────┤
-│ Director (the IP) — backend/talkteach/director/        [REAL] │
+│ Director — backend/talkteach/director/                 [REAL] │
 │   hardware probe · data probe · language probe ·             │
 │   sufficiency gate · policy → zero-config TrainingPlan       │
 ├──────────────────────────────────────────────────────────────┤
@@ -153,7 +153,7 @@ the Vite-only `npm run dev` browser preview, run the backend manually on `:8756`
 
 | Path | What | State |
 |---|---|---|
-| `backend/talkteach/director/` | Zero-config "director" — the real IP | **Real + tested** |
+| `backend/talkteach/director/` | Zero-config "director" — the core logic | **Real + tested** |
 | `backend/talkteach/audio/` | Clip quality (clipping/SNR/silence), sufficiency aggregation | **Real + tested** |
 | `backend/talkteach/data/` | One-SQLite-per-project store (WAL, autosave) | **Real + tested** |
 | `backend/talkteach/reliability/` | Pre-flight (disk/RAM/GPU/mic), graceful degradation | **Real + tested** |

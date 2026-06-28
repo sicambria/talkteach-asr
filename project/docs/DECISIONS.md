@@ -1,7 +1,7 @@
 # Decision log (ADR-lite)
 
-Every non-obvious choice made while taking TalkTeach from Phase 0 toward
-world-class is recorded here. The mandate for this work was explicit:
+Every non-obvious choice made while taking TalkTeach forward from Phase 0
+is recorded here. The mandate for this work was explicit:
 
 > When questions arise, generate the top 5 options, score them 0–100, pick the
 > best, and document the decision here — do not ask.
