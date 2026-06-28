@@ -58,6 +58,13 @@ markers = [
     "integration: end-to-end run needing [ml] deps + network/GPU (opt-in)",
     "ffmpeg: needs the ffmpeg binary on PATH (opt-in)",
 ]
+# Starlette's TestClient emits a deprecation about httpx (roadmap #42). It's a
+# test-only transport detail we don't control; silence the noise so a real
+# warning stands out. Tracked in docs/DEPENDENCIES.md.
+filterwarnings = [
+    "ignore:Using `httpx`:DeprecationWarning",
+    "ignore:Using `httpx`:UserWarning",
+]
 
 # --- Lint / format (ruff) -----------------------------------------------------
 # Single fast tool replacing flake8/isort/black/pyupgrade (DECISIONS.md D-009).

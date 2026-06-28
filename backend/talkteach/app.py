@@ -20,7 +20,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -43,10 +43,30 @@ from .reliability.preflight import run_preflight
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     config.ensure_dirs()
+    from .obs import configure_logging
+
+    configure_logging(config.DEFAULT_PROJECT_DIR)
     with _db() as db:
         if db.get_project() is None:
             db.init_project(name="My project", language_code=None)
+        _reconcile_interrupted_runs(db)
     yield
+
+
+def _reconcile_interrupted_runs(db: ProjectDB) -> int:
+    """Job durability (#40): on startup, any run still marked 'running' in the DB
+    was orphaned by a previous crash/close (the in-memory job is gone). Mark it
+    'interrupted' so the UI can offer to resume — training resumes from the latest
+    checkpoint in its workdir (see engines/_whisper_train.find_latest_checkpoint).
+    """
+    from .obs import get_logger
+
+    stale = [r for r in db.list_runs() if r["status"] == "running"]
+    for run in stale:
+        db.update_run(run["id"], status="interrupted")
+    if stale:
+        get_logger("app").info("Reconciled %d interrupted run(s) on startup", len(stale))
+    return len(stale)
 
 
 app = FastAPI(title="TalkTeach", version="0.0.1", lifespan=_lifespan)
@@ -542,6 +562,42 @@ def export_model(body: ExportIn) -> dict:
     engine = get_engine(EngineKind.WHISPER_LORA)
     result = engine.export(model_dir, out_dir, fmt=body.fmt)
     return asdict(result)
+
+
+@app.get("/api/runs")
+def list_runs() -> dict:
+    """All training runs with status — lets the UI offer to resume an interrupted
+    one (job durability, #40)."""
+    with _db() as db:
+        runs = db.list_runs()
+    return {
+        "runs": [
+            {
+                "id": r["id"],
+                "status": r["status"],
+                "engine": r["engine"],
+                "best_val_wer": r.get("best_val_wer"),
+            }
+            for r in runs
+        ]
+    }
+
+
+@app.get("/api/help-bundle")
+def help_bundle() -> Response:
+    """Export a local, redacted help bundle (logs + system report) as a zip (#41).
+
+    Nothing is sent anywhere — the grown-up downloads it and shares it
+    deliberately (privacy posture, DECISIONS.md D-008).
+    """
+    from .obs.logging import help_bundle_bytes
+
+    data = help_bundle_bytes(config.DEFAULT_PROJECT_DIR)
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=talkteach-help-bundle.zip"},
+    )
 
 
 def main() -> None:

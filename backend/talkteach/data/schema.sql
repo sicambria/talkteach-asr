@@ -31,8 +31,11 @@ CREATE TABLE IF NOT EXISTS clip (
 -- One training run (the director's TrainingPlan, plus lifecycle state).
 CREATE TABLE IF NOT EXISTS training_run (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- 'interrupted' = was 'running' when the app crashed/closed; reconciled on
+    -- startup (roadmap #40) so the UI can offer to resume from the checkpoint.
     status          TEXT    NOT NULL DEFAULT 'pending'
-                            CHECK (status IN ('pending', 'running', 'done', 'failed', 'cancelled')),
+                            CHECK (status IN ('pending', 'running', 'done', 'failed',
+                                              'cancelled', 'interrupted')),
     engine          TEXT    NOT NULL,
     base_checkpoint TEXT    NOT NULL,
     plan_json       TEXT    NOT NULL DEFAULT '{}',
