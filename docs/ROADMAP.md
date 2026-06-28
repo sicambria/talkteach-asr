@@ -132,6 +132,34 @@ with `[ml]` installed.
 
 ---
 
+## Parity — capabilities the best pro toolsets ship (from the gap analysis)
+
+Derived by comparing TalkTeach against **Hugging Face Transformers, NVIDIA NeMo,
+and SpeechBrain** (full analysis + rationale in
+[`COMPETITIVE_GAPS.md`](COMPETITIVE_GAPS.md)). These are additive and need no new
+ML research; formats/use-case coverage is mapped in [`FORMATS.md`](FORMATS.md).
+
+46. **Data augmentation** — SpecAugment + speed/pitch perturbation + noise/RIR
+    mixing; the director auto-enables it for tiny datasets (biggest small-data win).
+47. **Dataset import** — a folder of (audio, transcript) pairs, plus manifest
+    CSV/JSON, NeMo manifest, Common Voice TSV, LibriSpeech, and HF `datasets`.
+48. **Subtitle / caption output** — SRT/VTT + timestamped plain-text transcript.
+49. **Long-form transcription** — chunked, VAD-windowed, timestamped decoding for
+    files longer than one short clip.
+50. **Decoding controls** — beam size, `initial_prompt`/hotword biasing,
+    temperature fallback (cheap accuracy + child-vocabulary biasing).
+51. **Punctuation + capitalization restoration / inverse text normalization.**
+52. **Richer evaluation** — per-utterance WER, an error/confusion report,
+    confidence, normalized-vs-raw WER (also powers active learning #32).
+53. **Local experiment metrics view** — on-device loss/WER curves (no telemetry;
+    honours D-008) for Grown-up mode.
+54. **Headless CLI** — train/eval/export from the terminal for power users + CI.
+55. **Custom vocabulary / tokenizer extension** for genuinely unseen languages.
+56. **Optional multi-GPU / distributed** training (documented escape hatch).
+57. **More export targets** — HF `safetensors`, GGUF (whisper.cpp), TorchScript.
+
+---
+
 ### The honest one-liner
 
 Phase 0 proved the **integration + director + reliability plumbing** (the report's

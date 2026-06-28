@@ -4,6 +4,24 @@ A running log of things that went wrong, surprised us, or are worth remembering 
 the institutional memory the design report (Part C) said the *real* risk lives in.
 Newest entries at the top of each section.
 
+## Start here — gotchas that will waste your time if you don't know them
+
+1. **Run tests with `backend/.venv/bin/python -m pytest`** — the venv is Python
+   3.11 with the ML deps; system `python3` is 3.14 and can't import them.
+2. **`pip` is absent in the venv** (it was made by `uv venv`). Install with
+   `VIRTUAL_ENV=backend/.venv uv pip install <pkg>`, never `python -m pip`.
+3. **The fast suite forces simulation** (`tests/conftest.py` sets
+   `TALKTEACH_FORCE_SIMULATION=1`). To exercise the *real* model path, run the
+   opt-in `-m integration` tests — and check they print `passed`, not `skipped`
+   (a missing dep silently skips and looks like success).
+4. **Heavy ML imports are always function-local and guarded.** Never hoist
+   `import torch`/`transformers` to module scope — it breaks the no-ML invariant
+   that keeps `pytest -q` fast and CI GPU-free.
+5. **`make check` is the gate.** Run it before declaring anything done; it runs
+   ruff + mypy + the fast suite against the venv.
+6. **After editing a Tier-B path you can't run in the fast suite** (the real
+   trainer, export), re-run `-m integration` — green unit tests do *not* cover it.
+
 ## Insights
 
 - **A status matrix written up-front drifts; audit every cell against code at the
@@ -59,7 +77,18 @@ Newest entries at the top of each section.
   *ran* (`1 passed`, not `1 skipped`) before trusting it. Installed `datasets`,
   then the real loop ran green (whisper-tiny, 1 epoch, CPU, ~10 s after download).
 
-- **`pip` is absent in `backend/.venv`.** The venv was created by `uv venv`,
+- **A SQLite `CHECK` constraint silently blocked a new status value.** Adding the
+  `interrupted` run status (job durability #40) raised `IntegrityError: CHECK
+  constraint failed` because `schema.sql` enumerated the allowed statuses.
+  `CREATE TABLE IF NOT EXISTS` won't alter an existing table's constraint, so the
+  change applies to fresh DBs only (fine now; a real migration is needed later).
+  Lesson: enum-style CHECK constraints are hidden coupling — grep the schema
+  before introducing a new enum value.
+
+- **`ruff --fix` rewrote a readable construct into an unreadable one.** Rule
+  SIM905 turned a 99-language `"""…""".split()` into a 599-char list literal.
+  Restored the string with a targeted `# noqa: SIM905`. Lesson: review what
+  `--fix` changed; don't trust it blindly on expressive code.
 
 - **`pip` is absent in `backend/.venv`.** The venv was created by `uv venv`,
   which doesn't install pip. `python -m pip install …` fails with

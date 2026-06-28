@@ -223,6 +223,34 @@ def test_selftest_seeds_clips_and_unblocks_flow():
         assert len(client.get("/api/clips").json()["clips"]) >= n
 
 
+def test_runs_endpoint_lists_status():
+    with TestClient(app) as client:
+        body = client.get("/api/runs").json()
+        assert "runs" in body and isinstance(body["runs"], list)
+        # Each run row has the fields the resume UI needs.
+        for r in body["runs"]:
+            assert {"id", "status", "engine"} <= set(r)
+
+
+def test_help_bundle_is_a_zip():
+    import io as _io
+    import zipfile as _zip
+
+    with TestClient(app) as client:
+        r = client.get("/api/help-bundle")
+        assert r.status_code == 200
+        assert r.headers["content-type"] == "application/zip"
+        # It's a real, openable zip containing the system report.
+        with _zip.ZipFile(_io.BytesIO(r.content)) as zf:
+            assert "report.json" in zf.namelist()
+
+
+def test_export_dry_run_for_unknown_run_is_404():
+    with TestClient(app) as client:
+        r = client.post("/api/export", json={"run_id": 999999, "fmt": "ctranslate2"})
+        assert r.status_code == 404
+
+
 def test_train_blocked_without_data():
     # NOTE: this reloads `config`/`app` in place, mutating shared module state.
     # It must run AFTER the seeded-data tests above (relies on file definition

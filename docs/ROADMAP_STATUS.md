@@ -55,13 +55,33 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 | 36 | Internationalize the UI | B | 🟡 | `ui/src/lib/i18n.js` + string catalog scaffold + `docs/I18N.md` |
 | 37 | Accessibility pass | B | 🟡 | a11y attributes added; `docs/ACCESSIBILITY.md` checklist |
 | 38 | CI (GitHub Actions) | A | ✅ | `.github/workflows/ci.yml` |
-| 39 | Lint/format/type gates | A | ✅ | `pyproject.toml` ruff+mypy; `ui/.eslintrc`, prettier, svelte-check; rustfmt/clippy in CI |
+| 39 | Lint/format/type gates | A | ✅ | `pyproject.toml` ruff+mypy; `ui/eslint.config.js`, prettier, svelte-check; rustfmt/clippy in CI |
 | 40 | Job durability | A | ✅ | `app.py` startup reconcile, `tests/test_durability.py` |
 | 41 | Observability | A | ✅ | `obs/logging.py` structured logs, help-bundle exporter; `docs/OBSERVABILITY.md` |
 | 42 | Dependency hygiene | A | ✅ | npm audit notes, TestClient/httpx warning fix; `docs/DEPENDENCIES.md` |
-| 43 | Test coverage for real paths | A | ✅ | new test modules; markers for integration |
+| 43 | Test coverage for real paths | A | ✅ | 100 fast tests + 3 `-m integration` (real train **and** CT2 export **and** faster-whisper transcribe, all verified) |
 | 44 | OSS project hygiene | A | ✅ | CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, CHANGELOG, templates |
 | 45 | Landscape currency | A | ✅ | `docs/LANDSCAPE.md` re-verification checklist + cadence |
+
+### Parity items (from the competitive gap analysis — `docs/COMPETITIVE_GAPS.md`)
+
+All ⬜ Tier C (design/tracked); additive, no new ML research. See `ROADMAP.md`
+"Parity" and `docs/FORMATS.md`.
+
+| # | Item | Tier | Status | Evidence |
+|---|------|------|--------|----------|
+| 46 | Data augmentation (SpecAugment, perturbation, noise/RIR) | C | ⬜ | `COMPETITIVE_GAPS.md` |
+| 47 | Dataset import (folder pairs, manifest CSV/JSON, Common Voice, HF) | C | ⬜ | `FORMATS.md`, `COMPETITIVE_GAPS.md` |
+| 48 | Subtitle / caption output (SRT/VTT) | C | ⬜ | `FORMATS.md` |
+| 49 | Long-form chunked transcription | C | ⬜ | `FORMATS.md` |
+| 50 | Decoding controls (beam, hotword bias, temp fallback) | C | ⬜ | `COMPETITIVE_GAPS.md` |
+| 51 | Punctuation/capitalization restoration + ITN | C | ⬜ | `COMPETITIVE_GAPS.md` |
+| 52 | Richer evaluation (per-utterance WER, error report, confidence) | C | ⬜ | `COMPETITIVE_GAPS.md` |
+| 53 | Local experiment metrics view (no telemetry) | C | ⬜ | `COMPETITIVE_GAPS.md`, D-008 |
+| 54 | Headless CLI (train/eval/export) | C | ⬜ | `COMPETITIVE_GAPS.md` |
+| 55 | Custom vocabulary / tokenizer extension | C | ⬜ | `COMPETITIVE_GAPS.md` |
+| 56 | Optional multi-GPU / distributed | C | ⬜ | `COMPETITIVE_GAPS.md` |
+| 57 | More export targets (safetensors, GGUF, TorchScript) | C | ⬜ | `FORMATS.md`, `COMPETITIVE_GAPS.md` |
 
 ## How to verify the Tier B/C items on a provisioned machine
 

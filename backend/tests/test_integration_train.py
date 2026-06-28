@@ -85,3 +85,55 @@ def test_real_finetune_runs_and_reports_measured_smartness(tmp_path):
     # A real HF checkpoint or saved adapter exists (resume + export depend on it).
     out = tmp_path / "run"
     assert any(out.iterdir()), "training produced no artifacts"
+
+
+_HAS_EXPORT = all(importlib.util.find_spec(m) is not None for m in ("ctranslate2", "transformers"))
+skip_export = pytest.mark.skipif(
+    not (_RUN and _HAS_EXPORT),
+    reason="set TALKTEACH_RUN_INTEGRATION=1 and install [ml,export] to run the real export",
+)
+_HAS_FW = importlib.util.find_spec("faster_whisper") is not None
+skip_fw = pytest.mark.skipif(
+    not (_RUN and _HAS_FW and _HAS_EXPORT),
+    reason="needs TALKTEACH_RUN_INTEGRATION=1 + faster-whisper + ctranslate2",
+)
+
+
+@skip_export
+def test_real_export_to_ctranslate2(tmp_path):
+    """#4 end-to-end: a full Whisper model → CTranslate2 int8 export."""
+    from transformers import WhisperForConditionalGeneration, WhisperProcessor
+
+    from talkteach.engines.whisper_lora import WhisperLoRAEngine
+
+    model_dir = tmp_path / "model"
+    WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny").save_pretrained(
+        model_dir
+    )
+    WhisperProcessor.from_pretrained("openai/whisper-tiny").save_pretrained(model_dir)
+
+    out_dir = tmp_path / "export"
+    result = WhisperLoRAEngine().export(str(model_dir), str(out_dir), fmt="ctranslate2")
+    assert result.format == "ctranslate2"
+    assert (out_dir / "model.bin").exists(), "CT2 conversion produced no model"
+
+
+@skip_fw
+def test_real_transcribe_with_ct2_export(tmp_path):
+    """#5 end-to-end: faster-whisper inference on the CT2 export of whisper-tiny."""
+    from transformers import WhisperForConditionalGeneration, WhisperProcessor
+
+    from talkteach.engines.whisper_lora import WhisperLoRAEngine
+
+    model_dir = tmp_path / "model"
+    WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny").save_pretrained(
+        model_dir
+    )
+    WhisperProcessor.from_pretrained("openai/whisper-tiny").save_pretrained(model_dir)
+    out_dir = tmp_path / "export"
+    WhisperLoRAEngine().export(str(model_dir), str(out_dir), fmt="ctranslate2")
+
+    wav = str(tmp_path / "speech.wav")
+    _write_tone_wav(wav, freq=200, seconds=1.5)
+    text = WhisperLoRAEngine().transcribe(wav, model_dir=str(out_dir))
+    assert isinstance(text, str)  # runs without error on the exported model
