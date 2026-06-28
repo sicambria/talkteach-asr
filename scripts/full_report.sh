@@ -40,10 +40,20 @@ fi
 
 echo "==> Config:  $CONFIG"
 echo "==> Workdir: $WORKDIR"
+
+# Preflight disk check. The benchmark deletes each model checkpoint once its cell is
+# scored (see project/docs/LEARNINGS.md RCA), so peak need is ~one model + the HF
+# cache — but warn early if the workdir's filesystem is nearly full, since a disk/
+# quota exhaustion mid-run corrupts the run (and can wedge the shell).
+FREE_KB="$(df -Pk "$(dirname "$WORKDIR")" 2>/dev/null | awk 'NR==2{print $4}')"
+if [ -n "${FREE_KB:-}" ] && [ "$FREE_KB" -lt 5000000 ]; then
+  echo "[warn] only $((FREE_KB/1024)) MB free on $(dirname "$WORKDIR") — a full run needs a few GB." >&2
+  echo "[warn] free space (e.g. 'rm -rf ~/.cache/huggingface') before continuing." >&2
+fi
 echo
 
 "$PY" scripts/benchmark.py --config "$CONFIG" --workdir "$WORKDIR" --report "$REPORT"
 
 echo
 echo "==> Recorded report: $REPORT"
-echo "==> Raw artifacts:   $WORKDIR   (delete to reclaim disk)"
+echo "==> Raw artifacts:   $WORKDIR  ($(du -sh "$WORKDIR" 2>/dev/null | cut -f1); rm -rf to reclaim)"

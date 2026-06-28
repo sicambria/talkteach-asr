@@ -82,6 +82,24 @@ engines:
 (typo protection). Providers/engines whose deps are missing are reported as
 `skipped`, never crashing the matrix.
 
+Optional top-level key `keep_artifacts: true` retains each cell's trained model on
+disk (default `false`).
+
+## Disk footprint
+
+Each cell trains and **saves a full fine-tuned model** — small for a Whisper LoRA
+adapter, but ~2.4 GB for `wav2vec2-base`. By default the benchmark **deletes a
+cell's checkpoint as soon as it's scored**, so an N-cell matrix needs disk for *one*
+model at a time, not N. Set `keep_artifacts: true` to keep them. `scripts/full_report.sh`
+puts all generated audio/models under one temp workdir, does a pre-flight free-space
+check, and prints the workdir size at the end.
+
+> Why this matters: an earlier run that kept every checkpoint filled a per-user disk
+> **quota**, which presents as a totally unresponsive shell (every command fails to
+> write temp files) rather than an obvious "disk full". See the RCA in
+> `LEARNINGS.md`. If a run dies oddly or the shell wedges, check `df` and free space
+> (e.g. `rm -rf ~/.cache/huggingface`, delete old workdirs).
+
 ## Engine tiering (what "all real" actually means)
 
 | Engine | Real training | CPU / CI-runnable | Notes |

@@ -63,6 +63,32 @@ Newest entries at the top of each section.
 
 ## Errors encountered & fixes
 
+- **RCA — the shell "wedge" was a disk-*quota* exhaustion from un-cleaned benchmark
+  checkpoints.** *Symptom:* during benchmark validation the Bash tool went fully
+  dead — every command, even `echo`, returned exit 1 with no output; a mid-run
+  benchmark had exited non-zero producing nothing. *Diagnosis:* `df /` showed the
+  root filesystem 81% free, so it was not the filesystem — once a command did run it
+  printed `bash: pwd: write error: Lemezkvóta túllépve` ("disk quota exceeded"). A
+  per-user quota was full: when it fills, the shell can't write its own temp files
+  (heredocs, `pwd`), so *every* command fails — which masquerades as a hung/wedged
+  tool. *Root cause:* each benchmark cell saves a full fine-tuned model
+  (`Trainer.save_model`) — ~2.4 GB for wav2vec2-base — and nothing deleted them;
+  repeated debug/validation runs each also re-created per-run `TALKTEACH_DATA` dirs
+  with copied piper voices (~60 MB each). The scratchpad reached ~11 GB and blew the
+  quota. *Fix/recovery:* deleted the disposable run dirs (11 GB → 4 KB) and the
+  shell recovered immediately. *Preventive measures (shipped):*
+  (1) the benchmark now **deletes each cell's checkpoint once it's scored** by
+  default (`keep_artifacts: false`), so an N-cell matrix needs disk for *one* model
+  at a time, not N (`talkteach/benchmark.py`);
+  (2) `scripts/full_report.sh` keeps all generated data under a single temp workdir,
+  does a **pre-flight free-space check**, and reports the workdir's size afterwards;
+  (3) `.gitignore` excludes `*.results.json` / `benchmarks/results/` / `piper_voices/`
+  so artifacts never get committed.
+  *Lessons:* a per-user **quota** failure presents as a totally unresponsive shell,
+  not a clear "disk full" — check `df` *and* try a command that surfaces the write
+  error before assuming the tool is broken; and any harness that downloads models or
+  writes checkpoints must **bound and clean** its disk footprint, not just its RAM.
+
 - **transformers 5.x renamed `Seq2SeqTrainer(tokenizer=…)` → `processing_class=`.**
   The first real fine-tune run died with `TypeError: __init__() got an unexpected
   keyword argument 'tokenizer'` on transformers 5.12. Fix: try

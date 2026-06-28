@@ -32,6 +32,7 @@ import contextlib
 import gc
 import json
 import random
+import shutil
 import sys
 import time
 from dataclasses import asdict, dataclass, field
@@ -116,6 +117,10 @@ def run_benchmark(config: dict[str, Any], workroot: str | Path) -> BenchmarkRepo
     sample_rate = int(config.get("sample_rate", 16_000))
     tts_specs = config.get("tts") or [{"provider": "piper"}]
     engine_specs = config.get("engines") or [{"name": "whisper", "plan": {}}]
+    # A trained model (esp. wav2vec2, ~GBs) is only needed while its cell is being
+    # scored. Delete it afterwards by default so an N-cell matrix needs disk for ONE
+    # model at a time, not N — see project/docs/LEARNINGS.md (RCA: disk-quota wedge).
+    keep_artifacts = bool(config.get("keep_artifacts", False))
 
     root = Path(workroot)
     root.mkdir(parents=True, exist_ok=True)
@@ -165,6 +170,7 @@ def run_benchmark(config: dict[str, Any], workroot: str | Path) -> BenchmarkRepo
 
         for eng_spec in engine_specs:
             eng_name = eng_spec.get("name", eng_spec.get("plan", {}).get("engine", "?"))
+            run_dir = tts_dir / f"run_{eng_name}"
             cell = _run_cell(
                 tts_name,
                 eng_name,
@@ -172,13 +178,17 @@ def run_benchmark(config: dict[str, Any], workroot: str | Path) -> BenchmarkRepo
                 train_mani,
                 eval_mani,
                 refs,
-                workdir=tts_dir / f"run_{eng_name}",
+                workdir=run_dir,
                 train_good_fraction=train_gf,
             )
             report.cells.append(cell)
             # Release model/tensor memory before the next cell so a multi-engine
             # matrix doesn't accumulate several models in RAM at once.
             _free_memory()
+            # Bound disk: drop the (potentially multi-GB) checkpoint now that the
+            # cell is scored, unless the caller explicitly wants to keep artifacts.
+            if not keep_artifacts:
+                shutil.rmtree(run_dir, ignore_errors=True)
 
     return report
 
