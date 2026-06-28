@@ -6,6 +6,23 @@ Newest entries at the top of each section.
 
 ## Insights
 
+- **A status matrix written up-front drifts; audit every cell against code at the
+  end.** `ROADMAP_STATUS.md` was authored at spine time, *aspirationally*, then
+  the build happened. By the coherence pass several ✅ cells pointed at wirings
+  that never shipped (a live-meter UI, a preflight screen) or at files that were
+  later renamed/consolidated (`fetch_runtime.py`→`build_sidecar.py`,
+  `test_decode.py`→`test_audio_pipeline.py`). The fix is the *matrix*, not more
+  code: soften rows to their true tier. Green test gates verify code; they do not
+  verify that the docs tell the truth about the code — that audit is a separate,
+  deliberate step. A cheap mechanical check (`grep` every file/symbol an evidence
+  cell names) catches most of it.
+
+- **A "skipped" opt-in test masquerades as a passing one.** The first
+  `pytest -m integration` run reported success but had actually *skipped*
+  (a dep was missing). Always confirm the heavy test printed `passed`, not
+  `skipped`, before believing a Tier-B path is verified.
+
+
 - **The Phase-0 invariant is the architecture's load-bearing wall.** Everything
   imports and tests with zero ML deps because every heavy import is
   function-local and guarded (`importlib.util.find_spec`, never a top-level
