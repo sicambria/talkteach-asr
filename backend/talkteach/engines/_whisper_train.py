@@ -389,6 +389,14 @@ def run_real_training(
                 )
             return control
 
+        def on_save(self, args, state, control, **kw):  # noqa: ANN001
+            # Remember the freshly-written checkpoint as the last known-good state
+            # so the NaN guard can name it if the run later diverges.
+            latest = find_latest_checkpoint(workdir)
+            if latest:
+                guard.observe_good_checkpoint(latest)
+            return control
+
         def on_step_end(self, args, state, control, **kw):  # noqa: ANN001
             if should_stop is not None and should_stop():
                 control.should_training_stop = True

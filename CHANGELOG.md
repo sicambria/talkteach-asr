@@ -35,8 +35,27 @@ behind honest tiers (see `DECISIONS.md` D-001 and `docs/ROADMAP_STATUS.md`).
 - **Audio pipeline** (P1 #10–13): ffmpeg decode/resample to 16 kHz mono (D-010),
   Silero VAD trimming, a forced-alignment adapter scaffold, and a live
   recording-quality meter.
+- **Desktop reliability** (P1 #15,16,18): the Tauri shell spawns the Python
+  backend as a sidecar (`tauri-plugin-shell`, killed on exit); a PyInstaller
+  sidecar build script + bundled-runtime strategy; a real cross-platform
+  microphone probe (PortAudio) replacing the Linux-only `/dev/snd` heuristic.
+- **UX wired to the live API** (P1 #19–23): Screen 2 lists real clips and
+  persists corrections; Screen 1 shows karaoke prompts (CC0) and a "practice set"
+  self-test; Screen 3's Grown-up mode shows the director's rationale + hardware;
+  new endpoints (`/api/clips`, `/api/clips/{id}/transcript`, `/api/prompts`,
+  `/api/plan`, `/api/selftest`).
+- **P2/P3 breadth** (#24,25,26,28,30,32,34,35,36): NeMo + wav2vec2 engine
+  scaffolds (with graceful fallback), active-learning clip ranking, adaptive
+  data-sufficiency targets, an auto-generated in-app credits screen, an i18n
+  string-catalog scaffold, a denoise scaffold, a model-pack builder, and a signed
+  release-matrix workflow scaffold.
+- **Observability** (X #41): local-only JSON-lines logging and a redacted
+  "help bundle" exporter (`/api/help-bundle`); no telemetry by default (D-008).
 - OSS project hygiene (X #44): `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
   `SECURITY.md`, this changelog, and GitHub issue/PR templates + Dependabot.
+- Thirteen per-feature design docs under `docs/` (engines, calibration,
+  alignment, releasing, cloud fallback, multi-project, denoise, diarization,
+  model packs, i18n, accessibility, mascot, landscape currency).
 
 ### Fixed
 

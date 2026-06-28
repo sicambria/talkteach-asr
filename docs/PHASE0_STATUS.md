@@ -19,13 +19,19 @@ plumbing. It does so by building those parts first, for real, with tests.
 Verified live: `python -m talkteach.app` boots under uvicorn and serves
 `/api/health`, `/api/preflight`, `/api/sufficiency`.
 
-## What is SIMULATED or scaffolded (deliberately, for Phase 0)
+> **Update (Phase 0 → world-class):** several items below have since been built.
+> The authoritative, per-item status is now [`ROADMAP_STATUS.md`](ROADMAP_STATUS.md).
+> This section is kept for the original Phase-0 framing.
 
-- **Real LoRA/PEFT training.** The Whisper-LoRA engine currently always runs the
-  dependency-free simulation, even with `[ml]` installed. The real
-  `Seq2SeqTrainer` loop (data collator, `Seq2SeqTrainingArguments` derived from
-  the `TrainingPlan`, `compute_metrics`=WER, `resume_from_checkpoint`) is
-  outlined in `engines/whisper_lora.py` as `TODO(phase-1)`.
+## What is SIMULATED or scaffolded
+
+- **Real LoRA/PEFT training — now implemented.** ✅ The real `Seq2SeqTrainer`
+  loop (data collator, `Seq2SeqTrainingArguments` derived from the `TrainingPlan`,
+  `compute_metrics`=WER, `resume_from_checkpoint`, NaN-guard) lives in
+  `engines/_whisper_train.py` and runs when `[ml]` is installed and real clips
+  exist on disk (DECISIONS.md D-012); verified end-to-end on `whisper-tiny` by the
+  opt-in `integration` test. The dependency-free, `[SIMULATION]`-marked stand-in
+  remains the fallback for GPU-less / no-`[ml]` environments and the fast suite.
 - **Real transcription/export** activate only when `faster-whisper` / `ctranslate2`
   are present; otherwise they degrade gracefully.
 - **Svelte UI builds today** — `npm install && npm run build` produces `ui/dist/`

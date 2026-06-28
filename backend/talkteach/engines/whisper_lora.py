@@ -12,16 +12,18 @@ installed. Real work that needs a missing dep raises
 :class:`~talkteach.engines.base.EngineUnavailableError` with a child-app-friendly
 message instead of crashing.
 
-Simulation mode
----------------
-:meth:`WhisperLoRAEngine.train` ships a real, dependency-light *simulation* that
-runs whenever torch is unavailable (and currently always, see the phase-1 TODO).
-It walks the plan's epochs, streams a rising "smartness" curve through the
-progress callback, honours cooperative cancellation, and writes one JSON
-checkpoint per epoch to ``workdir``. This lets the FastAPI ``/train`` endpoint and
-the whole UI be exercised end-to-end on a GPU-less machine. Checkpoints carry a
-``"mode": "SIMULATION"`` marker so nothing downstream mistakes them for a real
-fine-tune.
+Real vs. simulation
+-------------------
+:meth:`WhisperLoRAEngine.train` runs the **real** PEFT/LoRA ``Seq2SeqTrainer``
+loop (in :mod:`talkteach.engines._whisper_train`) when the training deps are
+installed and the manifest points at real audio on disk; otherwise it falls back
+to a dependency-light *simulation* (see :meth:`_simulate_train` and the dispatch
+in :meth:`train`; the policy is :func:`_whisper_train.should_simulate`, recorded
+in DECISIONS.md D-012). The simulation walks the plan's epochs, streams a rising
+"smartness" curve, honours cooperative cancellation, and writes one JSON
+checkpoint per epoch — enough to exercise the FastAPI ``/train`` endpoint and the
+whole UI on a GPU-less machine. Its checkpoints carry a ``"mode": "SIMULATION"``
+marker so nothing downstream mistakes them for a real fine-tune.
 """
 
 from __future__ import annotations

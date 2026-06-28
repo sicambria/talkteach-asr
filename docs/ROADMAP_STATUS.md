@@ -26,15 +26,15 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 | 7 | Path-traversal fix | A | ✅ | `app.py` `_safe_clip_name`, `tests/test_api.py::test_upload_path_traversal_is_contained` |
 | 8 | Tighten CSP | A | ✅ | `src-tauri/tauri.conf.json` `security.csp`; `tests` n/a (config) |
 | 9 | Upload validation | A | ✅ | `app.py` size + extension/codec allow-list, `tests/test_api.py` |
-| 10 | Bundle ffmpeg + decode/resample | B | 🟡 | `audio/decode.py` (ffmpeg subprocess, guarded), `tests/test_decode.py`; bundling via `scripts/fetch_runtime.py` + `docs/BUNDLING.md` |
-| 11 | Silero VAD trim/segment | B | ✅ | `audio/vad.py` (guarded), pure segmentation logic tested in `tests/test_vad.py` |
+| 10 | Bundle ffmpeg + decode/resample | B | 🟡 | `audio/decode.py` (ffmpeg subprocess, guarded), `tests/test_audio_pipeline.py`; bundling via `scripts/build_sidecar.py` + `docs/BUNDLING.md` |
+| 11 | Silero VAD trim/segment | B | ✅ | `audio/vad.py` (guarded), pure segmentation logic tested in `tests/test_audio_pipeline.py` |
 | 12 | Forced alignment | C | 🟡 | `audio/align.py` adapter scaffold + `docs/ALIGNMENT.md` |
-| 13 | Live recording-quality feedback | A | ✅ | `audio/quality.py::live_meter`, UI live meter in `Screen1_Record.svelte` |
+| 13 | Live recording-quality feedback | B | 🟡 | backend helper `audio/quality.py::live_meter` + `tests/test_audio_pipeline.py`; UI live-meter wiring (WebAudio, client-side) pending |
 | 14 | Compile the Tauri shell | C | ⬜ | needs root/WebKit libs; recipe in README + `setup.sh`; documented Tier C |
 | 15 | Tauri sidecar auto-spawn backend | B | ✅ | `src-tauri/src/lib.rs` sidecar spawn + `tauri.conf.json` externalBin; `docs/SIDECAR.md` |
-| 16 | No-install bundled runtime | C | 🟡 | `scripts/fetch_runtime.py` + `docs/BUNDLING.md` (uv-based) |
-| 17 | Checkpoint/resume exercised e2e | A | ✅ | `tests/test_engines.py` resume tests + `tests/test_durability.py` |
-| 18 | Pre-flight wired to UI + mic probe | A | ✅ | cross-platform mic in `reliability/preflight.py`, `Screen0`/preflight call; `tests/test_preflight.py` |
+| 16 | No-install bundled runtime | C | 🟡 | `scripts/build_sidecar.py` (PyInstaller sidecar) + `docs/BUNDLING.md` (tiny core + uv ML pack) |
+| 17 | Checkpoint/resume exercised e2e | A | ✅ | `find_latest_checkpoint` + resume in `tests/test_whisper_train.py`, `tests/test_durability.py`; sim writes per-epoch checkpoints (`tests/test_engines.py`) |
+| 18 | Pre-flight wired to UI + mic probe | A/B | 🟡 | cross-platform PortAudio mic probe in `reliability/preflight.py` + `GET /api/preflight` (done, tested); a dedicated pre-flight *screen* in the UI is pending (the API is ready) |
 | 19 | Wire UI to real data | A | ✅ | `Screen2_Check.svelte`, `Screen4_Try.svelte` use the API; `api.js` endpoints |
 | 20 | Browser audio → trainable format | B | ✅ | `Screen1_Record.svelte` MediaRecorder→upload; server decode (#10) |
 | 21 | Karaoke prompt sets per language | A | ✅ | `backend/talkteach/prompts/` (CC0 sentences) + `/api/prompts` + UI |
@@ -48,10 +48,10 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 | 29 | Multi-project support | B | 🟡 | data layer already multi-project; `docs/MULTIPROJECT.md` design for app layer |
 | 30 | Optional denoise | C | 🟡 | `audio/denoise.py` scaffold (guarded) + `docs/DENOISE.md` |
 | 31 | Mascot art + gamification | C | ⬜ | `docs/MASCOT.md` design; needs an artist |
-| 32 | Active learning | C | 🟡 | `director/active_learning.py` (uncertainty ranking, pure) + `docs/ACTIVE_LEARNING.md` |
+| 32 | Active learning | B | ✅ | `director/active_learning.py::rank_clips` (uncertainty ranking, pure) + `tests/test_p2p3.py` |
 | 33 | Multi-speaker / diarization | C | ⬜ | `docs/DIARIZATION.md` design |
 | 34 | Shareable model packs / HF publish | C | 🟡 | `docs/MODEL_PACKS.md` design + `scripts/pack_model.py` |
-| 35 | Adaptive data-sufficiency targets | B | ✅ | `director/policy.py::adaptive_target` + `tests/test_director.py` |
+| 35 | Adaptive data-sufficiency targets | B | ✅ | `director/policy.py::adaptive_target` + `tests/test_p2p3.py` |
 | 36 | Internationalize the UI | B | 🟡 | `ui/src/lib/i18n.js` + string catalog scaffold + `docs/I18N.md` |
 | 37 | Accessibility pass | B | 🟡 | a11y attributes added; `docs/ACCESSIBILITY.md` checklist |
 | 38 | CI (GitHub Actions) | A | ✅ | `.github/workflows/ci.yml` |

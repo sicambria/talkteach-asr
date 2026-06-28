@@ -14,15 +14,19 @@ It exists to close the exact gap documented in the companion research report
 GUI that actually trains state-of-the-art ASR models.* TalkTeach is mostly
 **integration and UX**, not new ML.
 
-> **Status: Phase 0 (spike) — working vertical slice.** The Python backend (the
-> director, audio quality/sufficiency logic, data layer, reliability pre-flight,
-> the FastAPI job server, and a dependency-free training *simulation*) is real and
-> tested: **57 passing tests**. The desktop shell (Tauri) and Svelte UI are
-> scaffolded and coherent but not yet compiled (Rust toolchain required). Real
-> GPU/LoRA training is wired behind the engine adapter and runs as a faithful
-> simulation until the `[ml]` extra is installed. See
-> [`docs/PHASE0_STATUS.md`](docs/PHASE0_STATUS.md) for exactly what is real vs.
-> simulated and the path to Phase 1.
+> **Status: Phase 0 → world-class, in progress.** The Python backend (director,
+> audio pipeline, data layer, reliability pre-flight, FastAPI job server) is real
+> and tested: **97 passing tests** (fast suite, no GPU). **Real Whisper-LoRA
+> training is implemented** — a PEFT/LoRA `Seq2SeqTrainer` loop with measured WER
+> and safety rails, verified end-to-end on `whisper-tiny` via the opt-in
+> `integration` test. It trains for real when the `[ml]` extra is installed and
+> real recordings exist, and otherwise falls back to a clearly-marked simulation
+> (see [`DECISIONS.md`](DECISIONS.md) D-012). The Svelte UI is wired to the live
+> API; the Tauri shell spawns the backend as a sidecar (build-ready, not compiled
+> here — needs WebKit/GTK dev libs). See
+> [`docs/ROADMAP_STATUS.md`](docs/ROADMAP_STATUS.md) for the per-item status
+> matrix and [`docs/PHASE0_STATUS.md`](docs/PHASE0_STATUS.md) for real vs.
+> scaffolded.
 
 ---
 
@@ -71,7 +75,7 @@ Requires Python ≥ 3.10 and [`uv`](https://github.com/astral-sh/uv) (or pip).
 cd backend
 uv venv .venv && source .venv/bin/activate
 uv pip install -e .            # light deps only — no GPU, no ML framework needed
-pytest -q                      # 57 tests, ~0.4s
+pytest -q                      # 97 tests, ~1.3s (no GPU/ML deps needed)
 python -m talkteach.app        # serves http://127.0.0.1:8756
 ```
 
@@ -133,11 +137,11 @@ automatically as a Tauri sidecar — see `src-tauri/src/lib.rs`).
 | `backend/talkteach/audio/` | Clip quality (clipping/SNR/silence), sufficiency aggregation | **Real + tested** |
 | `backend/talkteach/data/` | One-SQLite-per-project store (WAL, autosave) | **Real + tested** |
 | `backend/talkteach/reliability/` | Pre-flight (disk/RAM/GPU/mic), graceful degradation | **Real + tested** |
-| `backend/talkteach/engines/` | `ASREngine` adapter + `WhisperLoRAEngine` | Adapter real; training simulated until `[ml]` |
-| `backend/talkteach/app.py` | FastAPI job server (10 endpoints) | **Real + tested** |
-| `ui/` | Svelte 4 four-screen wizard + API client | **Builds** (`npm run build` → `dist/`) |
-| `src-tauri/` | Tauri v2 desktop shell (icons, lib+bin, orchestrator) | Build-ready; native compile needs WebKit dev libs |
-| `docs/` | Phase status, third-party licenses | — |
+| `backend/talkteach/engines/` | `ASREngine` adapter + `WhisperLoRAEngine` (real LoRA loop) + NeMo/wav2vec2 scaffolds | **Real training** when `[ml]` present; simulation fallback |
+| `backend/talkteach/app.py` | FastAPI job server | **Real + tested** |
+| `ui/` | Svelte 4 four-screen wizard wired to the live API | **Builds + svelte-check/eslint/prettier clean** |
+| `src-tauri/` | Tauri v2 shell — spawns the backend as a sidecar | Build-ready; native compile needs WebKit dev libs |
+| `docs/` | Status matrix, decisions, per-feature design docs | — |
 
 ## Testing
 
@@ -145,11 +149,21 @@ automatically as a Tauri sidecar — see `src-tauri/src/lib.rs`).
 cd backend && pytest -q
 ```
 
-57 tests cover the director's decision boundaries, the audio DSP, the SQLite
-layer (incl. WAL persistence + SQL-injection guard), the engine simulation
-(progress, cancellation, checkpoint/resume), pre-flight degradation, and the
-full HTTP flow (project → analyze WAV → gate → teach → status → export). All run
-with **no GPU and no ML framework installed**.
+97 fast tests cover the director's decision boundaries, the audio DSP + pipeline
+helpers, the SQLite layer (incl. WAL persistence + SQL-injection guard), the
+engine simulation + the *pure* real-training helpers (args-from-plan, WER,
+NaN-guard, checkpoint discovery), security (path-traversal/upload validation),
+job durability + the redacted help bundle, pre-flight degradation, and the full
+HTTP flow. All run with **no GPU and no ML framework installed**. The real
+end-to-end fine-tune is an opt-in `integration` test:
+
+```bash
+cd backend && pytest -q                                   # 97 fast tests
+TALKTEACH_RUN_INTEGRATION=1 pytest -m integration         # real whisper-tiny fit ([ml] + net)
+```
+
+Lint/type/format gates: `ruff check`, `ruff format --check`, `mypy talkteach`
+(or just `make check`); UI: `cd ui && npm run build && npm run check && npm run lint`.
 
 ## License
 
