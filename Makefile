@@ -6,9 +6,8 @@
 
 PY := backend/.venv/bin/python
 RUFF := backend/.venv/bin/ruff
-MYPY := backend/.venv/bin/mypy
 
-.PHONY: help setup setup-ml test lint format check ui-check rust-check integration benchmark report all
+.PHONY: help setup setup-ml test lint format check ui-check rust-check integration benchmark report all prepush
 
 help:  ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -37,7 +36,7 @@ report:  ## Run the full benchmark fully automatically and RECORD benchmarks/REP
 lint:  ## Lint Python (ruff) without modifying files.
 	$(RUFF) check backend/talkteach backend/tests
 	$(RUFF) format --check backend/talkteach backend/tests
-	$(MYPY) --config-file backend/pyproject.toml backend/talkteach
+	$(PY) -m mypy --config-file backend/pyproject.toml backend/talkteach
 
 format:  ## Auto-format Python (ruff).
 	$(RUFF) check --fix backend/talkteach backend/tests
@@ -52,3 +51,7 @@ rust-check:  ## Format-check + clippy + check the Tauri shell (needs Rust toolch
 check: lint test  ## The PR gate: lint + type + fast tests.
 
 all: check ui-check  ## Everything that can run without a GPU.
+
+prepush: check ui-check  ## Full pre-push gate: Python + UI + Rust (mirrors CI).
+	cd ui && npm run lint
+	$(MAKE) rust-check

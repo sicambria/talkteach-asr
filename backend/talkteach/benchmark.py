@@ -408,8 +408,16 @@ def format_table(report: BenchmarkReport) -> str:
     header = f"Benchmark '{report.name}'  lang={report.language}  "
     header += f"train={report.train_clips} eval={report.eval_clips} clips"
     cols = [
-        "Lang", "TTS", "Engine", "Bracket", "Status",
-        "WER", "CER", "Smartness", "Train(s)", "Detail",
+        "Lang",
+        "TTS",
+        "Engine",
+        "Bracket",
+        "Status",
+        "WER",
+        "CER",
+        "Smartness",
+        "Train(s)",
+        "Detail",
     ]
     rows = [cols]
     for c in report.cells:
