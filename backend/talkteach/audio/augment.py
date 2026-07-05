@@ -1,9 +1,12 @@
 """Data augmentation — SpecAugment, speed/pitch perturbation, noise mixing (#46).
 
 The single biggest accuracy win on a small kid dataset (NeMo, SpeechBrain both lean
-on it). Every function here is **pure numpy** — deterministic given a seed, no torch,
-no audio I/O — so it is unit-tested directly and can run inside the training collator
-or a preprocessing pass. The director decides *whether* to augment via
+on it). Every function here is **pure numpy** — deterministic, no torch, no audio
+I/O — so it is unit-tested directly and can run inside the training collator or a
+preprocessing pass. The one exception is :func:`perturb_pitch`: a correct duration-
+preserving pitch shift needs a phase vocoder, so it delegates to librosa (guarded,
+``[ml]``) rather than shipping a fake resample-based near-identity. The director
+decides *whether* to augment via
 :func:`talkteach.director.policy.augmentation_for` (auto-enabled for tiny data);
 :class:`AugmentationConfig` is the framework-free knob it returns.
 
@@ -63,19 +66,27 @@ def perturb_speed(samples: np.ndarray, factor: float) -> np.ndarray:
 def perturb_pitch(
     samples: np.ndarray, n_semitones: float, sample_rate: int = TARGET_SAMPLE_RATE
 ) -> np.ndarray:
-    """Approximate pitch shift that **preserves duration** (resample up/down, then
-    back to the original length). Crude vs a phase vocoder, but a real, cheap,
-    dependency-free augmentation. ``0`` semitones is a no-op.
+    """Duration-preserving pitch shift by ``n_semitones`` (**guarded**: needs librosa).
+
+    A correct pitch shift that keeps the length needs a phase vocoder / time-stretch,
+    not plain resampling (resample-then-resample-back nets to a near-identity). So
+    unlike the other, pure-numpy waveform ops, this delegates to
+    ``librosa.effects.pitch_shift`` (available with the ``[ml]`` extra). ``0``
+    semitones (or empty input) is a pure no-op and needs no dependency; a non-zero
+    shift without librosa raises ``RuntimeError`` rather than silently returning
+    unshifted audio.
     """
-    _ = sample_rate  # kept for API symmetry / future high-quality path
     if n_semitones == 0.0 or samples.size == 0:
         return samples.astype("float32", copy=False)
-    ratio = 2.0 ** (n_semitones / 12.0)
-    shifted = perturb_speed(samples, ratio)  # changes pitch + length
-    # Stretch back to the original length so only pitch changed.
-    xp = np.linspace(0.0, 1.0, num=shifted.shape[0], endpoint=False)
-    x = np.linspace(0.0, 1.0, num=samples.shape[0], endpoint=False)
-    return np.interp(x, xp, shifted).astype("float32")
+    try:
+        import librosa  # guarded: real pitch shift needs a phase vocoder
+    except ImportError as exc:  # pragma: no cover - exercised only without [ml]
+        raise RuntimeError(
+            "perturb_pitch needs librosa for a real pitch shift — install talkteach-backend[ml]"
+        ) from exc
+    return librosa.effects.pitch_shift(
+        samples.astype("float32"), sr=sample_rate, n_steps=n_semitones
+    ).astype("float32")
 
 
 def mix_noise(samples: np.ndarray, noise: np.ndarray, snr_db: float) -> np.ndarray:

@@ -111,7 +111,10 @@ def _cmd_augment(args: argparse.Namespace) -> int:
     if args.speed != 1.0:
         samples = aug.perturb_speed(samples, args.speed)
     if args.pitch != 0.0:
-        samples = aug.perturb_pitch(samples, args.pitch, sample_rate=rate)
+        try:
+            samples = aug.perturb_pitch(samples, args.pitch, sample_rate=rate)
+        except RuntimeError as exc:  # librosa missing → skip pitch, don't crash
+            print(f"skipping --pitch: {exc}", file=sys.stderr)
     if args.noise:
         noise, _ = _read_wav(args.noise)
         samples = aug.mix_noise(samples, noise, snr_db=args.snr)
