@@ -76,6 +76,20 @@ ProgressCallback = Callable[[TrainProgress], None]
 ShouldStop = Callable[[], bool]
 
 
+def _wav_duration_or_zero(audio_path: str) -> float:
+    """Seconds of a WAV via the stdlib ``wave`` header (import-light); 0.0 on any
+    non-WAV / unreadable file. Used by the default segment fallback so it needs no
+    audio deps."""
+    import contextlib
+    import wave
+
+    with contextlib.suppress(Exception), wave.open(audio_path, "rb") as w:
+        rate = w.getframerate()
+        if rate:
+            return w.getnframes() / float(rate)
+    return 0.0
+
+
 class ASREngine(abc.ABC):
     """Abstract adapter every training engine implements.
 
@@ -151,6 +165,21 @@ class ASREngine(abc.ABC):
         score an arbitrary base may ignore it.
         Raises :class:`EngineUnavailableError` if inference deps are missing.
         """
+
+    def transcribe_segments(
+        self, audio_path: str, model_dir: str | None = None, base_checkpoint: str | None = None
+    ) -> list[dict]:
+        """Segment-returning decode for subtitles + long-form (#48/#49).
+
+        Returns ``[{"start": float, "end": float, "text": str}, ...]`` in seconds.
+        The default wraps :meth:`transcribe` into a single whole-clip segment
+        (duration measured from a WAV header via stdlib ``wave``, else ``0.0``) so
+        every engine works out of the box. Engines with a native segmenting
+        decoder (e.g. faster-whisper) override this to return real per-utterance
+        timestamps. Kept import-light — no heavy deps at this layer.
+        """
+        text = self.transcribe(audio_path, model_dir=model_dir, base_checkpoint=base_checkpoint)
+        return [{"start": 0.0, "end": _wav_duration_or_zero(audio_path), "text": text}]
 
     @abc.abstractmethod
     def export(self, model_dir: str, out_dir: str, fmt: str = "ctranslate2") -> ExportResult:

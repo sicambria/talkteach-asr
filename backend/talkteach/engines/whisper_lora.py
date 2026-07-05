@@ -32,6 +32,7 @@ import importlib.util
 import json
 import os
 import time
+from typing import TYPE_CHECKING
 
 from talkteach.director.types import TrainingPlan
 
@@ -43,6 +44,9 @@ from .base import (
     ShouldStop,
     TrainProgress,
 )
+
+if TYPE_CHECKING:
+    from talkteach.transcript.decode import DecodeOptions
 
 # Required to run a *real* LoRA fine-tune. faster_whisper is needed only for
 # "Try it" inference, so it is tracked separately from the training trio.
@@ -294,7 +298,11 @@ class WhisperLoRAEngine(ASREngine):
     # -- Try it ---------------------------------------------------------------
 
     def transcribe(
-        self, audio_path: str, model_dir: str | None = None, base_checkpoint: str | None = None
+        self,
+        audio_path: str,
+        model_dir: str | None = None,
+        base_checkpoint: str | None = None,
+        options: DecodeOptions | None = None,
     ) -> str:
         """Transcribe one clip — fast CTranslate2 path, or a trained-adapter path.
 
@@ -310,6 +318,10 @@ class WhisperLoRAEngine(ASREngine):
           hard-coded size).
         * Otherwise (a CTranslate2 export dir, or ``None``): use faster-whisper, the
           fast offline "Try it" path the product ships.
+
+        ``options`` (:class:`DecodeOptions`, #50) tunes the faster-whisper decode
+        (beam size, hotword/prompt biasing, temperature fallback). It applies only
+        to the faster-whisper path; omitting it preserves the stock decode exactly.
         """
         if model_dir and _is_trained_hf_dir(model_dir):
             if _missing(_TRAIN_DEPS):
@@ -329,6 +341,33 @@ class WhisperLoRAEngine(ASREngine):
 
             return wt.transcribe_with_transformers(audio_path, base_checkpoint)
 
+        segments = self._faster_whisper_segments(audio_path, model_dir, options)
+        return " ".join(seg["text"].strip() for seg in segments).strip()
+
+    def transcribe_segments(
+        self,
+        audio_path: str,
+        model_dir: str | None = None,
+        base_checkpoint: str | None = None,
+        options: DecodeOptions | None = None,
+    ) -> list[dict]:
+        """Segment-returning decode with real timestamps (#48/#49).
+
+        The faster-whisper path returns genuine per-utterance ``start``/``end``.
+        The transformers trained/base path has no cheap segment timestamps, so it
+        falls back to the base single-segment wrapper (still correct for the
+        long-form chunker, which supplies the absolute offset per window).
+        """
+        trained_hf = model_dir is not None and _is_trained_hf_dir(model_dir)
+        base_hf = not model_dir and bool(base_checkpoint)
+        if trained_hf or base_hf:
+            return super().transcribe_segments(audio_path, model_dir, base_checkpoint)
+        return self._faster_whisper_segments(audio_path, model_dir, options)
+
+    def _faster_whisper_segments(
+        self, audio_path: str, model_dir: str | None, options: DecodeOptions | None
+    ) -> list[dict]:
+        """Run faster-whisper and return ``[{start,end,text}]`` (guarded)."""
         if not _has(_TRANSCRIBE_DEP):
             raise EngineUnavailableError(
                 f"'Try it' needs the {_TRANSCRIBE_DEP} package — ask a grown-up to {_INSTALL_HINT}."
@@ -339,8 +378,12 @@ class WhisperLoRAEngine(ASREngine):
         # otherwise fall back to the base checkpoint name.
         model_id = model_dir or "small"
         model = WhisperModel(model_id, device="auto", compute_type="default")
-        segments, _info = model.transcribe(audio_path)
-        return " ".join(seg.text.strip() for seg in segments).strip()
+        decode_kwargs = options.to_faster_whisper_kwargs() if options is not None else {}
+        segments, _info = model.transcribe(audio_path, **decode_kwargs)
+        return [
+            {"start": float(seg.start), "end": float(seg.end), "text": seg.text.strip()}
+            for seg in segments
+        ]
 
     # -- Use on my computer ---------------------------------------------------
 
