@@ -65,23 +65,25 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 
 ### Parity items (from the competitive gap analysis — `COMPETITIVE_GAPS.md`)
 
-All ⬜ Tier C (design/tracked); additive, no new ML research. See `ROADMAP.md`
-"Parity" and `FORMATS.md`.
+The tractable additive slice (#46–#57) is now built — pure-Python, CPU/CI-tested,
+following the pure-helper + guarded-ML split (D-002). ITN (part of #51), the neural
+punctuation model, live multi-GPU (#56), and GGUF/TorchScript export stay scaffold/
+doc (reasons in each row + the plan `plans/roadmap-parity-batch.md`).
 
 | # | Item | Tier | Status | Evidence |
 |---|------|------|--------|----------|
-| 46 | Data augmentation (SpecAugment, perturbation, noise/RIR) | C | ⬜ | `COMPETITIVE_GAPS.md` |
-| 47 | Dataset import (folder pairs, manifest CSV/JSON, Common Voice, HF) | C | ⬜ | `FORMATS.md`, `COMPETITIVE_GAPS.md` |
-| 48 | Subtitle / caption output (SRT/VTT) | C | ⬜ | `FORMATS.md` |
-| 49 | Long-form chunked transcription | C | ⬜ | `FORMATS.md` |
-| 50 | Decoding controls (beam, hotword bias, temp fallback) | C | ⬜ | `COMPETITIVE_GAPS.md` |
-| 51 | Punctuation/capitalization restoration + ITN | C | ⬜ | `COMPETITIVE_GAPS.md` |
-| 52 | Richer evaluation (per-utterance WER, error report, confidence) | C | ⬜ | `COMPETITIVE_GAPS.md` |
-| 53 | Local experiment metrics view (no telemetry) | C | ⬜ | `COMPETITIVE_GAPS.md`, D-008 |
-| 54 | Headless CLI (train/eval/export) | C | ⬜ | `COMPETITIVE_GAPS.md` |
-| 55 | Custom vocabulary / tokenizer extension | C | ⬜ | `COMPETITIVE_GAPS.md` |
-| 56 | Optional multi-GPU / distributed | C | ⬜ | `COMPETITIVE_GAPS.md` |
-| 57 | More export targets (safetensors, GGUF, TorchScript) | C | ⬜ | `FORMATS.md`, `COMPETITIVE_GAPS.md` |
+| 46 | Data augmentation (SpecAugment, perturbation, noise) | B | ✅ | `audio/augment.py` (pure numpy: spec_augment/perturb_speed/perturb_pitch/mix_noise), `director/policy.py::augmentation_for` auto-enable, `tests/test_augment.py`; collator wiring guarded |
+| 47 | Dataset import (folder pairs, CSV/JSON, NeMo, Common Voice, LibriSpeech) | A | ✅ | `data/import_manifest.py` (+ auto-detect), `tests/test_dataset_import.py` |
+| 48 | Subtitle / caption output (SRT/VTT/txt) | A | ✅ | `transcript/subtitles.py` + `engines/base.py::transcribe_segments` (real timestamps in Whisper override), `tests/test_transcript.py` |
+| 49 | Long-form chunked transcription | B | ✅ | `transcript/longform.py` (pure plan_chunks/merge_segments + guarded transcribe_long), `tests/test_transcript.py` |
+| 50 | Decoding controls (beam, hotword/prompt bias, temp fallback) | B | ✅ | `transcript/decode.py::DecodeOptions` threaded into `whisper_lora.transcribe`, `tests/test_transcript.py` |
+| 51 | Punctuation/capitalization restoration | A | ✅ | `transcript/punctuate.py` (rule-based), `tests/test_transcript.py`; neural restorer + ITN documented as guarded future path |
+| 52 | Richer evaluation (per-utterance WER, error/confusion report, raw-vs-norm) | A | ✅ | `eval/report.py` (jiwer alignments), `tests/test_eval_report.py`; feeds #32 |
+| 53 | Local experiment metrics view (no telemetry) | A | ✅ | `obs/experiment.py` (metrics.jsonl writer/reader), wired into `_whisper_train` callback, `tests/test_experiment.py` (D-008) |
+| 54 | Headless CLI (train/eval/export/import/subtitle/augment/metrics) | A | ✅ | `talkteach/cli.py` + `[project.scripts]`, `tests/test_cli.py`; pure subcommands verified e2e, model subcommands guarded |
+| 55 | Custom vocabulary / tokenizer extension | B | ✅ | `engines/vocab.py` (pure merge/build), `tests/test_vocab.py`, `VOCAB.md`; live tokenizer rebuild guarded |
+| 56 | Optional multi-GPU / distributed | C | 🟡 | `MULTIGPU.md` (torchrun/accelerate escape hatch); no fake flag — HF multi-GPU is launcher-driven; live run needs hardware |
+| 57 | More export targets (safetensors real; GGUF/TorchScript scaffold) | B | 🟡 | `whisper_lora.py::export` safetensors branch + CLI `--format`; torchscript/gguf honest dry-run (Whisper `.generate` resists `torch.jit`), `EXPORT.md` |
 
 ## How to verify the Tier B/C items on a provisioned machine
 
@@ -93,4 +95,8 @@ All ⬜ Tier C (design/tracked); additive, no new ML research. See `ROADMAP.md`
   needs Rust + WebKit/GTK dev libs.
 - **Installers (24)**: `.github/workflows/release.yml` runs on tag on the GH
   matrix; signing needs secrets (documented in `RELEASING.md`).
-</content>
+- **Parity batch (46–57)**: the pure logic runs in the default `make test` (no
+  deps). Model-touching paths (guarded transcribe in #49/#50, safetensors export in
+  #57, the training-callback metrics in #53) verify on an `[ml,export]` machine via
+  the CLI, e.g. `talkteach subtitle clip.wav --format srt` and
+  `talkteach export --model runs/x --out out --format safetensors`.

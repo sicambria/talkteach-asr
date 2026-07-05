@@ -189,4 +189,3 @@ pure-and-CPU-testable — and these three fall outside it, not by neglect.
 - Status matrix to update: `project/docs/ROADMAP_STATUS.md:71` (parity rows #46–#57).
 - Formats matrix to update: `project/docs/FORMATS.md:29` (#47/#48/#57 rows).
 - Commit target = `main` directly (repo has no AGENTS.md worktree contract; per user memory).
-</content>

@@ -34,7 +34,9 @@ need no manual. Start with the [root README](../../README.md) for the overview.
 | [ALIGNMENT.md](ALIGNMENT.md) | Forced alignment — long take → sentence clips. |
 | [DENOISE.md](DENOISE.md) | Optional denoise for noisy uploads. |
 | [DIARIZATION.md](DIARIZATION.md) | Multi-speaker / diarization. |
-| [EXPORT.md](EXPORT.md) | "Use on my computer" — model export. |
+| [EXPORT.md](EXPORT.md) | "Use on my computer" — model export (CT2 / ONNX / safetensors). |
+| [VOCAB.md](VOCAB.md) | Custom vocabulary / tokenizer extension for unseen languages (#55). |
+| [MULTIGPU.md](MULTIGPU.md) | Optional multi-GPU / distributed training escape hatch (#56). |
 | [BENCHMARKING.md](BENCHMARKING.md) | Comparing ASR engines for real. |
 | [TTS.md](TTS.md) | Synthetic speech for testing & benchmarking. |
 | [MODEL_PACKS.md](MODEL_PACKS.md) | Shareable model packs & "Publish to Hugging Face". |

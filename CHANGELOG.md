@@ -10,7 +10,36 @@ versions; we'll call them out under **Changed** with a ⚠️.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Competitive-parity batch (#46–#57)** — additive, pure-Python, CPU/CI-tested
+  (torch-free imports; heavy paths guarded). See `project/docs/ROADMAP_STATUS.md`
+  and `DECISIONS.md` D-014.
+  - **Subtitles (#48):** SRT / VTT / timestamped text via `transcript/subtitles.py`;
+    Whisper now exposes real per-segment timestamps (`transcribe_segments`).
+  - **Long-form transcription (#49):** overlapping-window chunking + stitch
+    (`transcript/longform.py`).
+  - **Decoding controls (#50):** beam size, hotword/prompt biasing, temperature
+    fallback (`transcript/decode.py::DecodeOptions`) — opt-in, default preserves the
+    stock decode.
+  - **Punctuation restoration (#51):** rule-based capitalization + terminal
+    punctuation (`transcript/punctuate.py`).
+  - **Richer evaluation (#52):** per-utterance WER, an error/confusion report, and a
+    raw-vs-normalized (cosmetic) gap (`eval/report.py`).
+  - **Dataset import (#47):** folder-of-pairs, CSV/TSV, JSON array, NeMo JSONL,
+    Common Voice, LibriSpeech → the canonical manifest (`data/import_manifest.py`).
+  - **Data augmentation (#46):** SpecAugment + speed/pitch/noise (`audio/augment.py`),
+    auto-enabled for tiny datasets by the director (`policy.augmentation_for`).
+  - **Headless CLI (#54):** `talkteach import | eval | augment | metrics | subtitle |
+    transcribe | train | export` (`talkteach/cli.py`, `[project.scripts]`).
+  - **Local experiment metrics (#53):** on-device `metrics.jsonl` loss/WER curves,
+    no telemetry (`obs/experiment.py`, D-008).
+  - **Custom vocabulary (#55):** non-destructive CTC vocab merge/bootstrap
+    (`engines/vocab.py`, `VOCAB.md`).
+  - **Export targets (#57):** real HF **safetensors**; TorchScript/GGUF are honest
+    dry-run scaffolds (Whisper `.generate` resists `torch.jit`).
+  - **Multi-GPU (#56):** documented `torchrun`/`accelerate` escape hatch
+    (`MULTIGPU.md`) — no fake in-app flag.
 
 ## [0.1.0] — 2026-06-28
 

@@ -26,8 +26,8 @@ training — the one canonical form (DECISIONS.md D-010).
 | Record in-app + karaoke prompt as transcript | ✅ | the prompt is the label (#21) |
 | Type/correct a transcript per clip | ✅ | `POST /api/clips/{id}/transcript` (#19) |
 | Built-in toy dataset | ✅ | `/api/selftest` (#22) |
-| Folder of (audio, transcript) pairs | ⬜ gap | tracked as **#47** |
-| Manifest CSV/JSON, NeMo manifest, Common Voice TSV, LibriSpeech, HF `datasets` | ⬜ gap | tracked as **#47** |
+| Folder of (audio, transcript) pairs | ✅ | `data/import_manifest.py::import_folder_pairs` (#47) |
+| Manifest CSV/JSON, NeMo JSONL, Common Voice TSV, LibriSpeech | ✅ | `data/import_manifest.py` + `talkteach import` (#47); HF `datasets` still a gap |
 
 ## Output / export formats
 
@@ -36,8 +36,9 @@ training — the one canonical form (DECISIONS.md D-010).
 | CTranslate2 int8 (offline desktop default) | ✅ verified | `engines/whisper_lora.py::export`; integration-tested (#4) |
 | ONNX (streaming/edge via sherpa-onnx) | scaffold | via 🤗 optimum (#4, D-006) |
 | Plain-text transcript | ✅ | "Try it" returns text (#5) |
-| Subtitles (SRT / VTT) with timestamps | ⬜ gap | tracked as **#48** |
-| HF `safetensors`, GGUF (whisper.cpp), TorchScript | ⬜ gap | tracked as **#57** |
+| Subtitles (SRT / VTT) with timestamps | ✅ | `transcript/subtitles.py` + `talkteach subtitle` (#48) |
+| HF `safetensors` | ✅ | `whisper_lora.py::export` (#57) |
+| GGUF (whisper.cpp), TorchScript | 🟡 scaffold | dry-run export; `.generate` resists `torch.jit` (#57, `EXPORT.md`) |
 
 ## Use cases
 
@@ -47,16 +48,17 @@ training — the one canonical form (DECISIONS.md D-010).
 | Train on a GPU, CPU/int8, or Apple MPS | ✅ director auto-selects (verified on CPU) |
 | Resume an interrupted training run | ✅ checkpoint resume (#17/#40) |
 | Transcribe one short clip ("Try it") | ✅ faster-whisper (#5, integration-tested) |
-| Transcribe a long file / subtitle a video | ⬜ gaps **#48/#49** (chunked + SRT/VTT) |
-| Bring your own dataset | ⬜ gap **#47** |
+| Transcribe a long file / subtitle a video | ✅ chunked decode + SRT/VTT (#48/#49); heavy decode needs `[ml]` |
+| Bring your own dataset | ✅ `talkteach import` — folder/CSV/JSON/NeMo/Common Voice/LibriSpeech (#47) |
 | Multiple projects in the app | ⚠️ data layer ✅, app layer pending (#29) |
-| Headless / CLI training | ⬜ gap **#54** |
+| Headless / CLI training | ✅ `talkteach train/eval/export/…` (#54) |
 
 ## Summary
 
 The **core promise** (record → train a real model → use it offline) is supported
 out of the box, with WAV needing zero deps and every other audio format covered by
-the bundled ffmpeg. The honest gaps are **dataset import (#47)**, **subtitle/long-
-form transcription (#48/#49)**, and **extra export targets (#57)** — all additive
-and now tracked in `ROADMAP.md`.
-</content>
+the bundled ffmpeg. The former gaps — **dataset import (#47)**, **subtitle/long-form
+transcription (#48/#49)**, **headless CLI (#54)**, and **safetensors export
+(#57)** — are now built (pure logic CPU-tested; heavy decode/convert behind `[ml]`).
+Remaining: HF `datasets` import, GGUF/TorchScript export (scaffold), and the app-
+layer multi-project surface (#29).

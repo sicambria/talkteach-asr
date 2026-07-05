@@ -366,5 +366,33 @@ ML-free.
 Consequence: a single `scripts/benchmark.py --config benchmarks/*.yaml` run yields a
 real, reproducible TTS×ASR WER/CER/time matrix; the tone fixtures remain only for
 plumbing/simulation tests where intelligibility doesn't matter.
-</content>
-</invoke>
+
+## D-014 — Scope + shape of the competitive-parity batch (#46–#57)
+
+Context: the roadmap's parity items (#46–#57, from `COMPETITIVE_GAPS.md`) were all
+⬜ Tier C. They are additive (no new ML research), but span a wide surface. The
+question: which do we build now, and to what bar?
+
+Decision: build the **additive, pure-Python, CPU/CI-testable** slice to the repo's
+existing pure-helper + guarded-ML bar (D-002), and keep the rest at its honest tier:
+
+- Built (module + tests + docs + status flip): #46 augmentation, #47 dataset import,
+  #48 subtitles, #49 long-form, #50 decoding controls, #51 punctuation (rules),
+  #52 richer eval, #53 local metrics, #54 headless CLI, #55 custom vocab,
+  #57 safetensors export.
+- Kept scaffold/doc **on purpose** (not neglect): ITN and the neural punctuation
+  model (#51); TorchScript/GGUF export (#57) — Whisper `.generate()` (kv-cache +
+  beam) does not `torch.jit` cleanly, so we ship an honest dry-run manifest rather
+  than a broken trace; multi-GPU (#56) — HF multi-GPU is **launcher-driven**
+  (`torchrun`/`accelerate`), so we document the escape hatch (`MULTIGPU.md`) and do
+  NOT invent a `TrainingArguments` flag that maps to nothing.
+
+Rejected: (a) faking installers/cloud/art/GPU items to mark them "done" — dishonest;
+they stay deferred with reasons (see `plans/roadmap-parity-batch.md`). (b) pulling
+the 🟡 app-surface items (#29 multi-project, #34 publish, #30 denoise) into this
+batch — they need UI refactors / network-auth / a neural model, i.e. outside the
+"additive + pure + CPU-testable" boundary that defines this batch.
+
+Consequence: every new module imports torch-free and is exercised by the default
+`make test`; heavy paths stay guarded and CLI-invocable on an `[ml]` machine. The
+plan of record is `plans/roadmap-parity-batch.md` (scored + advisor-gated).

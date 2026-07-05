@@ -22,6 +22,14 @@ is tiny and not runnable on its own, so export does two steps
 |---|---|---|---|
 | **CTranslate2 int8** (default) | `[export]` (`ctranslate2`) | Fastest CPU inference; pairs with the faster-whisper "Try it" path; the family runs it offline. | Real path implemented |
 | **ONNX** (via 🤗 optimum → sherpa-onnx) | `optimum` + `onnxruntime` | Streaming / edge / mobile; the Phase-2 deployment target. | Scaffolded code path |
+| **HF safetensors** (`fmt="safetensors"`, #57) | `[ml]` (`transformers`) | Interop with any 🤗 Transformers runtime the family already uses; loads with `from_pretrained`. | Real path implemented |
+| **TorchScript / GGUF** (`fmt="torchscript"`/`"gguf"`, #57) | — | Other runtimes (LibTorch, whisper.cpp). | Documented dry-run scaffold |
+
+**Why TorchScript/GGUF are scaffold, not real:** Whisper's decoding runs through
+`.generate()` (kv-cache + beam search), which does not `torch.jit.script`/`trace`
+cleanly, and GGUF conversion needs whisper.cpp's own tooling. Rather than ship a
+broken trace, `fmt="torchscript"`/`"gguf"` fall through to the honest dry-run
+manifest (below). Use CTranslate2 (CPU) or safetensors (interop) today.
 
 When the needed dependency is absent, export writes an `export_manifest.json`
 dry-run describing exactly what *would* be produced and how to enable it — the
@@ -51,4 +59,3 @@ export with faster-whisper (`WhisperModel(model_dir, device="auto",
 compute_type="default")`), which auto-selects int8 on CPU and float16 on GPU.
 Passing no `model_dir` falls back to a base checkpoint so "Try it" works before
 the first training run.
-</content>
