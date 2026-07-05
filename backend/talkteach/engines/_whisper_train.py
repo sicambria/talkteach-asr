@@ -205,6 +205,8 @@ def run_real_training(
         WhisperProcessor,
     )
 
+    from talkteach.obs import experiment as exp
+
     from .base import TrainProgress
 
     os.makedirs(workdir, exist_ok=True)
@@ -257,6 +259,14 @@ def run_real_training(
         def on_log(self, args, state, control, logs=None, **kw):  # noqa: ANN001
             logs = logs or {}
             loss = logs.get("loss")
+            if loss is not None:
+                # Local-only loss curve for Grown-up mode (#53; no telemetry, D-008).
+                exp.log_metrics(
+                    workdir,
+                    step=int(state.global_step or 0),
+                    epoch=float(state.epoch or 0),
+                    loss=float(loss),
+                )
             if loss is not None and guard.should_rollback(float(loss)):
                 # Diverged into NaN/inf → stop now; best checkpoint is restored
                 # by load_best_model_at_end / resume on next run (safety rail #3).
@@ -290,6 +300,12 @@ def run_real_training(
             metrics = metrics or {}
             w = metrics.get("eval_wer")
             if w is not None:
+                exp.log_metrics(
+                    workdir,
+                    epoch=float(state.epoch or 0),
+                    wer=float(w),
+                    cer=float(metrics.get("eval_cer", float("nan"))),
+                )
                 emit(
                     TrainProgress(
                         epoch=int(state.epoch or 0),

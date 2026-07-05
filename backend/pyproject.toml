@@ -50,6 +50,10 @@ dev = [
     "mypy>=1.10",
 ]
 
+[project.scripts]
+# Headless CLI (#54): train / eval / export / import / subtitle / augment.
+talkteach = "talkteach.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

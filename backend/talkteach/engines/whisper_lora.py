@@ -427,13 +427,40 @@ class WhisperLoRAEngine(ASREngine):
         (:meth:`_resolve_full_model`). The default ``ctranslate2`` target gives
         the fastest CPU inference and pairs with the faster-whisper "Try it" path;
         ``onnx`` is the streaming/edge target via sherpa-onnx (Phase 2 scaffold,
-        project/docs/DECISIONS.md D-006). When the needed dep is missing we write a manifest
-        describing what *would* be produced so the flow never dead-ends.
+        project/docs/DECISIONS.md D-006). ``safetensors`` (#57) writes the merged HF
+        model for interop with other runtimes the family may already use;
+        ``torchscript``/``gguf`` are documented scaffolds (see project/docs/EXPORT.md).
+        When the needed dep is missing we write a manifest describing what *would* be
+        produced so the flow never dead-ends.
         """
         os.makedirs(out_dir, exist_ok=True)
 
         real_model = _has_real_model(model_dir)
         ct2_ready = _has(_EXPORT_DEP) and _has("transformers")
+        if real_model and fmt == "safetensors" and _has("transformers"):
+            # HF safetensors (#57): merge any LoRA, then re-save with safe
+            # serialization so the folder loads in any 🤗 Transformers runtime.
+            import contextlib
+
+            from transformers import (  # type: ignore
+                WhisperForConditionalGeneration,
+                WhisperProcessor,
+            )
+
+            source = self._resolve_full_model(model_dir)
+            model = WhisperForConditionalGeneration.from_pretrained(source)
+            model.save_pretrained(out_dir, safe_serialization=True)
+            # weights are the essential artifact; processor is best-effort
+            with contextlib.suppress(Exception):
+                WhisperProcessor.from_pretrained(source).save_pretrained(out_dir)
+            return ExportResult(
+                format="safetensors",
+                path=out_dir,
+                notes="Saved HF safetensors. Load with transformers on any machine.",
+            )
+        # torchscript: Whisper's `.generate()` (kv-cache + beam) does not `torch.jit`
+        # cleanly, so we intentionally keep it (and gguf) as a documented dry-run
+        # scaffold rather than shipping a broken trace. See project/docs/EXPORT.md.
         if real_model and fmt in ("ctranslate2", "ct2") and ct2_ready:
             from ctranslate2.converters import TransformersConverter  # type: ignore
 
