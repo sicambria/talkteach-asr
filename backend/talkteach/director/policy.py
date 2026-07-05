@@ -52,6 +52,57 @@ def adaptive_target(lang: LanguageProfile) -> float:
     return max(MIN_TARGET_MINUTES, 45.0)
 
 
+# --- augmentation policy (#46) ------------------------------------------------
+# Proposed thresholds (calibrate in Phase 0–1). Augmentation multiplies effective
+# data, so it earns its cost most on tiny sets and is dialled back as data grows.
+_AUG_TINY_MINUTES = 10.0  # below this: augment aggressively
+_AUG_SMALL_MINUTES = 25.0  # below this: augment moderately
+
+
+def augmentation_for(data: DataProfile):  # noqa: ANN201  (return type imported lazily)
+    """Decide the augmentation recipe for this dataset (#46).
+
+    The single biggest small-data accuracy win, so the director **auto-enables** it
+    for tiny sets and tapers it off as ``good_minutes`` grows — the user never
+    configures it. Returns a framework-free
+    :class:`~talkteach.audio.augment.AugmentationConfig`. Thresholds are proposed
+    defaults to calibrate (report B.5).
+    """
+    from talkteach.audio.augment import AugmentationConfig
+
+    minutes = data.good_minutes
+    if minutes >= _AUG_SMALL_MINUTES:
+        return AugmentationConfig(
+            enabled=False,
+            reason=f"{minutes:.0f} min is plenty — augmentation off to avoid distorting good data",
+        )
+    if minutes >= _AUG_TINY_MINUTES:
+        return AugmentationConfig(
+            enabled=True,
+            speed_factors=(0.95, 1.0, 1.05),
+            pitch_semitones=(-1.0, 0.0, 1.0),
+            noise_snr_db=20.0,
+            spec_time_masks=1,
+            spec_time_width=10,
+            spec_freq_masks=1,
+            spec_freq_width=8,
+            reason=f"{minutes:.0f} min is a bit small — moderate augmentation to stretch it",
+            labels=("speed", "pitch", "noise", "spec_augment"),
+        )
+    return AugmentationConfig(
+        enabled=True,
+        speed_factors=(0.9, 0.95, 1.0, 1.05, 1.1),
+        pitch_semitones=(-2.0, -1.0, 0.0, 1.0, 2.0),
+        noise_snr_db=15.0,
+        spec_time_masks=2,
+        spec_time_width=12,
+        spec_freq_masks=2,
+        spec_freq_width=10,
+        reason=f"only {minutes:.0f} min — aggressive augmentation to multiply tiny data",
+        labels=("speed", "pitch", "noise", "spec_augment"),
+    )
+
+
 def sufficiency(data: DataProfile, target_minutes: float = 30.0) -> SufficiencyResult:
     """Drive the friendly meter and the Teach! gate.
 
