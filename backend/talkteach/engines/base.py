@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     # has zero import cost and zero import-order coupling at runtime where the
     # annotations are strings (PEP 563 via `from __future__ import annotations`).
     from talkteach.director.types import TrainingPlan
+    from talkteach.transcript.decode import DecodeOptions
 
 
 class EngineUnavailableError(RuntimeError):
@@ -167,7 +168,11 @@ class ASREngine(abc.ABC):
         """
 
     def transcribe_segments(
-        self, audio_path: str, model_dir: str | None = None, base_checkpoint: str | None = None
+        self,
+        audio_path: str,
+        model_dir: str | None = None,
+        base_checkpoint: str | None = None,
+        options: DecodeOptions | None = None,
     ) -> list[dict]:
         """Segment-returning decode for subtitles + long-form (#48/#49).
 
@@ -175,8 +180,9 @@ class ASREngine(abc.ABC):
         The default wraps :meth:`transcribe` into a single whole-clip segment
         (duration measured from a WAV header via stdlib ``wave``, else ``0.0``) so
         every engine works out of the box. Engines with a native segmenting
-        decoder (e.g. faster-whisper) override this to return real per-utterance
-        timestamps. Kept import-light — no heavy deps at this layer.
+        decoder (e.g. faster-whisper) override this to honour ``options`` (#50) and
+        return real per-utterance timestamps. Kept import-light — no heavy deps at
+        this layer; the default ignores ``options``.
         """
         text = self.transcribe(audio_path, model_dir=model_dir, base_checkpoint=base_checkpoint)
         return [{"start": 0.0, "end": _wav_duration_or_zero(audio_path), "text": text}]

@@ -108,6 +108,8 @@ const EN = {
   'try.use': '🖥 Use on my computer',
   'try.make_better': '🔁 Make it better',
   'try.teach_first': 'Teach the computer first, then you can use it here.',
+  'try.save_captions': '💬 Save captions',
+  'try.captions_saved': '💬 Captions saved',
 
   // Shared chrome
   'common.back': '◀ Back',

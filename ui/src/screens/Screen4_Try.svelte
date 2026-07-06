@@ -3,8 +3,8 @@
   // Record into the mic, send it to the trained model, and show what it heard.
   // Then: Save, "Use on my computer" (export), or "Make it better" (go back).
   // jargon-free.
-  import { createEventDispatcher, onDestroy } from 'svelte';
-  import { transcribe, exportModel } from '../lib/api.js';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { transcribe, exportModel, exportFormats } from '../lib/api.js';
   import { currentRun, advancedMode } from '../lib/store.js';
   import { t } from '../lib/i18n.js';
   import { focusOnMount } from '../lib/a11y.js';
@@ -20,6 +20,28 @@
   let micError = '';
   let exportNote = '';
   let saved = false;
+
+  // Captions (#48): the transcribe response carries ready-to-save SRT/VTT strings
+  // and per-utterance segments; .txt is the plain text. Easy mode gets one "Save
+  // captions" (.srt) button; Advanced gets a format picker.
+  let captions = { srt: '', vtt: '', txt: '' };
+  let capFmt = 'srt';
+  let capSaved = false;
+
+  // Export format picker (#57). Easy keeps the one-tap ctranslate2 default; Advanced
+  // shows every target with a real-vs-scaffold hint.
+  let formats = [];
+  let exportFmt = 'ctranslate2';
+
+  onMount(async () => {
+    try {
+      const res = await exportFormats();
+      formats = res.formats || [];
+      exportFmt = res.default || 'ctranslate2';
+    } catch {
+      // Picker just falls back to the single default button if this fails.
+    }
+  });
 
   onDestroy(() => {
     if (mediaRecorder && recording) mediaRecorder.stop();
@@ -60,14 +82,29 @@
 
   async function sendForText(blob) {
     busy = true;
+    capSaved = false;
     try {
       const res = await transcribe(blob);
       heardText = res.text || '';
+      captions = { srt: res.srt || '', vtt: res.vtt || '', txt: res.text || '' };
     } catch (e) {
       micError = e.message || "I couldn't understand that one.";
     } finally {
       busy = false;
     }
+  }
+
+  function downloadCaptions() {
+    const body = captions[capFmt] || '';
+    if (!body) return;
+    const mime = capFmt === 'vtt' ? 'text/vtt' : 'text/plain';
+    const blob = new Blob([body], { type: `${mime};charset=utf-8` });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `captions.${capFmt}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    capSaved = true;
   }
 
   function save() {
@@ -86,8 +123,10 @@
     }
     busy = true;
     try {
-      // CTranslate2 int8 is the offline desktop default (project/docs/DECISIONS.md D-006).
-      const res = await exportModel(run.run_id, 'ctranslate2');
+      // Easy mode uses the CTranslate2 int8 offline default (DECISIONS.md D-006);
+      // Advanced mode can pick another target via the format select.
+      const fmt = $advancedMode ? exportFmt : 'ctranslate2';
+      const res = await exportModel(run.run_id, fmt);
       exportNote = res.notes ? res.notes : `Saved as ${res.format} at ${res.path}`;
     } catch (e) {
       exportNote = e.message || "I couldn't get it ready for your computer.";
@@ -124,6 +163,11 @@
     <div class="card heard">
       <h2>{$t('try.heard')}</h2>
       <p class="big-text" aria-live="polite">{heardText}</p>
+      {#if captions.srt}
+        <button class="ghost caps" on:click={downloadCaptions}>
+          {capSaved ? $t('try.captions_saved') : $t('try.save_captions')}
+        </button>
+      {/if}
     </div>
   {/if}
 
@@ -146,8 +190,33 @@
   {#if $advancedMode}
     <div class="advanced">
       <h3>Advanced</h3>
-      run: {JSON.stringify($currentRun)}
-      {'\n'}heard: {heardText}
+
+      <label class="adv-field">
+        <span>Export format</span>
+        <select bind:value={exportFmt}>
+          {#each formats as f}
+            <option value={f.fmt}>{f.label}{f.scaffold ? ' — scaffold' : ''}</option>
+          {/each}
+        </select>
+      </label>
+      {#if formats.find((f) => f.fmt === exportFmt && f.scaffold)}
+        <p class="adv-hint">
+          This target is a documented dry-run scaffold, not a runnable export yet.
+        </p>
+      {/if}
+
+      {#if captions.srt}
+        <label class="adv-field">
+          <span>Caption format</span>
+          <select bind:value={capFmt}>
+            <option value="srt">SubRip (.srt)</option>
+            <option value="vtt">WebVTT (.vtt)</option>
+            <option value="txt">Plain text (.txt)</option>
+          </select>
+        </label>
+      {/if}
+
+      <p class="adv-meta">run: {JSON.stringify($currentRun)}</p>
     </div>
   {/if}
 </section>
@@ -167,5 +236,39 @@
   .error {
     color: var(--tt-oops);
     font-weight: 700;
+  }
+
+  .caps {
+    margin-top: 10px;
+    font-size: 0.95rem;
+  }
+
+  .adv-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+    margin: 8px 0;
+  }
+
+  .adv-field span {
+    font-weight: 700;
+  }
+
+  .adv-field select {
+    flex: 1;
+    max-width: 60%;
+  }
+
+  .adv-hint {
+    font-size: 0.85rem;
+    color: var(--tt-ink-soft);
+    margin: 0 0 8px;
+  }
+
+  .adv-meta {
+    font-size: 0.8rem;
+    color: var(--tt-ink-soft);
+    word-break: break-all;
   }
 </style>

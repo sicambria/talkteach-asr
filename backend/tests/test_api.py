@@ -402,3 +402,82 @@ def test_benchmark_cancel_and_unknown_404(monkeypatch):
         assert final["status"] == "cancelled", final
         assert client.get("/api/benchmark/does-not-exist").status_code == 404
         assert client.post("/api/benchmark/does-not-exist/cancel").status_code == 404
+
+
+# --- Advanced-mode surfacing: export formats, metrics, captions (#57/#53/#48) ---
+
+
+def test_export_formats_lists_real_and_scaffold():
+    with TestClient(app) as client:
+        r = client.get("/api/export/formats")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["default"] == "ctranslate2"
+        fmts = {f["fmt"]: f for f in body["formats"]}
+        assert fmts["ctranslate2"]["real"] is True  # ctranslate2 installed in CI venv
+        assert fmts["torchscript"]["scaffold"] is True
+        assert fmts["torchscript"]["real"] is False
+
+
+def test_metrics_unknown_run_is_404():
+    with TestClient(app) as client:
+        r = client.get("/api/metrics/999999")
+        assert r.status_code == 404
+
+
+def test_metrics_reads_real_curve():
+    from talkteach.obs import experiment
+
+    with TestClient(app) as client:
+        client.post("/api/project", json={"name": "metrics-proj"})
+        with ProjectDB.open(config.DEFAULT_DB_PATH) as db:
+            run_id = db.create_run(
+                engine="whisper_lora", base_checkpoint="openai/whisper-tiny", plan_json="{}"
+            )
+        workdir = config.DEFAULT_PROJECT_DIR / "runs" / str(run_id)
+        workdir.mkdir(parents=True, exist_ok=True)
+        experiment.log_metrics(str(workdir), epoch=1, loss=1.2, wer=0.5)
+        experiment.log_metrics(str(workdir), epoch=2, loss=0.8, wer=0.3)
+        r = client.get(f"/api/metrics/{run_id}")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["has_curve"] is True
+        assert len(body["curve"]) == 2
+        assert body["curve"][-1]["wer"] == 0.3
+
+
+def test_transcribe_returns_captions(monkeypatch):
+    import talkteach.app as appmod
+
+    segs = [
+        {"start": 0.0, "end": 1.0, "text": "hello"},
+        {"start": 1.0, "end": 2.0, "text": "world"},
+    ]
+
+    class _FakeEngine:
+        def transcribe_segments(self, path, options=None):
+            return segs
+
+    monkeypatch.setattr(appmod, "get_engine", lambda kind: _FakeEngine())
+    with TestClient(app) as client:
+        files = {"audio": ("try.wav", _good_wav_bytes(0.6), "audio/wav")}
+        r = client.post("/api/transcribe", files=files)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["available"] is True
+        assert body["segments"] == segs
+        assert "hello" in body["text"] and "world" in body["text"]
+        assert "-->" in body["srt"]
+        assert body["vtt"].startswith("WEBVTT")
+
+
+def test_transcribe_decode_options_build():
+    # Advanced controls at defaults → no DecodeOptions (behaviour preserved).
+    from talkteach.app import _decode_options
+
+    assert _decode_options(5, "", None) is None
+    opts = _decode_options(3, "cat, dog", 0.4)
+    assert opts is not None
+    assert opts.beam_size == 3
+    assert opts.hotwords == ("cat", "dog")
+    assert opts.temperature == (0.4,)

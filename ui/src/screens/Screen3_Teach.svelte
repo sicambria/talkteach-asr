@@ -4,7 +4,7 @@
   // every ~1.5s and show a progress bar and a "How smart is it?" meter.
   // jargon-free: no "training", "epochs as numbers only", no "WER".
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import { startTraining, trainProgress, getPlan } from '../lib/api.js';
+  import { startTraining, trainProgress, getPlan, metrics } from '../lib/api.js';
   import { sufficiency, currentRun, advancedMode } from '../lib/store.js';
   import { TRAIN_POLL_MS } from '../lib/constants.js';
   import { t } from '../lib/i18n.js';
@@ -25,6 +25,40 @@
   // it — the easy view is just the smartness meter and progress.
   let plan = null;
   let hardware = null;
+
+  // Advanced-mode training metrics (#53): the real trainer writes a loss/WER curve
+  // to metrics.jsonl; we read it once teaching finishes. Simulated runs have none,
+  // and curveData.has_curve tells us to say so honestly instead of drawing nothing.
+  let curveData = null;
+
+  async function loadMetrics() {
+    try {
+      curveData = await metrics(runId);
+    } catch {
+      curveData = null; // panel just omits the curve if the read fails
+    }
+  }
+
+  // Build an SVG polyline (viewBox 0..100 × 0..30) for one metric, normalised to
+  // its own min/max so both loss and WER are visible on the same little chart.
+  function sparkPoints(curve, key) {
+    const ys = curve.map((p) => p[key]).filter((v) => typeof v === 'number');
+    if (ys.length < 2) return '';
+    const lo = Math.min(...ys);
+    const hi = Math.max(...ys);
+    const span = hi - lo || 1;
+    return curve
+      .map((p, i) => {
+        const x = (i / (curve.length - 1)) * 100;
+        const y = 30 - ((p[key] - lo) / span) * 28 - 1; // invert: lower = bottom
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+  }
+
+  $: curve = curveData?.curve || [];
+  $: lossPts = curve.length ? sparkPoints(curve, 'loss') : '';
+  $: werPts = curve.length ? sparkPoints(curve, 'wer') : '';
 
   onMount(async () => {
     try {
@@ -63,6 +97,8 @@
         stopPolling();
         if (progress.failed) {
           errorMsg = $t('teach.stopped_early');
+        } else {
+          loadMetrics(); // Advanced-mode loss/WER curve (#53)
         }
       }
     } catch (e) {
@@ -204,8 +240,37 @@
       {:else}
         <p>Working out the plan…</p>
       {/if}
-      run_id: {runId}
-      {'\n'}progress: {JSON.stringify(progress)}
+
+      {#if done}
+        <div class="metrics">
+          <p><strong>Training curve</strong></p>
+          {#if curveData && curveData.has_curve}
+            <svg
+              class="spark"
+              viewBox="0 0 100 30"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="Loss and word-error-rate over training"
+            >
+              {#if lossPts}<polyline class="loss" points={lossPts} />{/if}
+              {#if werPts}<polyline class="wer" points={werPts} />{/if}
+            </svg>
+            <p class="legend">
+              <span class="k loss">loss</span>
+              <span class="k wer">WER</span>
+              {#if curveData.best_val_wer != null}
+                · best WER {(curveData.best_val_wer * 100).toFixed(1)}%
+              {/if}
+            </p>
+          {:else}
+            <p class="muted">
+              Detailed metrics are recorded during a real training run (this run had none to show).
+            </p>
+          {/if}
+        </div>
+      {/if}
+
+      <p class="adv-meta">run_id: {runId} · progress: {JSON.stringify(progress)}</p>
     </div>
   {/if}
 </section>
@@ -225,5 +290,59 @@
   .rationale {
     text-align: left;
     margin: 6px 0;
+  }
+
+  .metrics {
+    text-align: left;
+    margin: 10px 0;
+  }
+
+  .spark {
+    width: 100%;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 8px;
+  }
+
+  .spark polyline {
+    fill: none;
+    stroke-width: 1.2;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .spark polyline.loss {
+    stroke: var(--tt-accent, #e0559b);
+  }
+
+  .spark polyline.wer {
+    stroke: var(--tt-primary-dark, #2b6cb0);
+  }
+
+  .legend {
+    font-size: 0.9rem;
+    margin: 4px 0 0;
+  }
+
+  .legend .k {
+    font-weight: 700;
+    margin-right: 10px;
+  }
+
+  .legend .k.loss {
+    color: var(--tt-accent, #e0559b);
+  }
+
+  .legend .k.wer {
+    color: var(--tt-primary-dark, #2b6cb0);
+  }
+
+  .muted {
+    color: var(--tt-ink-soft);
+  }
+
+  .adv-meta {
+    font-size: 0.8rem;
+    color: var(--tt-ink-soft);
+    word-break: break-all;
   }
 </style>

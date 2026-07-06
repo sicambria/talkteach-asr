@@ -19,9 +19,10 @@ import wave
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
+from typing import cast
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, Response, UploadFile
+from fastapi import FastAPI, Form, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -40,7 +41,10 @@ from .director import (
 )
 from .engines import get_engine
 from .engines.base import EngineUnavailableError, TrainProgress
+from .obs import experiment
 from .reliability.preflight import run_preflight
+from .transcript.decode import DecodeOptions
+from .transcript.subtitles import Segment, segments_to_srt, segments_to_text, segments_to_vtt
 from .tts import available_providers, get_tts_provider
 
 
@@ -427,19 +431,61 @@ def draft_transcript(body: DraftIn) -> dict:
     return {"text": text, "available": True}
 
 
+def _decode_options(
+    beam_size: int, hotwords: str, temperature: float | None
+) -> DecodeOptions | None:
+    """Build a :class:`DecodeOptions` from Advanced-mode controls (#50), or ``None``
+    when everything is left at defaults so the decode behaves exactly as before."""
+    words = tuple(w for w in (hotwords or "").replace(",", " ").split() if w)
+    if beam_size == 5 and not words and temperature is None:
+        return None
+    kwargs: dict = {"beam_size": max(1, beam_size)}
+    if words:
+        kwargs["hotwords"] = words
+    if temperature is not None:
+        kwargs["temperature"] = (max(0.0, temperature),)
+    return DecodeOptions(**kwargs)
+
+
 @app.post("/api/transcribe")
-async def transcribe(audio: UploadFile) -> dict:
-    """The 'Try it' microphone."""
+async def transcribe(
+    audio: UploadFile,
+    beam_size: int = Form(5),
+    hotwords: str = Form(""),
+    temperature: float | None = Form(None),
+) -> dict:
+    """The 'Try it' microphone.
+
+    Returns the recognised ``text`` plus timestamped ``segments`` and ready-to-save
+    ``srt``/``vtt`` caption strings (#48), formatted server-side by the tested
+    :mod:`talkteach.transcript.subtitles`. Optional Advanced-mode decode controls
+    (``beam_size``/``hotwords``/``temperature``, #50) tune faster-whisper; omitted →
+    today's defaults.
+    """
     raw = await _read_validated_upload(audio)
     config.ensure_dirs()
     tmp = config.DEFAULT_PROJECT_DIR / "try.wav"
     tmp.write_bytes(raw)
     engine = get_engine(EngineKind.WHISPER_LORA)
+    options = _decode_options(beam_size, hotwords, temperature)
     try:
-        text = engine.transcribe(str(tmp))
+        segments = cast("list[Segment]", engine.transcribe_segments(str(tmp), options=options))
     except EngineUnavailableError as e:
-        return {"text": "", "available": False, "message": str(e)}
-    return {"text": text, "available": True}
+        return {
+            "text": "",
+            "available": False,
+            "message": str(e),
+            "segments": [],
+            "srt": "",
+            "vtt": "",
+        }
+    return {
+        "text": segments_to_text(segments),
+        "available": True,
+        "segments": segments,
+        "srt": segments_to_srt(segments),
+        "vtt": segments_to_vtt(segments),
+    }
 
 
 # --- training jobs ------------------------------------------------------------
@@ -582,6 +628,41 @@ def cancel_training(run_id: int) -> dict:
     return {"cancelled": True}
 
 
+# Export targets the picker offers (#57). ``dep`` is the import that makes the
+# target real on this machine; ``scaffold`` marks honest dry-run-only formats
+# (Whisper's `.generate()` resists torch.jit, so torchscript/gguf stay scaffolds).
+_EXPORT_FORMATS: list[dict] = [
+    {
+        "fmt": "ctranslate2",
+        "label": "CTranslate2 (fast offline CPU)",
+        "dep": "ctranslate2",
+        "scaffold": False,
+    },
+    {
+        "fmt": "safetensors",
+        "label": "HF safetensors (Transformers interop)",
+        "dep": "transformers",
+        "scaffold": False,
+    },
+    {"fmt": "onnx", "label": "ONNX (sherpa / edge)", "dep": "optimum", "scaffold": False},
+    {"fmt": "torchscript", "label": "TorchScript (scaffold)", "dep": None, "scaffold": True},
+    {"fmt": "gguf", "label": "GGUF / whisper.cpp (scaffold)", "dep": None, "scaffold": True},
+]
+
+
+@app.get("/api/export/formats")
+def export_formats() -> dict:
+    """The export targets the Advanced-mode picker shows, each flagged ``real`` when
+    its converter is importable here vs an honest ``scaffold`` dry-run (#57)."""
+    import importlib.util as _u
+
+    out = []
+    for f in _EXPORT_FORMATS:
+        real = (not f["scaffold"]) and (f["dep"] is None or _u.find_spec(f["dep"]) is not None)
+        out.append({"fmt": f["fmt"], "label": f["label"], "real": real, "scaffold": f["scaffold"]})
+    return {"formats": out, "default": "ctranslate2"}
+
+
 @app.post("/api/export")
 def export_model(body: ExportIn) -> dict:
     with _db() as db:
@@ -596,6 +677,28 @@ def export_model(body: ExportIn) -> dict:
     engine = get_engine(EngineKind.WHISPER_LORA)
     result = engine.export(model_dir, out_dir, fmt=body.fmt)
     return asdict(result)
+
+
+@app.get("/api/metrics/{run_id}")
+def run_metrics(run_id: int) -> dict:
+    """Local loss/WER curve for Advanced mode (#53). Reads the append-only
+    ``metrics.jsonl`` the *real* trainer writes (D-008, no telemetry); a run with no
+    curve was simulated or hasn't logged yet, so ``has_curve`` lets the UI say so
+    honestly rather than draw synthetic numbers. ``best_val_wer`` is the held-out
+    figure the smartness meter already uses."""
+    with _db() as db:
+        run = db.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="That run wasn't found.")
+    workdir = run.get("checkpoint_path") or str(config.DEFAULT_PROJECT_DIR / "runs" / str(run_id))
+    curve = experiment.read_curve(workdir)
+    return {
+        "run_id": run_id,
+        "status": run.get("status"),
+        "best_val_wer": run.get("best_val_wer"),
+        "curve": curve,
+        "has_curve": bool(curve),
+    }
 
 
 @app.get("/api/runs")

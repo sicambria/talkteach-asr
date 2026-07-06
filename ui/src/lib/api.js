@@ -218,15 +218,41 @@ export async function trainProgress(runId) {
 // --- The "Try it" mic -------------------------------------------------------
 
 /**
- * POST /api/transcribe (multipart audio) -> { text }
+ * POST /api/transcribe (multipart audio) -> { text, segments, srt, vtt }
+ * Optional Advanced-mode decode controls (#50) tune the decode; omit for defaults.
  * @param {Blob|File} audio
- * @returns {Promise<{text: string}>}
+ * @param {{beam_size?: number, hotwords?: string, temperature?: number}|null} [options]
+ * @returns {Promise<{text:string, available:boolean, segments:object[], srt:string, vtt:string}>}
  */
-export async function transcribe(audio) {
+export async function transcribe(audio, options = null) {
   const form = new FormData();
   form.append('audio', audio, audio.name || 'try.webm');
+  if (options) {
+    if (options.beam_size != null) form.append('beam_size', String(options.beam_size));
+    if (options.hotwords) form.append('hotwords', options.hotwords);
+    if (options.temperature != null) form.append('temperature', String(options.temperature));
+  }
   const res = await fetch(url('/api/transcribe'), { method: 'POST', body: form });
   return unwrap(res, "I couldn't understand that recording");
+}
+
+/**
+ * GET /api/export/formats — the export targets, each flagged real vs scaffold (#57).
+ * @returns {Promise<{formats: Array<{fmt:string,label:string,real:boolean,scaffold:boolean}>, default:string}>}
+ */
+export async function exportFormats() {
+  const res = await fetch(url('/api/export/formats'));
+  return unwrap(res, "I couldn't load the export options");
+}
+
+/**
+ * GET /api/metrics/{run_id} — local loss/WER curve for Advanced mode (#53).
+ * @param {number|string} runId
+ * @returns {Promise<{curve: Array<{epoch?:number,loss?:number,wer?:number}>, has_curve:boolean, best_val_wer:number|null, status:string}>}
+ */
+export async function metrics(runId) {
+  const res = await fetch(url(`/api/metrics/${encodeURIComponent(runId)}`));
+  return unwrap(res, "I couldn't load the training metrics");
 }
 
 // --- Benchmark "Arena" (advanced) -------------------------------------------
