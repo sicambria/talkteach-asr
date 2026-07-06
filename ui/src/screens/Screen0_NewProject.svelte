@@ -5,6 +5,8 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { createProject, getLanguages } from '../lib/api.js';
   import { project, grownUpMode } from '../lib/store.js';
+  import { t } from '../lib/i18n.js';
+  import { focusOnMount } from '../lib/a11y.js';
   import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
@@ -75,7 +77,7 @@
       });
       dispatch('done');
     } catch (e) {
-      errorMsg = e.message || "Something went wrong. Let's try again.";
+      errorMsg = e.message || $t('newproject.error');
     } finally {
       busy = false;
     }
@@ -84,25 +86,25 @@
 
 <section class="screen">
   <Mascot mood="wave" size={110} />
-  <h1>What should we teach?</h1>
-  <p>Give your project a fun name. You can change it later.</p>
+  <h1 tabindex="-1" use:focusOnMount>{$t('newproject.title')}</h1>
+  <p>{$t('newproject.subtitle')}</p>
 
   <div class="card stack">
     <input
       type="text"
-      placeholder="Like: My Robot Friend"
+      placeholder={$t('newproject.name_placeholder')}
       bind:value={name}
       on:keydown={(e) => e.key === 'Enter' && canStart && start()}
-      aria-label="Project name"
+      aria-label={$t('newproject.name_label')}
     />
 
     <label class="figure-out">
       <input type="checkbox" bind:checked={letItFigureOut} />
-      Let it figure out the language by itself
+      {$t('newproject.figure_out')}
     </label>
 
     {#if !letItFigureOut}
-      <div class="row langs" role="group" aria-label="Pick a language">
+      <div class="row langs" role="group" aria-label={$t('newproject.pick_language')}>
         {#each LANGUAGES as lang}
           <button
             class="lang"
@@ -121,14 +123,14 @@
 
       {#if allLanguages.length}
         <label class="more-langs">
-          <span>…or search every language</span>
+          <span>{$t('newproject.search_more')}</span>
           <input
             list="all-languages"
             bind:value={langQuery}
             on:change={applyQuery}
             on:input={applyQuery}
-            placeholder="Type a language, like “Polish” or “Japanese”…"
-            aria-label="Search all supported languages"
+            placeholder={$t('newproject.search_placeholder')}
+            aria-label={$t('newproject.search_label')}
           />
           <datalist id="all-languages">
             {#each allLanguages as l}
@@ -136,7 +138,7 @@
             {/each}
           </datalist>
         </label>
-        <p class="chosen">Teaching in: <strong>{selectedName}</strong></p>
+        <p class="chosen">{$t('newproject.teaching_in')} <strong>{selectedName}</strong></p>
       {/if}
     {/if}
   </div>
@@ -146,7 +148,7 @@
   {/if}
 
   <button class="big" disabled={!canStart} on:click={start}>
-    {busy ? 'Starting…' : "Let's go! ▶"}
+    {busy ? $t('newproject.starting') : $t('newproject.go')}
   </button>
 
   {#if $grownUpMode}

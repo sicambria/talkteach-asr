@@ -29,12 +29,12 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 | 10 | Bundle ffmpeg + decode/resample | B | 🟡 | `audio/decode.py` (ffmpeg subprocess, guarded), `tests/test_audio_pipeline.py`; bundling via `scripts/build_sidecar.py` + `BUNDLING.md` |
 | 11 | Silero VAD trim/segment | B | ✅ | `audio/vad.py` (guarded), pure segmentation logic tested in `tests/test_audio_pipeline.py` |
 | 12 | Forced alignment | C | 🟡 | `audio/align.py` adapter scaffold + `ALIGNMENT.md` |
-| 13 | Live recording-quality feedback | B | 🟡 | backend helper `audio/quality.py::live_meter` + `tests/test_audio_pipeline.py`; UI live-meter wiring (WebAudio, client-side) pending |
+| 13 | Live recording-quality feedback | A/B | ✅ | backend helper `audio/quality.py::live_meter` + `tests/test_audio_pipeline.py`; **UI live meter delivered** — client-side WebAudio RMS bar on `Screen1_Record.svelte` (AnalyserNode, per-frame level, teardown on stop/destroy), verified moving in a headless Playwright run |
 | 14 | Compile the Tauri shell | A | ✅ | **compiled + ran end-to-end** (2026-06-28): `npm run tauri dev` → window + sidecar spawn + live `/api/health` 200; recipe in README + `setup.sh`. Per-OS installers still a release-pipeline step (`RELEASING.md`) |
 | 15 | Tauri sidecar auto-spawn backend | B | ✅ | `src-tauri/src/lib.rs` sidecar spawn + `tauri.conf.json` externalBin; `SIDECAR.md` |
 | 16 | No-install bundled runtime | C | 🟡 | `scripts/build_sidecar.py` (PyInstaller sidecar) + `BUNDLING.md` (tiny core + uv ML pack) |
 | 17 | Checkpoint/resume exercised e2e | A | ✅ | `find_latest_checkpoint` + resume in `tests/test_whisper_train.py`, `tests/test_durability.py`; sim writes per-epoch checkpoints (`tests/test_engines.py`) |
-| 18 | Pre-flight wired to UI + mic probe | A/B | 🟡 | cross-platform PortAudio mic probe in `reliability/preflight.py` + `GET /api/preflight` (done, tested); a dedicated pre-flight *screen* in the UI is pending (the API is ready) |
+| 18 | Pre-flight wired to UI + mic probe | A/B | ✅ | cross-platform PortAudio mic probe in `reliability/preflight.py` + `GET /api/preflight` (tested); **pre-flight screen delivered** — `ScreenPreflight.svelte` renders live `/api/preflight` (disk/memory/speed/mic) with ready-vs-fix-first + re-check, wired as an interstitial before Record in `App.svelte`; verified rendering live data in a headless run |
 | 19 | Wire UI to real data | A | ✅ | `Screen2_Check.svelte`, `Screen4_Try.svelte` use the API; `api.js` endpoints |
 | 20 | Browser audio → trainable format | B | ✅ | `Screen1_Record.svelte` MediaRecorder→upload; server decode (#10) |
 | 21 | Karaoke prompt sets per language | A | ✅ | `backend/talkteach/prompts/` (CC0 sentences) + `/api/prompts` + UI |
@@ -52,8 +52,8 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 | 33 | Multi-speaker / diarization | C | ⬜ | `DIARIZATION.md` design |
 | 34 | Shareable model packs / HF publish | C | 🟡 | `MODEL_PACKS.md` design + `scripts/pack_model.py` |
 | 35 | Adaptive data-sufficiency targets | B | ✅ | `director/policy.py::adaptive_target` + `tests/test_p2p3.py` |
-| 36 | Internationalize the UI | B | 🟡 | `ui/src/lib/i18n.js` + string catalog scaffold + `I18N.md` |
-| 37 | Accessibility pass | B | 🟡 | a11y attributes added; `ACCESSIBILITY.md` checklist |
+| 36 | Internationalize the UI | B | ✅ | `ui/src/lib/i18n.js` + `I18N.md`; **plumbing wired end-to-end** — every static string on Screen0–4 + the pre-flight screen keyed through `$t()`, `en` catalog extended, a language switcher in the topbar, and a programmatic `qa` pseudo-locale proving the swap (verified toggling in a headless run). Real second-language *translations* (l10n) + RTL ride with the D-011 TS pass; the grown-up Arena (Screen5) stays hardcoded (technical surface) |
+| 37 | Accessibility pass | B | ✅ (keyboard + axe half) | **Delivered:** end-to-end tab order, Enter/Space activation (keyboard path added to the drop zone), no keyboard traps, focus moved to the screen `<h1>` on every screen change (`lib/a11y.js::focusOnMount`), `aria-live` on the live meter + training progress + "Saved ✓"; axe (headless) reports **no new** serious/critical violations vs baseline. **Still pending in `ACCESSIBILITY.md`:** manual screen-reader certification (NVDA/VoiceOver/Orca), WCAG-AA colour-contrast fix (the kid palette flags pre-existing contrast — not a regression), high-contrast + dyslexia-font toggles, reduced-motion, RTL |
 | 38 | CI (GitHub Actions) | A | ✅ | `.github/workflows/ci.yml` |
 | 39 | Lint/format/type gates | A | ✅ | `pyproject.toml` ruff+mypy; `ui/eslint.config.js`, prettier, svelte-check; rustfmt/clippy in CI |
 | 40 | Job durability | A | ✅ | `app.py` startup reconcile, `tests/test_durability.py` |

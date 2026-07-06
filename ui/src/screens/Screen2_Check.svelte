@@ -5,6 +5,8 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { listClips, transcribeDraft, saveCorrection } from '../lib/api.js';
   import { grownUpMode } from '../lib/store.js';
+  import { t } from '../lib/i18n.js';
+  import { focusOnMount } from '../lib/a11y.js';
   import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
@@ -36,7 +38,7 @@
       const res = await listClips();
       clips = (res.clips || []).map((c, i) => ({
         id: c.id,
-        label: `Recording ${i + 1}`,
+        label: `${$t('check.recording')} ${i + 1}`,
         text: c.transcript || '',
         loading: false,
         saving: false,
@@ -77,15 +79,15 @@
 
 <section class="screen">
   <Mascot mood="think" size={90} />
-  <h1>Check the words</h1>
-  <p>Did the computer hear you right? Tap a box to fix any words.</p>
+  <h1 tabindex="-1" use:focusOnMount>{$t('check.title')}</h1>
+  <p>{$t('check.subtitle')}</p>
 
   {#if loadingList}
-    <p>Finding your recordings…</p>
+    <p>{$t('check.finding')}</p>
   {:else if clips.length === 0}
     <div class="card">
-      <p>No recordings yet — go back and record some!</p>
-      <button class="big" on:click={() => dispatch('back')}>◀ Back to recording</button>
+      <p>{$t('check.none')}</p>
+      <button class="big" on:click={() => dispatch('back')}>{$t('check.back_record')}</button>
     </div>
   {/if}
 
@@ -93,24 +95,24 @@
     <div class="card clip">
       <div class="clip-head">
         <strong>{clip.label}</strong>
-        {#if clip.saved}<span class="chip">Saved ✓</span>{/if}
+        {#if clip.saved}<span class="chip" aria-live="polite">{$t('common.saved')}</span>{/if}
       </div>
 
       {#if clip.loading}
-        <p>Listening and writing it down…</p>
+        <p>{$t('check.writing')}</p>
       {:else}
         <input
           type="text"
           value={clip.text}
-          placeholder="(no words yet)"
+          placeholder={$t('check.no_words')}
           on:input={(e) => onEdit(clip, e)}
-          aria-label="Words for {clip.label}"
+          aria-label="{$t('check.words_for')} {clip.label}"
         />
         <div class="row">
           <button class="secondary" disabled={clip.saving} on:click={() => save(clip)}>
-            {clip.saving ? 'Saving…' : 'Save fix'}
+            {clip.saving ? $t('check.saving') : $t('check.save_fix')}
           </button>
-          <button class="ghost" on:click={() => loadDraft(clip)}>Try again</button>
+          <button class="ghost" on:click={() => loadDraft(clip)}>{$t('check.try_again')}</button>
         </div>
       {/if}
     </div>
@@ -121,8 +123,8 @@
   {/if}
 
   <div class="row">
-    <button class="ghost" on:click={() => dispatch('back')}>◀ Back</button>
-    <button class="big" on:click={() => dispatch('next')}> Next: Teach it! ▶ </button>
+    <button class="ghost" on:click={() => dispatch('back')}>{$t('common.back')}</button>
+    <button class="big" on:click={() => dispatch('next')}> {$t('check.next')} </button>
   </div>
 
   {#if $grownUpMode}

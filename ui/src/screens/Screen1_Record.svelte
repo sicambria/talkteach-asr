@@ -14,6 +14,8 @@
     selfTest,
   } from '../lib/api.js';
   import { sufficiency, grownUpMode, project } from '../lib/store.js';
+  import { t } from '../lib/i18n.js';
+  import { focusOnMount } from '../lib/a11y.js';
   import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
@@ -46,6 +48,67 @@
 
   let pollTimer = null;
 
+  // --- Live "we can hear you" meter (#13) ---------------------------------
+  // Client-side WebAudio only: we tap the same getUserMedia stream, read its
+  // loudness (RMS) each animation frame, and fill a bar so a child sees they're
+  // being heard. No backend call. The fast-moving bar is aria-hidden (per-frame
+  // numeric updates spam a screen reader); a separate coarse aria-live status
+  // ("Listening…" → "We can hear you!") gives AT users the signal instead.
+  let level = 0; // 0..1, smoothed loudness for the bar
+  let heardYet = false; // has the level crossed the "we hear you" threshold?
+  let audioCtx = null;
+  let analyser = null;
+  let sourceNode = null;
+  let rafId = null;
+
+  function startMeter(stream) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new Ctx();
+      sourceNode = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 1024;
+      sourceNode.connect(analyser);
+      const buf = new Uint8Array(analyser.fftSize);
+      heardYet = false;
+      const tick = () => {
+        analyser.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = (buf[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / buf.length);
+        // Scale for visibility and smooth the decay so the bar doesn't flicker.
+        level = Math.min(1, Math.max(level * 0.8, rms * 2.5));
+        if (!heardYet && rms > 0.05) heardYet = true;
+        rafId = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch {
+      // The meter is a nicety — if WebAudio isn't available, recording still works.
+    }
+  }
+
+  function stopMeter() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+    try {
+      sourceNode?.disconnect();
+      analyser?.disconnect();
+    } catch {
+      /* nodes already gone */
+    }
+    if (audioCtx) {
+      audioCtx.close();
+      audioCtx = null;
+    }
+    sourceNode = null;
+    analyser = null;
+    level = 0;
+    heardYet = false;
+  }
+
   async function refreshSufficiency() {
     try {
       const s = await fetchSufficiency();
@@ -77,6 +140,7 @@
   onDestroy(() => {
     if (pollTimer) clearInterval(pollTimer);
     if (mediaRecorder && recording) mediaRecorder.stop();
+    stopMeter();
   });
 
   async function startRecording() {
@@ -93,11 +157,13 @@
         if (e.data && e.data.size > 0) chunks.push(e.data);
       };
       mediaRecorder.onstop = async () => {
+        stopMeter();
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunks, { type: 'audio/webm' });
         await handleClip(blob, recordingPrompt);
       };
       mediaRecorder.start();
+      startMeter(stream);
       recording = true;
     } catch {
       micError = "I couldn't use the microphone. Please allow microphone access.";
@@ -154,12 +220,30 @@
     }
   }
 
-  // --- Drag and drop existing audio ---------------------------------------
+  // --- Drag and drop / pick existing audio --------------------------------
+  let fileInput = null;
+
   function onDrop(e) {
     e.preventDefault();
     dragOver = false;
     const file = e.dataTransfer?.files?.[0];
     if (file) handleClip(file, null);
+  }
+
+  function onPick(e) {
+    const file = e.target.files?.[0];
+    if (file) handleClip(file, null);
+    e.target.value = ''; // let the same file be picked again
+  }
+
+  // The drop zone doubles as a real button: click or Enter/Space opens the file
+  // picker, so it's fully usable without a mouse or drag (#37).
+  function activateDrop(e) {
+    if (e.type === 'keydown') {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+    }
+    fileInput?.click();
   }
 
   $: s = $sufficiency;
@@ -169,12 +253,12 @@
 
 <section class="screen">
   <Mascot mood={recording ? 'think' : 'happy'} size={90} />
-  <h1>Let's record!</h1>
-  <p>Read this out loud, then press the big button.</p>
+  <h1 tabindex="-1" use:focusOnMount>{$t('record.title')}</h1>
+  <p>{$t('record.read_prompt')}</p>
 
   <!-- Karaoke prompt line: the sentence to read aloud. -->
   <div class="card prompt">{prompt}</div>
-  <button class="ghost" on:click={anotherSentence}>🔀 Another sentence</button>
+  <button class="ghost" on:click={anotherSentence}>{$t('record.another')}</button>
 
   <div class="stack">
     <button
@@ -182,23 +266,37 @@
       class:recording
       on:click={toggleRecording}
       aria-pressed={recording}
-      aria-label={recording ? 'Stop recording' : 'Start recording'}
+      aria-label={recording ? $t('record.stop_recording') : $t('record.start_recording')}
     >
       {recording ? '⏹' : '🎤'}
     </button>
-    <span>{recording ? 'Listening… press to stop' : 'Press to talk'}</span>
+    <span aria-live="polite">
+      {recording
+        ? heardYet
+          ? $t('record.hearing')
+          : $t('record.listening')
+        : $t('record.press_to_talk')}
+    </span>
+
+    <!-- Live loudness bar. Decorative + fast-updating, so hidden from screen
+         readers — the coarse status above carries the same signal for AT. -->
+    {#if recording}
+      <div class="level" aria-hidden="true">
+        <div class="level-fill" style="width:{Math.round(level * 100)}%"></div>
+      </div>
+    {/if}
   </div>
 
   {#if busy}
-    <p>Checking your recording…</p>
+    <p>{$t('record.checking')}</p>
   {:else if lastResult}
     <div class="card result">
       {#if lastResult.ok}
         <span class="thumb up">👍</span>
-        <p>Great recording!</p>
+        <p>{$t('record.great')}</p>
       {:else}
         <span class="thumb down">👎</span>
-        <p>Let's try that one again.</p>
+        <p>{$t('record.try_again')}</p>
         {#if lastResult.issues && lastResult.issues.length}
           <ul class="issues">
             {#each lastResult.issues as issue}
@@ -221,16 +319,27 @@
     on:dragover|preventDefault={() => (dragOver = true)}
     on:dragleave={() => (dragOver = false)}
     on:drop={onDrop}
+    on:click={activateDrop}
+    on:keydown={activateDrop}
     role="button"
     tabindex="0"
-    aria-label="Drop audio files here"
+    aria-label={$t('record.drop_label')}
   >
-    📁 Drag sound files here too
+    {$t('record.drop')}
   </div>
+  <input
+    class="visually-hidden"
+    type="file"
+    accept="audio/*"
+    tabindex="-1"
+    aria-hidden="true"
+    bind:this={fileInput}
+    on:change={onPick}
+  />
 
   <!-- "Minutes of good audio" meter -->
   <div class="card">
-    <h2>How much have we recorded?</h2>
+    <h2>{$t('record.how_much')}</h2>
     <div class="meter"><div class="fill" style="width:{pct}%"></div></div>
     {#if s}
       <p>
@@ -241,15 +350,15 @@
         <p class="hint">{m}</p>
       {/each}
     {:else}
-      <p class="hint">Press the mic to start filling this up!</p>
+      <p class="hint">{$t('record.start_hint')}</p>
     {/if}
   </div>
 
   <!-- No microphone yet? Add a few ready-made sounds so you can still try. -->
   <div class="card practice">
-    <p class="hint">No microphone? Try a ready-made set instead.</p>
+    <p class="hint">{$t('record.no_mic')}</p>
     <button class="secondary" disabled={busy} on:click={addPracticeSet}>
-      🎁 Try a practice set
+      {$t('record.practice')}
     </button>
     {#if practiceNote}
       <p class="hint">{practiceNote}</p>
@@ -257,7 +366,7 @@
   </div>
 
   <button class="big" disabled={!readyToTeach} on:click={() => dispatch('next')}>
-    {readyToTeach ? 'Next: Check the words ▶' : 'Record a bit more first…'}
+    {readyToTeach ? $t('record.ready_next') : $t('record.not_ready')}
   </button>
 
   {#if $grownUpMode}
@@ -274,6 +383,25 @@
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--tt-primary-dark);
+  }
+
+  /* Live loudness bar — a fast, non-lagging fill (the shared .meter uses a slow
+     0.4s width transition meant for progress, which would smear a live signal). */
+  .level {
+    width: 220px;
+    max-width: 80%;
+    height: 14px;
+    background: #ececf0;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .level-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--tt-happy), var(--tt-sun), var(--tt-oops));
+    border-radius: 999px;
+    transition: width 0.06s linear;
   }
 
   .result {
@@ -299,6 +427,18 @@
   .drop.over {
     border-color: var(--tt-accent);
     background: #e9faf6;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .hint {

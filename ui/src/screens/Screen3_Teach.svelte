@@ -7,6 +7,8 @@
   import { startTraining, trainProgress, getPlan } from '../lib/api.js';
   import { sufficiency, currentRun, grownUpMode } from '../lib/store.js';
   import { TRAIN_POLL_MS } from '../lib/constants.js';
+  import { t } from '../lib/i18n.js';
+  import { focusOnMount } from '../lib/a11y.js';
   import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
@@ -60,7 +62,7 @@
       if (progress.done || progress.failed) {
         stopPolling();
         if (progress.failed) {
-          errorMsg = "Teaching stopped early. Let's try again.";
+          errorMsg = $t('teach.stopped_early');
         }
       }
     } catch (e) {
@@ -111,60 +113,60 @@
   $: friendlyStatus =
     progress?.message ||
     (done
-      ? "All done! It's ready to try."
+      ? $t('teach.done')
       : failed
-        ? "Oops, that didn't work."
+        ? $t('teach.failed')
         : fractionPct > 66
-          ? 'Almost there…'
+          ? $t('teach.almost')
           : fractionPct > 33
-            ? 'Getting smarter!'
+            ? $t('teach.getting_smarter')
             : polling
-              ? 'Warming up the brain…'
+              ? $t('teach.warming')
               : '');
 </script>
 
 <section class="screen">
   <Mascot mood={done ? 'cheer' : failed ? 'oops' : polling ? 'think' : 'happy'} size={100} />
-  <h1>Teach it!</h1>
+  <h1 tabindex="-1" use:focusOnMount>{$t('teach.title')}</h1>
 
   {#if !polling && !done}
-    <p>When you press the button, the computer will learn from your recordings.</p>
+    <p>{$t('teach.intro')}</p>
     <button class="big" disabled={!readyToTeach} on:click={teach}>
-      {readyToTeach ? 'Teach it! ✨' : 'Record more first…'}
+      {readyToTeach ? $t('teach.teach_btn') : $t('teach.record_more')}
     </button>
     {#if paused}
-      <button class="secondary" on:click={resume}>Keep watching ▶</button>
+      <button class="secondary" on:click={resume}>{$t('teach.keep_watching')}</button>
     {/if}
   {/if}
 
   {#if progress || polling}
     <div class="card">
-      <h2>How far along?</h2>
+      <h2>{$t('teach.how_far')}</h2>
       <div class="meter"><div class="fill" style="width:{fractionPct}%"></div></div>
       <p>{fractionPct}%</p>
 
-      <h2>How smart is it?</h2>
+      <h2>{$t('teach.how_smart')}</h2>
       <div class="meter smart"><div class="fill" style="width:{smartPct}%"></div></div>
-      <p>{smartPct}% smart</p>
+      <p>{smartPct}{$t('teach.smart_suffix')}</p>
 
-      <p class="status">{friendlyStatus}</p>
+      <p class="status" aria-live="polite">{friendlyStatus}</p>
     </div>
 
     {#if polling && !done}
       <div class="row">
-        <button class="ghost" on:click={pause}>⏸ Pause</button>
-        <button class="ghost" on:click={closeForNow}>Close and continue later</button>
+        <button class="ghost" on:click={pause}>{$t('teach.pause')}</button>
+        <button class="ghost" on:click={closeForNow}>{$t('teach.close_later')}</button>
       </div>
     {/if}
   {/if}
 
   {#if errorMsg}
     <p class="error">{errorMsg}</p>
-    <button class="secondary" on:click={teach}>Try again</button>
+    <button class="secondary" on:click={teach}>{$t('teach.try_again')}</button>
   {/if}
 
   {#if done}
-    <button class="big" on:click={() => dispatch('next')}>Next: Try it! ▶</button>
+    <button class="big" on:click={() => dispatch('next')}>{$t('teach.next')}</button>
   {/if}
 
   {#if $grownUpMode}

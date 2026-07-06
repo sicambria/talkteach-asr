@@ -6,6 +6,8 @@
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { transcribe, exportModel } from '../lib/api.js';
   import { currentRun, grownUpMode } from '../lib/store.js';
+  import { t } from '../lib/i18n.js';
+  import { focusOnMount } from '../lib/a11y.js';
   import Mascot from '../components/Mascot.svelte';
 
   const dispatch = createEventDispatcher();
@@ -79,7 +81,7 @@
     exportNote = '';
     const run = $currentRun;
     if (!run?.run_id) {
-      exportNote = 'Teach the computer first, then you can use it here.';
+      exportNote = $t('try.teach_first');
       return;
     }
     busy = true;
@@ -97,8 +99,8 @@
 
 <section class="screen">
   <Mascot mood="cheer" size={100} />
-  <h1>Try it!</h1>
-  <p>Say something and see if the computer understands you now.</p>
+  <h1 tabindex="-1" use:focusOnMount>{$t('try.title')}</h1>
+  <p>{$t('try.subtitle')}</p>
 
   <div class="stack">
     <button
@@ -106,21 +108,22 @@
       class:recording
       on:click={toggleRecording}
       aria-pressed={recording}
-      aria-label={recording ? 'Stop recording' : 'Start recording'}
+      aria-label={recording ? $t('record.stop_recording') : $t('record.start_recording')}
     >
       {recording ? '⏹' : '🎤'}
     </button>
-    <span>{recording ? 'Listening… press to stop' : 'Press to talk'}</span>
+    <span aria-live="polite">{recording ? $t('record.listening') : $t('record.press_to_talk')}</span
+    >
   </div>
 
   {#if busy}
-    <p>Thinking…</p>
+    <p aria-live="polite">{$t('try.thinking')}</p>
   {/if}
 
   {#if heardText}
     <div class="card heard">
-      <h2>It heard:</h2>
-      <p class="big-text">{heardText}</p>
+      <h2>{$t('try.heard')}</h2>
+      <p class="big-text" aria-live="polite">{heardText}</p>
     </div>
   {/if}
 
@@ -130,10 +133,10 @@
 
   <div class="row">
     <button class="secondary" on:click={save}>
-      {saved ? 'Saved ✓' : '💾 Save'}
+      {saved ? $t('common.saved') : $t('try.save')}
     </button>
-    <button on:click={useOnMyComputer} disabled={busy}> 🖥 Use on my computer </button>
-    <button class="ghost" on:click={() => dispatch('again')}> 🔁 Make it better </button>
+    <button on:click={useOnMyComputer} disabled={busy}> {$t('try.use')} </button>
+    <button class="ghost" on:click={() => dispatch('again')}> {$t('try.make_better')} </button>
   </div>
 
   {#if exportNote}

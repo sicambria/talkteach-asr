@@ -12,6 +12,25 @@ versions; we'll call them out under **Changed** with a ⚠️.
 
 ### Added
 
+- **UI parity sweep (#18, #13, #36, #37)** — front-end gaps closed with Svelte 4 +
+  WebAudio only (no new runtime deps).
+  - **Pre-flight screen (#18):** `ScreenPreflight.svelte` renders live
+    `GET /api/preflight` (disk / memory / speed / microphone) with a clear
+    "you're ready" vs "fix this first" state and a re-check button, wired as an
+    interstitial between New-project and Record.
+  - **Live recording meter (#13):** a client-side WebAudio RMS level bar on the
+    record screen (AnalyserNode on the existing `getUserMedia` stream), with a
+    coarse `aria-live` "we can hear you" status for screen-reader users.
+  - **i18n plumbing (#36):** every static string on Screen0–4 + the pre-flight
+    screen keyed through `$t()`, an extended `en` catalog, a topbar language
+    switcher, and a programmatic `qa` pseudo-locale that proves the swap.
+  - **Accessibility quick-wins (#37):** end-to-end tab order, Enter/Space
+    activation (the drop zone is now a real keyboard button), no keyboard traps,
+    focus moved to each screen's heading on change (`lib/a11y.js::focusOnMount`),
+    and `aria-live` regions on the meter, training progress, and "Saved ✓".
+    Verified axe-clean (no new violations vs baseline) + a headless keyboard walk;
+    manual screen-reader certification, WCAG-AA contrast, high-contrast/dyslexia
+    toggles, reduced-motion, and RTL remain tracked in `ACCESSIBILITY.md`.
 - **Competitive-parity batch (#46–#57)** — additive, pure-Python, CPU/CI-tested
   (torch-free imports; heavy paths guarded). See `project/docs/ROADMAP_STATUS.md`
   and `DECISIONS.md` D-014.
