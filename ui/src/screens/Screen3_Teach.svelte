@@ -293,12 +293,19 @@
             {#if report.available === false}
               <p class="muted">{report.message || 'Report needs the ML pack installed.'}</p>
             {:else}
-              {#if report.best_val_wer != null}
+              {#if report.best_val_wer != null && !report.simulated}
                 <p>
                   Held-out accuracy:
                   <strong>{((1 - report.best_val_wer) * 100).toFixed(1)}%</strong>
                   ({(report.best_val_wer * 100).toFixed(1)}% WER on unseen clips)
                 </p>
+              {:else if report.simulated}
+                <p class="muted">
+                  This run was a practice simulation — no real held-out accuracy to show.
+                </p>
+              {/if}
+              {#if report.issues && report.issues.length}
+                <p class="muted">Skipped {report.issues.length} unreadable clip(s).</p>
               {/if}
               {#if report.hardest && report.hardest.length}
                 <p><strong>Hardest clips to fix or relabel next:</strong></p>

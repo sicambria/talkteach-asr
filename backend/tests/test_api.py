@@ -515,6 +515,31 @@ def test_eval_report_shapes(monkeypatch):
         assert body["best_val_wer"] == 0.25
         assert "top_substitutions" in body["report"]
         assert body["hardest"][0]["reference"] == "the dog ran"  # the harder clip ranks first
+        assert body["simulated"] is True  # no metrics.jsonl ⇒ best_val_wer is synthetic
+
+
+def test_eval_report_skips_unreadable_clip(monkeypatch):
+    import talkteach.app as appmod
+
+    class _FlakyEngine:
+        def transcribe(self, path, model_dir=None, base_checkpoint=None, options=None):
+            if "bad" in path:
+                raise RuntimeError("Format not recognised")  # not EngineUnavailableError
+            return "the cat sat"
+
+    monkeypatch.setattr(appmod, "get_engine", lambda kind: _FlakyEngine())
+    with TestClient(app) as client:
+        client.post("/api/project", json={"name": "eval-skip"})
+        with ProjectDB.open(config.DEFAULT_DB_PATH) as db:
+            db.add_clip("good.wav", 1.0, True, [], transcript="the cat sat")
+            db.add_clip("bad.webm", 1.0, True, [], transcript="the dog ran")
+            run_id = db.create_run(engine="whisper_lora", base_checkpoint="x", plan_json="{}")
+        r = client.get(f"/api/eval/{run_id}")
+        assert r.status_code == 200  # one bad clip must not 500 the whole report
+        body = r.json()
+        assert body["available"] is True
+        assert len(body["issues"]) >= 1  # the undecodable clip(s) skipped + noted
+        assert body["n_evaluated"] == body["n_clips"] - len(body["issues"])
 
 
 # --- Dataset import (#47) ---

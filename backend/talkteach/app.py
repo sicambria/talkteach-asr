@@ -726,7 +726,12 @@ async def import_data(files: list[UploadFile]) -> dict:
     dir (skipping any path-traversal filename) and hand the content root to the
     tested :func:`import_dataset` auto-detector (folder-of-pairs, LibriSpeech, or an
     in-folder CSV/JSON/TSV manifest). Matched audio is copied into the project clip
-    dir under a traversal-safe uuid name (#7) and inserted as good clips."""
+    dir under a traversal-safe uuid name (#7) and inserted as good clips.
+
+    Caveat: imported clips are *trusted as-is* — they bypass the record path's quality
+    analysis (#9), and non-WAV files without a manifest duration get ``duration_s=0``,
+    so they don't count toward the sufficiency gate. WAV (or a manifest with
+    durations) is recommended if you want imports to unlock "Teach!" on their own."""
     import tempfile
 
     config.ensure_dirs()
@@ -789,25 +794,55 @@ def eval_report_endpoint(run_id: int) -> dict:
         if run is None:
             raise HTTPException(status_code=404, detail="That run wasn't found.")
         clips = db.list_clips(only_good=True)
-    base = {"best_val_wer": run.get("best_val_wer"), "n_clips": len(clips)}
+    workdir = run.get("checkpoint_path") or str(config.DEFAULT_PROJECT_DIR / "runs" / str(run_id))
+    # A run with no metrics.jsonl was simulated (or hasn't logged) — so its
+    # ``best_val_wer`` is a synthetic figure, not a measured held-out score. Flag it
+    # so the UI never presents a simulated number as real accuracy (D-015, mirrors #53).
+    simulated = not experiment.read_curve(workdir)
+    base = {
+        "best_val_wer": run.get("best_val_wer"),
+        "n_clips": len(clips),
+        "simulated": simulated,
+    }
     if not clips:
-        return {**base, "available": True, "hardest": [], "report": None, "cosmetic": None}
-    references = [c["transcript"] or "" for c in clips]
-    paths = [c["path"] for c in clips]
-    model_dir = run.get("checkpoint_path") or str(config.DEFAULT_PROJECT_DIR / "runs" / str(run_id))
+        return {
+            **base,
+            "available": True,
+            "hardest": [],
+            "report": None,
+            "cosmetic": None,
+            "issues": [],
+        }
     engine = get_engine(EngineKind.WHISPER_LORA)
-    hypotheses: list[str] = []
-    try:
-        for p in paths:
-            hypotheses.append(engine.transcribe(p, model_dir=model_dir))
-    except EngineUnavailableError as e:
-        return {**base, "available": False, "message": str(e), "hardest": [], "report": None}
+    refs: list[str] = []
+    hyps: list[str] = []
+    issues: list[str] = []
+    for clip in clips:
+        try:
+            hyps.append(engine.transcribe(clip["path"], model_dir=workdir))
+            refs.append(clip["transcript"] or "")
+        except EngineUnavailableError as e:
+            # No ML at all → the whole report is unavailable, like transcribe.
+            return {**base, "available": False, "message": str(e), "hardest": [], "report": None}
+        except Exception:  # noqa: BLE001 — one undecodable clip must not 500 the report
+            issues.append(f"couldn't read “{Path(clip['path']).name}” — skipped")
+    if not refs:
+        return {
+            **base,
+            "available": True,
+            "hardest": [],
+            "report": None,
+            "cosmetic": None,
+            "issues": issues,
+        }
     return {
         **base,
         "available": True,
-        "hardest": [dataclasses.asdict(s) for s in worst_utterances(references, hypotheses, k=5)],
-        "report": error_report(references, hypotheses),
-        "cosmetic": normalized_vs_raw(references, hypotheses),
+        "n_evaluated": len(refs),
+        "issues": issues,
+        "hardest": [dataclasses.asdict(s) for s in worst_utterances(refs, hyps, k=5)],
+        "report": error_report(refs, hyps),
+        "cosmetic": normalized_vs_raw(refs, hyps),
     }
 
 
