@@ -396,3 +396,37 @@ batch — they need UI refactors / network-auth / a neural model, i.e. outside t
 Consequence: every new module imports torch-free and is exercised by the default
 `make test`; heavy paths stay guarded and CLI-invocable on an `[ml]` machine. The
 plan of record is `plans/roadmap-parity-batch.md` (scored + advisor-gated).
+
+## D-015 — Easy/Advanced product tiers + surfacing the parity features in the UI
+
+Two decisions, taken together.
+
+**Terminology / positioning.** The product was framed as a "kids' app" (child /
+grown-up / family / 10-year-old persona). We repositioned it to a general-audience
+tool with two UI tiers: **Easy** — the existing wizard (Record → Check → Teach →
+Try) with great defaults and few meaningful options — and **Advanced** — the `⚙`
+toggle (`advancedMode`) that reveals full detail/config. The persona wording is
+gone across the repo (one code identifier renamed: `grownUpMode → advancedMode`; no
+API/DB/i18n-key changes). The friendly Easy-mode tone (mascot, bright palette,
+"smartness" meter) is **kept on purpose** — friendly ≠ childish — and is the right
+register for an easy tier. Plan of record: `plans/terminology-easy-advanced.md`.
+
+**Where shipped-but-UI-less features live.** The parity batch (#46–57, D-014) shipped
+backend + CLI only. Advanced mode is their home: export-format picker (#57),
+loss/WER curve (#53), caption download (#48), decode controls (#50), "where it still
+struggles" report (#52) all sit behind `{#if $advancedMode}`; dataset import (#47)
+is an understated secondary action on Screen0. Easy mode renders identically —
+every new control is Advanced-gated or a plain secondary affordance.
+
+Two honesty rules we held:
+- **Metrics/curve** read the *real* trainer's `metrics.jsonl`; a run with no curve
+  is reported as such (`has_curve=false`) rather than drawing synthetic numbers.
+- **The report is not "accuracy."** Evaluating on the *training* clips would be
+  optimistic, so the generalization headline is the existing held-out
+  `best_val_wer`; the per-utterance/confusion breakdown is labeled an
+  active-learning signal ("fix/relabel these next", feeds #32), not a score.
+
+Rejected: (a) surfacing everything in the Easy wizard — it would bloat the one path
+that must stay simple; (b) a full de-infantilization (removing the mascot / neutral
+palette) — out of scope for this pass (labels-only tone was the chosen tier). Plan of
+record: `plans/advanced-mode-ui-sweep.md` (scored + advisor-gated).

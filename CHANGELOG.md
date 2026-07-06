@@ -10,8 +10,36 @@ versions; we'll call them out under **Changed** with a ⚠️.
 
 ## [Unreleased]
 
+### Changed
+
+- ⚠️ **Repositioned from a "kids' app" to Easy/Advanced tiers.** The child /
+  grown-up / family / 10-year-old persona is gone across the repo; the product now
+  presents **Easy** (the wizard — great defaults, few options) and **Advanced** (the
+  `⚙` toggle — full detail/config). One code identifier renamed
+  (`grownUpMode → advancedMode`); no API/DB/i18n-key changes. The friendly Easy-mode
+  tone (mascot, palette, "smartness" meter) is kept on purpose. See DECISIONS.md
+  D-015, `plans/terminology-easy-advanced.md`.
+
 ### Added
 
+- **Advanced-mode UI sweep (#57, #53, #48, #50, #52, #47)** — the parity features
+  that shipped backend/CLI-only (D-014) now have a home in Advanced mode; Easy mode
+  is unchanged. All verifiable end-to-end (ML deps present).
+  - **Export-format picker (#57):** `GET /api/export/formats` (real vs scaffold);
+    Screen4 Advanced picker. Easy keeps one-tap CTranslate2.
+  - **Caption download (#48):** `/api/transcribe` returns segments + server-formatted
+    SRT/VTT; Screen4 "Save captions" (Easy `.srt`) + Advanced format picker.
+  - **Loss/WER curve (#53):** `GET /api/metrics/{run_id}` reads the real trainer's
+    `metrics.jsonl` (honest "simulated run" when absent); Screen3 Advanced sparkline.
+  - **Decode controls (#50):** `/api/transcribe` accepts beam / hotwords /
+    temperature; Screen4 Advanced controls (blank → today's defaults).
+  - **"Where it still struggles" report (#52):** `GET /api/eval/{run_id}` → hardest
+    clips + confusions, labeled an active-learning signal (not accuracy; the held-out
+    figure is `best_val_wer`); Screen3 Advanced.
+  - **Dataset import (#47):** `POST /api/import` (`<input webkitdirectory>`,
+    traversal-safe copy) + Screen0 "Import a folder"; folder-of-pairs / LibriSpeech /
+    in-folder manifest via the tested auto-detector.
+  - See DECISIONS.md D-015, `plans/advanced-mode-ui-sweep.md`.
 - **UI parity sweep (#18, #13, #36, #37)** — front-end gaps closed with Svelte 4 +
   WebAudio only (no new runtime deps).
   - **Pre-flight screen (#18):** `ScreenPreflight.svelte` renders live
