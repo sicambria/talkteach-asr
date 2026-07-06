@@ -2,7 +2,7 @@
 
 Today TalkTeach assumes one voice: `audio/quality.py::aggregate` hard-codes
 `distinct_speakers=1` in the `DataProfile`. That's the right Phase-0 simplification
-(a child teaching their own voice), but it breaks down the moment two kids share a
+(the user teaching their own voice), but it breaks down the moment two users share a
 session or a parent demonstrates a sentence. Diarization — "who spoke when" —
 lets TalkTeach split a mixed recording by speaker and either train per-speaker or
 warn that the data is mixed.
@@ -36,7 +36,7 @@ seed multiple projects.
 ## Why Tier C, not now
 
 Diarization is heavy (a second neural model), introduces the gated-weights snag,
-and the core promise (one child, one voice) doesn't need it. It's a delight/scale
+and the core promise (one user, one voice) doesn't need it. It's a delight/scale
 feature, not a correctness gap — so it stays a design until a permissively-bundled
 backend and the per-speaker UX are worth building.
 

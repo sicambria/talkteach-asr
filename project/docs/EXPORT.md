@@ -1,6 +1,6 @@
 # Export — "Use on my computer" (roadmap #4)
 
-When a child taps **Use on my computer**, TalkTeach packages the model they just
+When the user taps **Use on my computer**, TalkTeach packages the model they just
 taught into a portable, offline runtime they can copy to any machine. This note
 explains what that produces and how to verify it.
 
@@ -20,9 +20,9 @@ is tiny and not runnable on its own, so export does two steps
 
 | Format | Dep extra | Why / when | Status |
 |---|---|---|---|
-| **CTranslate2 int8** (default) | `[export]` (`ctranslate2`) | Fastest CPU inference; pairs with the faster-whisper "Try it" path; the family runs it offline. | Real path implemented |
+| **CTranslate2 int8** (default) | `[export]` (`ctranslate2`) | Fastest CPU inference; pairs with the faster-whisper "Try it" path; you run it offline. | Real path implemented |
 | **ONNX** (via 🤗 optimum → sherpa-onnx) | `optimum` + `onnxruntime` | Streaming / edge / mobile; the Phase-2 deployment target. | Scaffolded code path |
-| **HF safetensors** (`fmt="safetensors"`, #57) | `[ml]` (`transformers`) | Interop with any 🤗 Transformers runtime the family already uses; loads with `from_pretrained`. | Real path implemented |
+| **HF safetensors** (`fmt="safetensors"`, #57) | `[ml]` (`transformers`) | Interop with any 🤗 Transformers runtime you already use; loads with `from_pretrained`. | Real path implemented |
 | **TorchScript / GGUF** (`fmt="torchscript"`/`"gguf"`, #57) | — | Other runtimes (LibTorch, whisper.cpp). | Documented dry-run scaffold |
 
 **Why TorchScript/GGUF are scaffold, not real:** Whisper's decoding runs through

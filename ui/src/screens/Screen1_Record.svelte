@@ -13,7 +13,7 @@
     saveCorrection,
     selfTest,
   } from '../lib/api.js';
-  import { sufficiency, grownUpMode, project } from '../lib/store.js';
+  import { sufficiency, advancedMode, project } from '../lib/store.js';
   import { t } from '../lib/i18n.js';
   import { focusOnMount } from '../lib/a11y.js';
   import Mascot from '../components/Mascot.svelte';
@@ -50,7 +50,7 @@
 
   // --- Live "we can hear you" meter (#13) ---------------------------------
   // Client-side WebAudio only: we tap the same getUserMedia stream, read its
-  // loudness (RMS) each animation frame, and fill a bar so a child sees they're
+  // loudness (RMS) each animation frame, and fill a bar so the user sees they're
   // being heard. No backend call. The fast-moving bar is aria-hidden (per-frame
   // numeric updates spam a screen reader); a separate coarse aria-live status
   // ("Listening…" → "We can hear you!") gives AT users the signal instead.
@@ -146,7 +146,7 @@
   async function startRecording() {
     micError = '';
     lastResult = null;
-    // Remember the sentence the child is reading right now; we save it as this
+    // Remember the sentence the user is reading right now; we save it as this
     // clip's words once it's recorded and checked.
     recordingPrompt = prompt;
     try {
@@ -188,7 +188,7 @@
     lastResult = null;
     try {
       lastResult = await analyzeClip(blobOrFile);
-      // The sentence the child read becomes the clip's words, so they rarely
+      // The sentence the user read becomes the clip's words, so they rarely
       // have to fix anything on the next screen.
       if (promptText && lastResult.clip_id != null) {
         try {
@@ -369,8 +369,8 @@
     {readyToTeach ? $t('record.ready_next') : $t('record.not_ready')}
   </button>
 
-  {#if $grownUpMode}
-    <div class="grownup">
+  {#if $advancedMode}
+    <div class="advanced">
       <h3>Advanced</h3>
       sufficiency: {JSON.stringify(s)}
       {'\n'}last clip: {JSON.stringify(lastResult)}

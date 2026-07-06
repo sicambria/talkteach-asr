@@ -205,7 +205,7 @@ class LiveMeter:
     """A single frame of live recording feedback for the meter *while* recording.
 
     ``level`` is a 0–1 bar height; ``status`` is one of "quiet"/"good"/"loud" so
-    the UI can colour it green/amber without the child reading dBFS (#13).
+    the UI can colour it green/amber without the user reading dBFS (#13).
     """
 
     level: float
@@ -217,7 +217,7 @@ def live_meter(samples: np.ndarray, sample_rate: int = 16000) -> LiveMeter:
     """Cheap, pure level read for a short live audio chunk (#13).
 
     Maps RMS dBFS in roughly [-60, 0] to a 0–1 bar, and flags too-quiet vs
-    clipping so the recorder can nudge the child ("speak up" / "too loud") live.
+    clipping so the recorder can nudge the user ("speak up" / "too loud") live.
     """
     x = _to_mono_float(samples)
     if x.size == 0:

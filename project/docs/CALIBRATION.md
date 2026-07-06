@@ -20,7 +20,7 @@ LoRA rank/alpha, and the effective-batch target in `_choose_batch`.
 
 ## What to sweep against
 
-- **Quality thresholds**: a few hundred child/adult clips, each hand-labelled
+- **Quality thresholds**: a few hundred speech clips, each hand-labelled
   good/bad with a reason. Reuse Common Voice + the self-test toy set as a start.
 - **Policy hyperparameters**: small labelled speech sets per data-size bucket
   (≈15 min / 60 min / 2 h+) and per VRAM tier. Sweep one constant at a time,
@@ -51,7 +51,7 @@ moves #6 from 🟡 toward ✅ as constants are tuned.
 
 ## Then: refine from telemetry
 
-Once opt-in telemetry exists (D-008 — strictly off by default, never for a kids'
+Once opt-in telemetry exists (D-008 — strictly off by default, never for the
 app without explicit consent), aggregate *anonymised* outcome stats (final WER,
 data minutes, hardware tier) to refine the defaults across many real runs. This
 is the long-tail step; it never gates a release and never phones home silently.

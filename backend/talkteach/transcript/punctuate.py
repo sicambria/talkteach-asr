@@ -7,7 +7,7 @@ quality win for free. A heavier neural restorer (e.g. a ``deepmultilingualpunctu
 model) is a documented future *guarded* path; the rule-based function is the floor
 the product can always rely on, and the only part with unit tests.
 
-Scope: light, language-agnostic-ish rules tuned for English child speech. It does
+Scope: light, language-agnostic-ish rules tuned for English speech. It does
 NOT do inverse text normalization (spoken→written numbers); that is tracked
 separately under #51's ITN note in project/docs/COMPETITIVE_GAPS.md.
 """

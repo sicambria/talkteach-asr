@@ -22,7 +22,7 @@ TARGET_SAMPLE_RATE = 16_000
 
 
 class AudioDecodeError(RuntimeError):
-    """ffmpeg is missing or failed. Message is written for a grown-up to act on."""
+    """ffmpeg is missing or failed. Message is written for the user to act on."""
 
 
 def ffmpeg_available() -> bool:
@@ -64,7 +64,7 @@ def decode_to_wav(
     if not ffmpeg_available():
         raise AudioDecodeError(
             "We can't read this kind of sound file yet — the audio pack (ffmpeg) "
-            "isn't installed. Ask a grown-up to install it."
+            "isn't installed. Install it to continue."
         )
     dst = dst_path or str(Path(src_path).with_suffix(".16k.wav"))
     cmd = build_decode_command(src_path, dst, sample_rate)

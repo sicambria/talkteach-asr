@@ -7,7 +7,7 @@
   // mic just means "drag in existing recordings instead". jargon-free.
   import { createEventDispatcher, onMount } from 'svelte';
   import { preflight } from '../lib/api.js';
-  import { grownUpMode } from '../lib/store.js';
+  import { advancedMode } from '../lib/store.js';
   import { t } from '../lib/i18n.js';
   import { focusOnMount } from '../lib/a11y.js';
   import Mascot from '../components/Mascot.svelte';
@@ -89,8 +89,8 @@
     </button>
   </div>
 
-  {#if $grownUpMode}
-    <div class="grownup">
+  {#if $advancedMode}
+    <div class="advanced">
       <h3>Advanced</h3>
       GET /api/preflight {report ? JSON.stringify(report) : '(no report)'}
     </div>

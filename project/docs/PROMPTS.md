@@ -5,7 +5,7 @@ audio: the prompt **is** the transcript, so Screen 2 has ground truth to check
 against (and Screen 1 can pre-fill the correction).
 
 - `backend/talkteach/prompts/` ships a small, **CC0** (public-domain) starter set
-  of short, kid-friendly, phonetically varied sentences per language (en/es/de),
+  of short, simple, phonetically varied sentences per language (en/es/de),
   with English fallback so the flow never blocks on an unsupported language.
 - `GET /api/prompts?lang=en&n=8` returns sentences + the available languages.
 - The UI shows one sentence at a time with an "another sentence" button; after a

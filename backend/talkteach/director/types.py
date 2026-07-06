@@ -98,7 +98,7 @@ class TrainingPlan:
     freeze_encoder: bool
     seed: int
     grad_clip: float
-    # Human-readable trace of *why* each choice was made — surfaced in Grown-up mode.
+    # Human-readable trace of *why* each choice was made — surfaced in Advanced mode.
     rationale: list[str] = field(default_factory=list)
 
     @property

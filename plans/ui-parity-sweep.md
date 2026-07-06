@@ -11,7 +11,7 @@
 
 Close the four front-end gaps that make TalkTeach feel finished, following the
 repo's UI conventions (plain-JS Svelte 4, `checkJs:false` per D-011; jargon-free
-copy; grown-up-mode for technical detail):
+copy; advanced mode for technical detail):
 
 1. **#18 Pre-flight SCREEN** — a Svelte screen that calls the *already-shipped*
    `GET /api/preflight` (`app.py:249`) and shows disk/memory/compute/mic status
@@ -158,8 +158,8 @@ copy; grown-up-mode for technical detail):
 - **#36 → ✅ with in-cell scope note** — plumbing + switcher + `en` catalog +
   fallback proven across Screen0–4 + pre-flight. The cell states: real
   second-language *translations* (l10n) ride with the D-011 TS pass; only `en` + a
-  QA pseudo-locale ship; and the **grown-up Arena (Screen5) stays hardcoded** (it's
-  the technical surface, out of the child-facing i18n scope) so the ✅ isn't
+  QA pseudo-locale ship; and the **Advanced Arena (Screen5) stays hardcoded** (it's
+  the technical surface, out of the easy-mode i18n scope) so the ✅ isn't
   over-read. ("Internationalize the UI" = the infrastructure, which is done.)
 - **#37 → ✅ with in-cell scope note**, *not a bare ✅*. The row is holistic
   ("Accessibility pass"); flipping it clean would overclaim. The cell reads:

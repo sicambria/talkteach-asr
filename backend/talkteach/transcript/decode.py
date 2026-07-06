@@ -1,7 +1,7 @@
 """Decoding controls — beam size, hotword/prompt biasing, temperature fallback (#50).
 
 Cheap accuracy wins that every pro decoder exposes (faster-whisper, NeMo): a wider
-beam, an ``initial_prompt`` / hotword list to bias toward a child's vocabulary, and
+beam, an ``initial_prompt`` / hotword list to bias toward the user's vocabulary, and
 a temperature fallback ladder so a low-confidence greedy decode retries hotter
 instead of emitting garbage. :class:`DecodeOptions` is a pure, validated value
 object; :meth:`to_faster_whisper_kwargs` maps it to the decode backend. The engine's
@@ -30,7 +30,7 @@ class DecodeOptions:
     initial_prompt:
         Free-text context prepended to bias the decode (names, topic, style).
     hotwords:
-        Words/phrases to bias toward — e.g. a child's vocabulary. Joined into the
+        Words/phrases to bias toward — e.g. the user's vocabulary. Joined into the
         backend's ``hotwords`` string.
     temperature:
         Fallback ladder. A single value disables fallback; the default ladder

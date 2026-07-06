@@ -7,16 +7,16 @@ ctranslate2). Everything in this module is import-light on purpose: it MUST
 import with NONE of those installed, so the FastAPI job server, the director, and
 the test suite all work on a plain laptop with no GPU.
 
-How the methods map to the four child-facing screens:
+How the methods map to the four easy-mode screens:
 
 * **Teach!**  -> :meth:`ASREngine.train` drives the training run, streaming
   :class:`TrainProgress` to the UI (a friendly "getting smarter" meter, not a
   loss curve). It checkpoints to ``workdir`` so a crashed/closed app can resume.
 * **Try it** -> :meth:`ASREngine.transcribe` runs the trained (or base) model on
-  one clip so the child can hear "what the computer heard".
+  one clip so the user can hear "what the computer heard".
 * **Use on my computer** -> :meth:`ASREngine.export` packages the model into a
-  portable runtime format (CTranslate2 by default) the family can run offline.
-* **Grown-up mode** reads :meth:`ASREngine.is_available` to explain, in plain
+  portable runtime format (CTranslate2 by default) you can run offline.
+* **Advanced mode** reads :meth:`ASREngine.is_available` to explain, in plain
   language, what (if anything) needs installing before the big button works.
 """
 
@@ -37,20 +37,20 @@ if TYPE_CHECKING:
 class EngineUnavailableError(RuntimeError):
     """Raised when an engine is asked to do real work without its ML deps.
 
-    The message is written for a *grown-up helping a child*, not an ML engineer:
-    it names the missing piece and how to get it, and never dumps a traceback at
-    the kid. UI code should catch this and show a gentle "ask a grown-up to
-    install the training pack" card rather than crashing the app.
+    The message is written for the user, not an ML engineer: it names the
+    missing piece and how to get it, and never dumps a traceback at the user.
+    UI code should catch this and show a gentle "install the training pack"
+    card rather than crashing the app.
     """
 
 
 @dataclass
 class TrainProgress:
-    """A single heartbeat of a training run, sized for a child-friendly meter.
+    """A single heartbeat of a training run, sized for an easy-mode meter.
 
     ``fraction`` drives the overall progress bar; ``smartness`` drives the
     separate "how smart is it getting?" indicator. We deliberately do NOT expose
-    loss — kids (and most grown-ups) read "smartness" far better than "0.42 CE".
+    loss — most people read "smartness" far better than "0.42 CE".
     """
 
     epoch: int
@@ -67,7 +67,7 @@ class ExportResult:
     """Outcome of "Use on my computer" — where the portable model landed."""
 
     format: str  # e.g. "ctranslate2", "manifest" (dry-run placeholder)
-    path: str  # directory or file the family can copy to another machine
+    path: str  # directory or file you can copy to another machine
     notes: str  # plain-language notes: what was produced / what deps are needed
 
 
@@ -100,7 +100,7 @@ class ASREngine(abc.ABC):
 
     @abc.abstractmethod
     def name(self) -> str:
-        """Stable, human-readable engine name (shown in Grown-up mode)."""
+        """Stable, human-readable engine name (shown in Advanced mode)."""
 
     @abc.abstractmethod
     def is_available(self) -> tuple[bool, str]:
@@ -108,9 +108,9 @@ class ASREngine(abc.ABC):
 
         Returns ``(True, "")`` when every required dependency is importable.
         Otherwise returns ``(False, msg)`` where ``msg`` names the specific
-        missing module(s) and tells a grown-up how to fix it (install the
+        missing module(s) and tells the user how to fix it (install the
         ``talkteach-backend[ml]`` extra). Drives the "Teach!" button's awake/
-        asleep state and the Grown-up mode explanation.
+        asleep state and the Advanced mode explanation.
         """
 
     @abc.abstractmethod

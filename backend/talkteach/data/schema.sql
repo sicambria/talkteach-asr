@@ -1,6 +1,6 @@
 -- TalkTeach project database schema.
 --
--- One SQLite DB per project folder. A "project" is one thing the child is
+-- One SQLite DB per project folder. A "project" is one thing the user is
 -- teaching the computer (a voice / a language). It owns recorded audio clips
 -- (with transcripts and quality flags) and training runs.
 --

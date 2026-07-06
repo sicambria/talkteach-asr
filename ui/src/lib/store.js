@@ -2,7 +2,7 @@
 // jargon-free: these stores hold the few things every screen needs to see.
 import { writable } from 'svelte/store';
 
-// The project the child is working on: { project_id, name, language_code }.
+// The project the user is working on: { project_id, name, language_code }.
 export const project = writable(null);
 
 // Latest "minutes of good audio" report from GET /api/sufficiency.
@@ -13,9 +13,9 @@ export const sufficiency = writable(null);
 // Shape: { run_id, ...TrainProgress }
 export const currentRun = writable(null);
 
-// Hidden "Grown-up mode" — when true, screens reveal technical detail panels.
-// Off by default so kids only ever see plain language.
-export const grownUpMode = writable(false);
+// Hidden "Advanced mode" — when true, screens reveal technical detail panels.
+// Off by default so easy mode only ever shows plain language.
+export const advancedMode = writable(false);
 
 // The TTS×ASR "Arena" benchmark currently running (or just finished).
 // Shape: { benchmark_id, status, report } where report is the scoreboard payload.

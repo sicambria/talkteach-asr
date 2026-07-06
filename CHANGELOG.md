@@ -113,10 +113,10 @@ turned the simulated edges into real product behaviour, gated behind honest tier
   sidecar build script + bundled-runtime strategy; a real cross-platform
   microphone probe (PortAudio) replacing the Linux-only `/dev/snd` heuristic.
 - **UX wired to the live API** (P1 #19–23): the four-screen wizard
-  (Record → Check → Teach → Try) plus a hidden Grown-up mode, a typed API client,
-  and kid-friendly styling; Screen 2 lists real clips and persists corrections;
+  (Record → Check → Teach → Try) plus a hidden Advanced mode, a typed API client,
+  and simple styling; Screen 2 lists real clips and persists corrections;
   Screen 1 shows karaoke prompts (CC0) and a "practice set" self-test; Screen 3's
-  Grown-up mode shows the director's rationale + hardware. Builds to `ui/dist/`
+  Advanced mode shows the director's rationale + hardware. Builds to `ui/dist/`
   via `npm run build`.
 - **Full language picker** (#36): `GET /api/languages` serves the ~99 Whisper
   languages (single source of truth in `director/language.py`), and the New-Project

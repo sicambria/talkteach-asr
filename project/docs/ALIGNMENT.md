@@ -1,6 +1,6 @@
 # Forced alignment — long take → sentence clips (#12)
 
-When a child reads a paragraph in one breath, Screen 2 wants clean *per-sentence*
+When the user reads a paragraph in one breath, Screen 2 wants clean *per-sentence*
 clips to review and correct. Forced alignment maps each spoken word to a
 timestamp against the known transcript, so we can cut on sentence boundaries
 instead of guessing from silence alone. This complements Silero VAD (#11): VAD

@@ -35,7 +35,7 @@ Verified live: `python -m talkteach.app` boots under uvicorn and serves
 - **Real transcription/export** activate only when `faster-whisper` / `ctranslate2`
   are present; otherwise they degrade gracefully.
 - **Svelte UI builds today** — `npm install && npm run build` produces `ui/dist/`
-  (46 modules, verified). Four screens, typed API client, kid-friendly styling.
+  (46 modules, verified). Four screens, typed API client, simple styling.
 - **Desktop shell (Tauri v2) — compiled and verified end-to-end (2026-06-28).**
   The scaffold is structurally correct and idiomatic (lib.rs `run()` + main.rs,
   valid `Cargo.toml`, valid `tauri.conf.json` with a complete icon set incl.

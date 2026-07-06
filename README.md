@@ -159,9 +159,9 @@ the Vite-only `npm run dev` browser preview, run the backend manually on `:8756`
 | `backend/talkteach/reliability/` | Pre-flight (disk/RAM/GPU/mic), graceful degradation | **Real + tested** |
 | `backend/talkteach/engines/` | `ASREngine` adapter + real `WhisperLoRAEngine` & `Wav2Vec2CTCEngine` (real fine-tunes) + GPU-gated NeMo | **Real training** when `[ml]` present; simulation fallback |
 | `backend/talkteach/tts/` | TTS providers (espeak + piper) — synthetic *speech* for testing/benchmarking | **Real**; `[tts]` extra / espeak-ng binary |
-| `backend/talkteach/benchmark.py` + `benchmarks/` | TTS × ASR benchmark — compare engines on real synthetic speech (WER/CER/time), ranked on an ELO podium with 🥇🥈🥉 medals + detail views | **Real**; `scripts/benchmark.py`, the `/api/benchmark` endpoints, or the grown-up **Arena** screen |
+| `backend/talkteach/benchmark.py` + `benchmarks/` | TTS × ASR benchmark — compare engines on real synthetic speech (WER/CER/time), ranked on an ELO podium with 🥇🥈🥉 medals + detail views | **Real**; `scripts/benchmark.py`, the `/api/benchmark` endpoints, or the Advanced **Arena** screen |
 | `backend/talkteach/app.py` | FastAPI job server | **Real + tested** |
-| `ui/` | Svelte 4 four-screen wizard + grown-up **Arena** scoreboard, wired to the live API | **Builds + svelte-check/eslint/prettier clean** |
+| `ui/` | Svelte 4 four-screen wizard + Advanced **Arena** scoreboard, wired to the live API | **Builds + svelte-check/eslint/prettier clean** |
 | `src-tauri/` | Tauri v2 shell — spawns the backend as a sidecar | **Compiles + runs** (verified end-to-end); needs WebKit/GTK present |
 | `project/docs/` | Status matrix, decisions, per-feature design docs | — |
 

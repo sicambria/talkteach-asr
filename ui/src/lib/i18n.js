@@ -1,7 +1,7 @@
 // i18n for the TalkTeach UI (roadmap #36).
 //
 // The UI's plain-language strings live here as keyed catalogs so a non-English
-// child can use the app once real translations are added. Kept dependency-free
+// anyone can use the app once real translations are added. Kept dependency-free
 // and simple; it pairs with the future Svelte 5 / TypeScript migration
 // (project/docs/DECISIONS.md D-011). Each hard-coded screen string is `$t('key')`.
 import { writable, derived } from 'svelte/store';

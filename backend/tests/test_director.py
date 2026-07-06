@@ -98,7 +98,7 @@ def test_effective_batch_is_stable():
 
 def test_plan_always_has_rationale_and_safety():
     plan = build_plan(hw(Compute.CPU), data(), probe_language(None))
-    assert plan.rationale, "every decision must be explainable in Grown-up mode"
+    assert plan.rationale, "every decision must be explainable in Advanced mode"
     assert plan.seed == 1234
     assert plan.grad_clip == 1.0
 

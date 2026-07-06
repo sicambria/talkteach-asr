@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build a shareable model pack (roadmap #34) — Tier C scaffold.
 
-A "model pack" is a single zip a family can share or publish: the portable export
+A "model pack" is a single zip you can share or publish: the portable export
 (CTranslate2/ONNX) + a metadata card (engine, base model, languages, measured
 WER, license) so the recipient knows exactly what they're running. Publishing to
 Hugging Face is a separate, consented step (see project/docs/MODEL_PACKS.md).

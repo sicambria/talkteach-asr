@@ -1,10 +1,10 @@
 <script>
   // Screen 2 — Check the words.
   // For each clip we ask the computer to write down what it heard (a draft),
-  // then the child can tap any word to fix it and save. jargon-free.
+  // then the user can tap any word to fix it and save. jargon-free.
   import { createEventDispatcher, onMount } from 'svelte';
   import { listClips, transcribeDraft, saveCorrection } from '../lib/api.js';
-  import { grownUpMode } from '../lib/store.js';
+  import { advancedMode } from '../lib/store.js';
   import { t } from '../lib/i18n.js';
   import { focusOnMount } from '../lib/a11y.js';
   import Mascot from '../components/Mascot.svelte';
@@ -127,8 +127,8 @@
     <button class="big" on:click={() => dispatch('next')}> {$t('check.next')} </button>
   </div>
 
-  {#if $grownUpMode}
-    <div class="grownup">
+  {#if $advancedMode}
+    <div class="advanced">
       <h3>Advanced</h3>
       clips: {JSON.stringify(clips)}
     </div>

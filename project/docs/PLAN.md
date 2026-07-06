@@ -36,7 +36,7 @@ P0 promise (make training real + secure), then P1 product, then P2/P3 breadth.
 7. **P1 desktop (#14–18)** — Tauri sidecar spawn, mic probe, bundled-runtime
    script, durability/resume, preflight wiring.
 8. **P1 UX (#19–23)** — wire screens to the API, browser audio, prompt sets,
-   self-test toy dataset, grown-up rationale panel.
+   self-test toy dataset, advanced rationale panel.
 9. **P2/P3 (#24–37)** — engine scaffolds, credits generator, active-learning
    ranking, adaptive targets, i18n/a11y, and design docs for the rest.
 10. **X durability/observability/deps (#40–43)** — job reconcile, structured

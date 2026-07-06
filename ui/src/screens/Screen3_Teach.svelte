@@ -5,7 +5,7 @@
   // jargon-free: no "training", "epochs as numbers only", no "WER".
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { startTraining, trainProgress, getPlan } from '../lib/api.js';
-  import { sufficiency, currentRun, grownUpMode } from '../lib/store.js';
+  import { sufficiency, currentRun, advancedMode } from '../lib/store.js';
   import { TRAIN_POLL_MS } from '../lib/constants.js';
   import { t } from '../lib/i18n.js';
   import { focusOnMount } from '../lib/a11y.js';
@@ -20,9 +20,9 @@
   let errorMsg = '';
   let pollTimer = null;
 
-  // The director's plan + detected hardware, for Grown-up mode. We fetch this
-  // up front so a grown-up can see *why* before pressing Teach. Kids never see
-  // it — the kid view is just the smartness meter and progress.
+  // The director's plan + detected hardware, for Advanced mode. We fetch this
+  // up front so the user can see *why* before pressing Teach. Easy mode hides
+  // it — the easy view is just the smartness meter and progress.
   let plan = null;
   let hardware = null;
 
@@ -169,8 +169,8 @@
     <button class="big" on:click={() => dispatch('next')}>{$t('teach.next')}</button>
   {/if}
 
-  {#if $grownUpMode}
-    <div class="grownup">
+  {#if $advancedMode}
+    <div class="advanced">
       <h3>Advanced</h3>
       {#if plan}
         <p>

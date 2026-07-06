@@ -77,7 +77,7 @@ with `[ml]` installed.
 21. **Karaoke prompt sets per language** (Common Voice CC0 sentences).
 22. **First-run self-test**: ship a 2-minute toy dataset so "Teach!" is verifiable on
     first launch (Report B.7).
-23. **Grown-up mode** panels surfacing the director's rationale + real metrics.
+23. **Advanced mode** panels surfacing the director's rationale + real metrics.
 
 ---
 
@@ -106,7 +106,7 @@ with `[ml]` installed.
 35. **Adaptive data-sufficiency targets** by language difficulty (replace the fixed
     20–30 min floor with a learned/heuristic target).
 36. **Internationalize the UI itself** (plain-language strings are English-only) so a
-    non-English-speaking child can use it.
+    non-English speaker can use it.
 37. **Full accessibility pass**: keyboard nav, screen-reader labels, high-contrast +
     dyslexia-friendly font options.
 
@@ -147,12 +147,12 @@ ML research; formats/use-case coverage is mapped in [`FORMATS.md`](FORMATS.md).
 49. **Long-form transcription** — chunked, VAD-windowed, timestamped decoding for
     files longer than one short clip.
 50. **Decoding controls** — beam size, `initial_prompt`/hotword biasing,
-    temperature fallback (cheap accuracy + child-vocabulary biasing).
+    temperature fallback (cheap accuracy + vocabulary biasing).
 51. **Punctuation + capitalization restoration / inverse text normalization.**
 52. **Richer evaluation** — per-utterance WER, an error/confusion report,
     confidence, normalized-vs-raw WER (also powers active learning #32).
 53. **Local experiment metrics view** — on-device loss/WER curves (no telemetry;
-    honours D-008) for Grown-up mode.
+    honours D-008) for Advanced mode.
 54. **Headless CLI** — train/eval/export from the terminal for power users + CI.
 55. **Custom vocabulary / tokenizer extension** for genuinely unseen languages.
 56. **Optional multi-GPU / distributed** training (documented escape hatch).

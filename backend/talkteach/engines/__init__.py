@@ -40,7 +40,7 @@ def get_engine(kind: EngineKind) -> ASREngine:
     fine-tune engines (Tier A/B) and are compared head-to-head by the benchmark.
     :attr:`EngineKind.NEMO_RNNT` is a **real but GPU/opt-in** path: it needs
     ``nemo_toolkit`` + CUDA and self-reports unavailable otherwise, so the app's
-    training loop falls back to Whisper-LoRA and a child's flow never dead-ends.
+    training loop falls back to Whisper-LoRA and the user's flow never dead-ends.
     See project/docs/BENCHMARKING.md for the engine tiering.
     """
     if kind == EngineKind.WHISPER_LORA:

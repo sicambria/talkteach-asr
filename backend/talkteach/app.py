@@ -339,7 +339,7 @@ def list_clips() -> dict:
 
 @app.post("/api/clips/{clip_id}/transcript")
 def save_transcript(clip_id: int, body: TranscriptIn) -> dict:
-    """Persist a child's corrected transcript for one clip (#19)."""
+    """Persist the user's corrected transcript for one clip (#19)."""
     with _db() as db:
         if not any(c["id"] == clip_id for c in db.list_clips()):
             raise HTTPException(status_code=404, detail="That recording wasn't found.")
@@ -369,10 +369,10 @@ def prompts(lang: str | None = None, n: int | None = None) -> dict:
 
 @app.get("/api/plan")
 def plan_preview() -> dict:
-    """The director's plan + plain-language rationale for Grown-up mode (#23).
+    """The director's plan + plain-language rationale for Advanced mode (#23).
 
     Built from the current hardware, recorded data, and language — the same plan
-    "Teach!" would use — so a grown-up can see *why* before training starts.
+    "Teach!" would use — so the user can see *why* before training starts.
     """
     with _db() as db:
         project = db.get_project() or {}
@@ -619,7 +619,7 @@ def list_runs() -> dict:
 
 # --- benchmark "Arena" jobs ---------------------------------------------------
 #
-# A grown-up tool that runs the full TTS×ASR matrix and ranks the engines on an ELO
+# An advanced tool that runs the full TTS×ASR matrix and ranks the engines on an ELO
 # podium (see talkteach.benchmark). It mirrors the training-job pattern above, but
 # benchmarks are transient comparisons, so the registry is in-memory only (keyed by
 # a UUID) — no SQLite run row and no startup reconciliation. Lazy/partial results
@@ -854,7 +854,7 @@ def cancel_benchmark(bench_id: str) -> dict:
 def help_bundle() -> Response:
     """Export a local, redacted help bundle (logs + system report) as a zip (#41).
 
-    Nothing is sent anywhere — the grown-up downloads it and shares it
+    Nothing is sent anywhere — the user downloads it and shares it
     deliberately (privacy posture, project/docs/DECISIONS.md D-008).
     """
     from .obs.logging import help_bundle_bytes

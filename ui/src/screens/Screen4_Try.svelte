@@ -5,7 +5,7 @@
   // jargon-free.
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { transcribe, exportModel } from '../lib/api.js';
-  import { currentRun, grownUpMode } from '../lib/store.js';
+  import { currentRun, advancedMode } from '../lib/store.js';
   import { t } from '../lib/i18n.js';
   import { focusOnMount } from '../lib/a11y.js';
   import Mascot from '../components/Mascot.svelte';
@@ -73,7 +73,7 @@
   function save() {
     // "Try it" results are shown live and on purpose are not stored anywhere —
     // there's no server-side persistence for them, so this is a local-only
-    // acknowledgement that the child saw the result.
+    // acknowledgement that the user saw the result.
     saved = true;
   }
 
@@ -143,8 +143,8 @@
     <p class="note">{exportNote}</p>
   {/if}
 
-  {#if $grownUpMode}
-    <div class="grownup">
+  {#if $advancedMode}
+    <div class="advanced">
       <h3>Advanced</h3>
       run: {JSON.stringify($currentRun)}
       {'\n'}heard: {heardText}

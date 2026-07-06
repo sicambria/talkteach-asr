@@ -1,12 +1,12 @@
 # Cloud fallback — one-tap remote training (#27)
 
 On a GPU-less laptop the director picks `whisper-tiny` int8 on CPU: it works, but
-a real fine-tune is slow. Cloud fallback lets a grown-up tap once to run the
+a real fine-tune is slow. Cloud fallback lets the user tap once to run the
 *same* training job on a borrowed GPU (a Colab notebook or a remote worker) and
 watch the same "getting smarter" meter advance — then pull the trained model back.
 
 This feature is **off by default** and gated behind explicit consent, because it
-is the one path where a child's voice recordings leave the device.
+is the one path where the user's voice recordings leave the device.
 
 ## Architecture
 
@@ -25,7 +25,7 @@ exportable model (`EXPORT.md`).
 
 ## Privacy — the hard part (D-008)
 
-Children's voice data leaving the device is a serious step, so:
+Users' voice data leaving the device is a serious step, so:
 
 - **Explicit, informed opt-in per run.** A plain-language consent card names *what*
   is uploaded (the clips + transcripts), *where*, and that it can be deleted.
@@ -46,9 +46,9 @@ possible, and is documented in its own decision entry.
 
 ## Why off by default
 
-It contradicts the headline promise — offline, private, child-safe — unless the
+It contradicts the headline promise — offline, private, safe — unless the
 user deliberately chooses it. So it is an *escape hatch* for the GPU-less case,
-surfaced as "this could be faster on a borrowed GPU — ask a grown-up", never the
+surfaced as "this could be faster on a borrowed GPU", never the
 default route.
 
 ## Status

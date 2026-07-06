@@ -82,7 +82,7 @@ def cer(references: list[str], hypotheses: list[str]) -> float:
 
 
 def smartness_from_wer(wer_value: float) -> float:
-    """Map WER → the child-facing "smartness" meter = clamp(1 − WER, 0, 1) (#2)."""
+    """Map WER → the easy-mode "smartness" meter = clamp(1 − WER, 0, 1) (#2)."""
     return max(0.0, min(1.0, 1.0 - wer_value))
 
 
@@ -195,7 +195,7 @@ def simulate_training(
                 total_epochs=total,
                 fraction=(epoch - 1) / total,
                 smartness=last.smartness,
-                message=f"Stopped by the grown-up. Progress was saved. [SIMULATION:{engine_label}]",
+                message=f"Stopped. Progress was saved. [SIMULATION:{engine_label}]",
                 done=False,
             )
             if progress is not None:

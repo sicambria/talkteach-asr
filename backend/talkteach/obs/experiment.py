@@ -1,6 +1,6 @@
 """Local experiment metrics — on-device loss/WER curves, no telemetry (#53).
 
-Grown-up mode wants TensorBoard-style curves without any of the data leaving the
+Advanced mode wants TensorBoard-style curves without any of the data leaving the
 machine (honours project/docs/DECISIONS.md D-008: off-by-default, local-only). This
 is a tiny append-only JSONL log written into the training ``workdir`` plus pure
 readers over it — no torch, no network, no third-party tracker. The training loop
@@ -64,7 +64,7 @@ def read_curve(workdir: str) -> list[dict]:
 
 
 def summarize(workdir: str) -> dict:
-    """Summary stats for Grown-up mode: point count, best WER, latest loss/epoch."""
+    """Summary stats for Advanced mode: point count, best WER, latest loss/epoch."""
     curve = read_curve(workdir)
     wers = [p["wer"] for p in curve if "wer" in p]
     losses = [p["loss"] for p in curve if "loss" in p]

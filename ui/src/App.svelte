@@ -3,7 +3,7 @@
   // speech engines) or the step-by-step wizard (Record → Check → Teach → Try),
   // plus a stepper, a mascot, and an "Advanced" toggle for technical detail.
   import { STEPS } from './lib/constants.js';
-  import { grownUpMode, project } from './lib/store.js';
+  import { advancedMode, project } from './lib/store.js';
   import { t, locale, availableLocales, localeName } from './lib/i18n.js';
   import Mascot from './components/Mascot.svelte';
 
@@ -20,7 +20,7 @@
   // The Arena is the default landing view; the wizard is the other destination.
   let arena = true;
   // Pre-flight interstitial (#18): shown after New project, before Record, so a
-  // grown-up sees mic/disk/dependency status before the child starts recording.
+  // so the user sees mic/disk/dependency status before recording starts.
   // step stays 0 while it's up, so the stepper stays hidden — it's a pre-wizard gate.
   let preflight = false;
 
@@ -44,7 +44,7 @@
   }
 
   function toggleAdvanced() {
-    grownUpMode.update((v) => !v);
+    advancedMode.update((v) => !v);
   }
 
   function openArena() {
@@ -102,10 +102,10 @@
   <!-- "Advanced": a toggle that reveals technical detail panels. -->
   <button
     class="gear"
-    class:on={$grownUpMode}
+    class:on={$advancedMode}
     on:click={toggleAdvanced}
     title={$t('app.advanced_details')}
-    aria-pressed={$grownUpMode}
+    aria-pressed={$advancedMode}
     aria-label={$t('app.advanced_details')}
   >
     ⚙
@@ -130,8 +130,8 @@
   {/if}
 </main>
 
-{#if $grownUpMode && !arena}
-  <div class="grownup" style="max-width:820px;margin:0 auto 40px;">
+{#if $advancedMode && !arena}
+  <div class="advanced" style="max-width:820px;margin:0 auto 40px;">
     <h3>{$t('app.advanced')}</h3>
     Step: {step} ({step >= 1 ? STEPS[step - 1] : 'New project'})
     {'\n'}Project: {$project ? JSON.stringify($project) : '(none yet)'}

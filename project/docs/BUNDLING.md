@@ -1,6 +1,6 @@
 # No-install bundled runtime (roadmap #16)
 
-The promise: the installer is the only thing the family touches — no Python, no
+The promise: the installer is the only thing you touch — no Python, no
 pip, no CUDA setup. This note records the strategy; it is **Tier C** (the full
 per-OS build runs in the release pipeline, not the sandbox).
 

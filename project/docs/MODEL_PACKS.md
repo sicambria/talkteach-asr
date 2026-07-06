@@ -1,7 +1,7 @@
 # Shareable model packs & "Publish to Hugging Face" (#34)
 
-A child who taught a great model should be able to *share* it — give it to a
-sibling, hand it to a teacher, or (deliberately) publish it. A **model pack** is
+A user who taught a great model should be able to *share* it — give it to
+someone else, hand it to a teacher, or (deliberately) publish it. A **model pack** is
 the unit of sharing: one self-describing zip the recipient can run offline.
 
 ## What a pack contains (`scripts/pack_model.py`)
@@ -24,17 +24,17 @@ python scripts/pack_model.py exports/1 my_voice_model.zip --name "Mia's voice" -
 
 ## Publish to Hugging Face — a separate, consented step
 
-Sharing a file is local; publishing puts a child's voice model on the public
+Sharing a file is local; publishing puts the user's voice model on the public
 internet. So HF upload is its own button with its own gate:
 
 - **Explicit consent (D-008).** A plain-language card: *this uploads your model to
   a public website where anyone can download it.* Never silent, never default.
-  Especially important because the model encodes a child's voice characteristics.
+  Especially important because the model encodes the user's voice characteristics.
 - **CSP widening (D-005).** The Tauri CSP is locked to the local backend
   (`SIDECAR.md`). Talking to `huggingface.co` is a new network target, so the
   publish feature **must explicitly widen `connect-src`** to the HF API origin —
   and only that — shipped with the feature and scoped narrowly.
-- **Flow.** `huggingface_hub` login token (entered by a grown-up, stored
+- **Flow.** `huggingface_hub` login token (entered by the user, stored
   locally) → create/select a repo → upload the pack contents + the model card as
   the README → return the URL.
 

@@ -4,7 +4,7 @@
   // then start. jargon-free everywhere.
   import { createEventDispatcher, onMount } from 'svelte';
   import { createProject, getLanguages } from '../lib/api.js';
-  import { project, grownUpMode } from '../lib/store.js';
+  import { project, advancedMode } from '../lib/store.js';
   import { t } from '../lib/i18n.js';
   import { focusOnMount } from '../lib/a11y.js';
   import Mascot from '../components/Mascot.svelte';
@@ -151,8 +151,8 @@
     {busy ? $t('newproject.starting') : $t('newproject.go')}
   </button>
 
-  {#if $grownUpMode}
-    <div class="grownup">
+  {#if $advancedMode}
+    <div class="advanced">
       <h3>Advanced</h3>
       POST /api/project {JSON.stringify({
         name: name.trim(),

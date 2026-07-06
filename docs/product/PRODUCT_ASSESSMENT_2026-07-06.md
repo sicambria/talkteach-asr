@@ -104,7 +104,7 @@ mismatch. (Minor polish excluded.) Each gap is tied to a ROADMAP item # or marke
 
 - **Mo1 — i18n ships plumbing but zero real translations.** Only an `en` catalog
   plus a synthetic `qa` pseudo-locale exist; no non-English `.json`/`.po`. A
-  non-English child still cannot use the app, though #36 is marked `✅`. Plumbing
+  non-English speaker still cannot use the app, though #36 is marked `✅`. Plumbing
   done, payload absent. *Roadmap #36 (tracked as plumbing).*
 - **Mo2 — Export breadth is partial.** CT2-int8 and safetensors are real; ONNX/
   sherpa is real code but **untested/unverified**; GGUF and TorchScript are honest
@@ -115,7 +115,7 @@ mismatch. (Minor polish excluded.) Each gap is tied to a ROADMAP item # or marke
   between train and test. Reported "smartness"/WER may overstate real-world accuracy.
   *Untracked.*
 - **Mo4 — Accessibility is half-done.** Keyboard nav + axe pass are real, but there
-  is no manual screen-reader certification, the kid colour palette **fails WCAG-AA
+  is no manual screen-reader certification, the easy-mode colour palette **fails WCAG-AA
   contrast**, and reduced-motion / high-contrast / dyslexia-font / RTL are absent.
   *Roadmap #37 (tracked partial).*
 - **Mo5 — In-app recordings may not be analyzable without bundled ffmpeg.** Browser

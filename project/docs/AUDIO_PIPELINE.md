@@ -38,7 +38,7 @@ ImportError → callers fall back to VAD-only segmentation. See
 ## #13 — Live recording-quality feedback (`audio/quality.py::live_meter`)
 
 A cheap, pure per-chunk level read (RMS → 0–1 bar + quiet/good/loud status) the
-recorder shows *while* recording, so the child gets "speak up" / "too loud" hints
+recorder shows *while* recording, so the user gets "speak up" / "too loud" hints
 live, not just a post-hoc verdict. The full post-hoc check stays in
 `analyze_samples`.
 

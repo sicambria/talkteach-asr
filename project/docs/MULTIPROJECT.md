@@ -1,7 +1,7 @@
 # Multi-project support in the app layer (#29)
 
-A family might teach one model for a younger sibling's voice, another for a
-grandparent who speaks a different language. The **data layer already supports
+A user might teach one model for one person's voice, another for someone who
+speaks a different language. The **data layer already supports
 this**: `data/project.py` is one `ProjectDB` per SQLite file, and `config.py`
 already separates `DATA_ROOT` (`~/.talkteach`) from `DEFAULT_PROJECT_DIR`
 (`DATA_ROOT/default`). What's missing is the *app layer*: `app.py` is hard-wired
@@ -35,7 +35,7 @@ to the single `default` project for Phase 0.
    The existing per-project endpoints (`/clips`, `/sufficiency`, `/train`, …)
    then resolve against the active project rather than the hard-coded default.
 4. **A project picker screen** (UI): a "choose or start a project" screen before
-   the wizard — big tiles, child-readable names, a "+ new" tile. Reuses Screen 0
+   the wizard — big tiles, readable names, a "+ new" tile. Reuses Screen 0
    (new project) for creation.
 
 ## Migration

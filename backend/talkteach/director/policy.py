@@ -1,14 +1,14 @@
 """The director's policy — the real IP.
 
 Maps (HardwareProfile, DataProfile, LanguageProfile) → a fully-resolved
-TrainingPlan and a SufficiencyResult, so the child never sees a hyperparameter.
+TrainingPlan and a SufficiencyResult, so the user never sees a hyperparameter.
 
 IMPORTANT (per the design report, Part B.5): every threshold and hyperparameter
 here is a *proposed design default* drawn from the LoRA/Whisper literature, NOT
 empirically tuned for this app. They are the initial policy the director ships
 with; calibrate against real hardware/datasets in Phase 0–1 and refine from
 telemetry. Each decision appends a human-readable line to `plan.rationale` so
-"Grown-up mode" can show exactly why a choice was made.
+"Advanced mode" can show exactly why a choice was made.
 """
 
 from __future__ import annotations

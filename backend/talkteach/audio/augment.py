@@ -1,6 +1,6 @@
 """Data augmentation — SpecAugment, speed/pitch perturbation, noise mixing (#46).
 
-The single biggest accuracy win on a small kid dataset (NeMo, SpeechBrain both lean
+The single biggest accuracy win on a small dataset (NeMo, SpeechBrain both lean
 on it). Every function here is **pure numpy** — deterministic, no torch, no audio
 I/O — so it is unit-tested directly and can run inside the training collator or a
 preprocessing pass. The one exception is :func:`perturb_pitch`: a correct duration-

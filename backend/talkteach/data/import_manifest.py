@@ -1,6 +1,6 @@
 """Dataset import — bring an existing corpus, not just in-app recordings (#47).
 
-Grown-ups often already have labelled audio: a folder of (clip, transcript) pairs,
+Users often already have labelled audio: a folder of (clip, transcript) pairs,
 a CSV/JSON manifest, a NeMo JSONL manifest, a Common Voice TSV export, or a
 LibriSpeech tree. Each importer normalises to TalkTeach's one canonical manifest
 shape — ``[{"path", "text", "duration_s"}, ...]`` (the same shape

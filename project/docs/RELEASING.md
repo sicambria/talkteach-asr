@@ -1,6 +1,6 @@
 # Releasing — signed installers for Win/macOS/Linux (#24)
 
-A 10-year-old's grown-up should be able to download one installer and run it — no
+The user should be able to download one installer and run it — no
 "unidentified developer" scares, no SmartScreen blocks. That means **signed,
 notarized installers** for all three desktop OSes, built reproducibly from a
 version tag. This note describes the pipeline; the workflow lives at

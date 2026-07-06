@@ -2,7 +2,7 @@
 
 A noisy recording can be cleaned with DeepFilterNet (MIT/Apache) or Demucs (MIT)
 before quality analysis. This is **opt-in and never destructive**: we write a
-cleaned copy and keep the original, so a child's recording is never lost or
+cleaned copy and keep the original, so the user's recording is never lost or
 silently altered. Heavy deps are guarded; without them this is a no-op that
 returns the input path unchanged.
 """

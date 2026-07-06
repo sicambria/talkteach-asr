@@ -2,14 +2,14 @@
 
 Why Whisper+LoRA is the default: multilingual coverage (~99 languages), strong
 small/medium checkpoints, and LoRA/PEFT fine-tuning that fits in modest VRAM —
-ideal for a family laptop. See ``director/policy.py`` for the selection logic.
+ideal for a modest laptop. See ``director/policy.py`` for the selection logic.
 
 Dependency philosophy
 ---------------------
 Every heavy import (torch / transformers / peft / faster_whisper / ctranslate2)
 is **function-local and guarded**. This module imports fine with none of them
 installed. Real work that needs a missing dep raises
-:class:`~talkteach.engines.base.EngineUnavailableError` with a child-app-friendly
+:class:`~talkteach.engines.base.EngineUnavailableError` with an easy-mode-friendly
 message instead of crashing.
 
 Real vs. simulation
@@ -153,7 +153,7 @@ class WhisperLoRAEngine(ASREngine):
         simulate, reason = wt.should_simulate(manifest, has_train_deps=has_deps)
         if simulate:
             if reason:
-                # Visible in logs / Grown-up mode; never crashes the child's flow.
+                # Visible in logs / Advanced mode; never crashes the user's flow.
                 import logging
 
                 logging.getLogger("talkteach.train").info("Simulating training: %s", reason)
@@ -213,7 +213,7 @@ class WhisperLoRAEngine(ASREngine):
                     total_epochs=total,
                     fraction=(epoch - 1) / total,
                     smartness=last.smartness,
-                    message="Stopped by the grown-up. Progress was saved. [SIMULATION]",
+                    message="Stopped. Progress was saved. [SIMULATION]",
                     done=False,
                 )
                 if progress is not None:
@@ -370,7 +370,7 @@ class WhisperLoRAEngine(ASREngine):
         """Run faster-whisper and return ``[{start,end,text}]`` (guarded)."""
         if not _has(_TRANSCRIBE_DEP):
             raise EngineUnavailableError(
-                f"'Try it' needs the {_TRANSCRIBE_DEP} package — ask a grown-up to {_INSTALL_HINT}."
+                f"'Try it' needs the {_TRANSCRIBE_DEP} package — {_INSTALL_HINT}."
             )
         from faster_whisper import WhisperModel  # type: ignore
 
@@ -428,7 +428,7 @@ class WhisperLoRAEngine(ASREngine):
         the fastest CPU inference and pairs with the faster-whisper "Try it" path;
         ``onnx`` is the streaming/edge target via sherpa-onnx (Phase 2 scaffold,
         project/docs/DECISIONS.md D-006). ``safetensors`` (#57) writes the merged HF
-        model for interop with other runtimes the family may already use;
+        model for interop with other runtimes you may already use;
         ``torchscript``/``gguf`` are documented scaffolds (see project/docs/EXPORT.md).
         When the needed dep is missing we write a manifest describing what *would* be
         produced so the flow never dead-ends.

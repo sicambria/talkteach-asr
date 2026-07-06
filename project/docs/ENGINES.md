@@ -7,11 +7,11 @@ director, and the whole test suite import and run on a plain laptop with no GPU.
 
 ## The contract (`engines/base.py`)
 
-`ASREngine` is an ABC with four methods, each mapped to a child-facing screen:
+`ASREngine` is an ABC with four methods, each mapped to an easy-mode screen:
 
 | Method | Screen | What it does |
 |---|---|---|
-| `is_available() -> (bool, str)` | "Teach!" awake/asleep + Grown-up mode | reports missing deps in plain language |
+| `is_available() -> (bool, str)` | "Teach!" awake/asleep + Advanced mode | reports missing deps in plain language |
 | `train(plan, manifest, workdir, progress, should_stop)` | **Teach!** | runs the job, streams `TrainProgress` (a "smartness" meter, never a loss curve), checkpoints to `workdir`, resumes on restart, cancels cleanly |
 | `transcribe(audio_path, model_dir=None)` | **Try it** | one clip → recognised text |
 | `export(model_dir, out_dir, fmt)` | **Use on my computer** | portable offline runtime (see `EXPORT.md`) |
@@ -19,7 +19,7 @@ director, and the whole test suite import and run on a plain laptop with no GPU.
 The framework-free `TrainingPlan` (from the director) is the only input — the
 engine never asks the user a question. Heavy imports are function-local so this
 package imports with zero ML deps; unmet deps raise `EngineUnavailableError`
-(a grown-up-readable message, never a traceback at the kid).
+(a user-readable message, never a traceback at the user).
 
 ## The three engines
 
@@ -45,7 +45,7 @@ NeMo→`.nemo`).
 
 `engines/__init__.py::get_engine(kind)` returns the adapter. The app checks
 `is_available()` first: a director-selected-but-unbuilt engine **falls back to
-Whisper-LoRA** rather than dead-ending a child's flow.
+Whisper-LoRA** rather than dead-ending the user's flow.
 
 ## Build plan for the scaffolds
 

@@ -7,7 +7,7 @@
 import { API_BASE } from './constants.js';
 
 /**
- * Turn a fetch Response into JSON, or throw a kid-friendly Error.
+ * Turn a fetch Response into JSON, or throw a friendly Error.
  * @param {Response} res
  * @param {string} friendly - what to say if it failed
  */
@@ -144,11 +144,11 @@ export async function getPrompts(lang = null, n = 8) {
   return unwrap(res, "I couldn't find any sentences to read");
 }
 
-// --- The grown-up plan -------------------------------------------------------
+// --- The advanced plan -------------------------------------------------------
 
 /**
  * GET /api/plan — the director's plan + plain-language rationale, plus the
- * hardware it detected. Used by Grown-up mode.
+ * hardware it detected. Used by Advanced mode.
  * @returns {Promise<{plan: {engine:string, base_checkpoint:string, precision:string, epochs:number, rationale:string[]}, hardware: {compute:string, gpu_name:string, vram_gib:number, ram_gib:number}}>}
  */
 export async function getPlan() {
@@ -229,7 +229,7 @@ export async function transcribe(audio) {
   return unwrap(res, "I couldn't understand that recording");
 }
 
-// --- Benchmark "Arena" (grown-up) -------------------------------------------
+// --- Benchmark "Arena" (advanced) -------------------------------------------
 
 /**
  * GET /api/benchmark/options — the TTS providers and ASR engines the Arena can

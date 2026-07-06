@@ -1,14 +1,14 @@
 # Tauri sidecar — the backend "just runs" (roadmap #15)
 
-The desktop app must never make a 10-year-old start a server. The Tauri shell
-spawns the Python FastAPI backend as a **sidecar** child process on launch and
+The desktop app must never make the user start a server. The Tauri shell
+spawns the Python FastAPI backend as a **sidecar** subprocess on launch and
 kills it on close.
 
 ## How it works
 
 - `src-tauri/src/lib.rs` — on `setup()`, calls `app.shell().sidecar("talkteach-backend").spawn()`,
   stores the `CommandChild` in managed state, and drains its stdout/stderr. On
-  `WindowEvent::Destroyed` and `RunEvent::Exit` it `kill()`s the child so no
+  `WindowEvent::Destroyed` and `RunEvent::Exit` it `kill()`s the subprocess so no
   orphaned server lingers. If the backend can't start, the window still opens and
   the UI shows a friendly "couldn't start" card (easy-to-use contract).
 - `src-tauri/Cargo.toml` — adds `tauri-plugin-shell`.

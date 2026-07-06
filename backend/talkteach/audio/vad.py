@@ -4,7 +4,7 @@ Uses **Silero VAD** (MIT, torch) when available to find speech regions; the
 *segmentation* logic that turns raw speech timestamps into clean, padded,
 merged training clips is pure Python and unit-tested without torch.
 
-This closes part of the data-quality gap: a child records one long take, and we
+This closes part of the data-quality gap: the user records one long take, and we
 split it into sentence-ish clips and drop the dead air automatically.
 """
 

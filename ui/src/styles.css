@@ -1,6 +1,6 @@
-/* TalkTeach — kid-friendly styling.
+/* TalkTeach — friendly, easy-mode styling.
    Big rounded buttons, high contrast, large fonts, cheerful accents.
-   jargon-free: nothing here ever shows technical words to a child. */
+   jargon-free: nothing here ever shows technical words in easy mode. */
 
 :root {
   /* Cheerful, high-contrast palette. */
@@ -243,9 +243,9 @@ select {
   color: var(--tt-ink);
 }
 
-/* --- Grown-up mode panels (technical detail, hidden by default) ---------- */
+/* --- Advanced mode panels (technical detail, hidden by default) ---------- */
 
-.grownup {
+.advanced {
   text-align: left;
   font-family: 'SFMono-Regular', Consolas, monospace;
   font-size: 0.95rem;
@@ -257,7 +257,7 @@ select {
   white-space: pre-wrap;
 }
 
-.grownup h3 {
+.advanced h3 {
   margin-top: 0;
   color: var(--tt-sun);
 }

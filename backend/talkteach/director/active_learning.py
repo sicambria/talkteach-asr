@@ -1,6 +1,6 @@
 """Active learning — "fix these clips next" (roadmap #32).
 
-After a round of training, the most valuable thing a child can do is correct the
+After a round of training, the most valuable thing the user can do is correct the
 clips the model is *least sure about*. This module ranks clips by an uncertainty
 heuristic so the UI can say "the computer is unsure about these 5 — fix these
 first." Pure Python, unit-tested; no model required (the heuristic uses signals

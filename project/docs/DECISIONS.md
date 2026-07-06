@@ -206,18 +206,18 @@ pass distinguishes live (in `_jobs`) from interrupted.
 ## D-008 — Telemetry posture (#41)
 
 Context: observability wants telemetry, but the product promise is offline,
-child-safe, private.
+safe, private.
 
 Options (score /100):
 1. **Off by default, local-only structured logs + an explicit "Export a help
    bundle" button; any network telemetry strictly opt-in and documented** — 96 —
    matches the offline/privacy promise; the help bundle gives support data
    without a phone-home.
-2. Opt-out anonymous telemetry — 40 — violates the privacy promise for a kids'
+2. Opt-out anonymous telemetry — 40 — violates the privacy promise for the
    app.
 3. No logging at all — 30 — abandons supportability.
 4. Always-on local logs, no export — 60 — useful but no support path.
-5. Third-party crash reporter (Sentry) — 35 — network + PII risk for a kids' app.
+5. Third-party crash reporter (Sentry) — 35 — network + PII risk for the app.
 
 Decision: **Option 1.** `structlog`-style JSON logs to the project dir, rotating;
 no network by default; a help-bundle exporter zips logs + redacted env.

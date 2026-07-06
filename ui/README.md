@@ -4,11 +4,11 @@ The friendly web front-end for **TalkTeach**, an easy-to-use app for teaching a
 computer to understand speech. It is a [Svelte](https://svelte.dev) app that runs
 inside a [Tauri](https://tauri.app) desktop shell.
 
-The whole experience is **one path**, designed for a 10-year-old:
+The whole experience is **one path**, designed to need no setup or ML knowledge:
 
 > **Record → Check → Teach → Try**
 
-(plus a "New project" start screen and a hidden "Grown-up mode" gear ⚙ that
+(plus a "New project" start screen and a hidden "Advanced mode" gear ⚙ that
 reveals technical detail).
 
 Everything on screen uses plain language — never jargon.
@@ -49,9 +49,9 @@ sidecar; for now, start it yourself.
 
 | Path                   | What it is                                              |
 | ---------------------- | ------------------------------------------------------- |
-| `src/App.svelte`       | Wizard host: step state, stepper, mascot, Grown-up gear |
+| `src/App.svelte`       | Wizard host: step state, stepper, mascot, Advanced gear |
 | `src/screens/`         | The five screens (Screen0–Screen4)                      |
 | `src/lib/api.js`       | Typed client for every backend endpoint                 |
-| `src/lib/store.js`     | Shared state (project, sufficiency, run, grown-up mode) |
+| `src/lib/store.js`     | Shared state (project, sufficiency, run, advanced mode) |
 | `src/lib/constants.js` | Backend URL and other shared constants                  |
-| `src/styles.css`       | Kid-friendly theme                                      |
+| `src/styles.css`       | Simple theme                                            |

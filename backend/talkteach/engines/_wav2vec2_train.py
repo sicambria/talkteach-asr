@@ -273,7 +273,7 @@ def run_real_training(
         fraction=1.0 if not cancelled else min(1.0, trainer.state.epoch / total_epochs),
         smartness=smartness_from_wer(final_wer),
         message=(
-            "Stopped by the grown-up. Progress was saved."
+            "Stopped. Progress was saved."
             if cancelled
             else "All done — your computer really got smarter!"
         ),

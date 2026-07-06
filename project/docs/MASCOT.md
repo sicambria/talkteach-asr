@@ -1,6 +1,6 @@
 # Mascot, sound & gamification (#31)
 
-A child-facing app needs a *character* — a friendly face that reacts, celebrates,
+An easy-mode app needs a *character* — a friendly face that reacts, celebrates,
 and softens mistakes — far more than it needs another progress bar. Today
 `ui/src/components/Mascot.svelte` is an honest **emoji placeholder** (🤖 / 👋 / 🤔
 / 🎉 / 😅 that bobs gently). This note is the plan to replace it with real art,
@@ -40,7 +40,7 @@ Keeping the state machine now means swapping art later changes assets, not logic
 Tie reactions to real milestones the director already knows: first good clip,
 sufficiency gate reached, smartness crossing a threshold, run complete. Optional
 stickers/streaks — encouragement, never dark patterns, and never a reason to keep
-a child recording past "enough".
+the user recording past "enough".
 
 ## Status
 

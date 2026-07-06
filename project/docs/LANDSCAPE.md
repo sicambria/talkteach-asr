@@ -14,7 +14,7 @@ The claim has parts; a counter-example must satisfy *all* of them to falsify it:
 
 1. **End-to-end** — record/import → train → use, in one tool (not a notebook, not
    a CLI pipeline).
-2. **GUI / "next-next-finish"** — a non-expert, child-usable interface; no
+2. **GUI / "next-next-finish"** — a non-expert, easy-to-use interface; no
    hyperparameters, no YAML.
 3. **Open source** — a real OSS license, not "source-available" or a free tier of
    a hosted product.

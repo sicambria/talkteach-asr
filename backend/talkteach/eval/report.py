@@ -64,7 +64,7 @@ def error_report(references: list[str], hypotheses: list[str]) -> dict:
     """Aggregate word-level substitutions / insertions / deletions (pure).
 
     Built on ``jiwer.process_words`` alignments. Returns the most common confusions
-    plus raw counts and the corpus WER, so a grown-up can see *what* the model
+    plus raw counts and the corpus WER, so the user can see *what* the model
     confuses (e.g. "cat"→"cot"), not just how often.
     """
     import jiwer

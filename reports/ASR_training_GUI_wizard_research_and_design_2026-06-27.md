@@ -38,7 +38,7 @@
 2. **No auto-adaptive, zero-config training.** Every OSS path makes the user choose model size, learning rate, epochs, batch size, precision — via YAML/Hydra/Python. No tool auto-detects hardware and picks safe defaults.
 3. **Reliability is unsolved in the GUIs.** Dependency/CUDA hell, no crash-resume, no pre-flight checks, no bundled runtime. Elpis ships as Docker; WhisperTemple is a local PyQt app; neither is a one-click cross-platform installer.
 4. **No data-sufficiency / quality feedback loop.** Nothing tells a novice "you need ~30 more minutes of clean audio," detects clipping/silence/low SNR, or validates the dataset before wasting a training run.
-5. **No child-/novice-friendly UX.** Every interface assumes ML literacy (manifests, BPE, tokenizers, WER, Hydra). None use plain language, guardrails, or live feedback.
+5. **No novice-friendly UX.** Every interface assumes ML literacy (manifests, BPE, tokenizers, WER, Hydra). None use plain language, guardrails, or live feedback.
 6. **Pipeline fragmentation.** Recording, forced alignment/segmentation, transcription correction, training, evaluation, and export each live in different tools with incompatible data formats (Common Voice vs NeMo manifest vs HF datasets).
 
 **Conclusion:** the wheel exists in pieces. A great product is mostly *integration and UX*, not new ML. That is exactly what Part B specifies.
@@ -53,9 +53,9 @@
 
 ## B.1 Design principles ("can't-fail" UX)
 
-1. **Four screens, one path.** Record → Check → Teach → Try. No menus, no settings the child must understand. Everything advanced is behind a single "Grown-up mode" toggle.
+1. **Four screens, one path.** Record → Check → Teach → Try. No menus, no settings the user must understand. Everything advanced is behind a single "Advanced mode" toggle.
 2. **Plain language, never jargon.** "Teach the computer" not "fine-tune"; "How smart is it?" meter not "WER"; "examples" not "labeled corpus."
-3. **Zero config — the app decides.** Auto-detect GPU/CPU/RAM and pick the model size, batch size, precision, learning rate, epochs, and early-stopping automatically. The child never sees a hyperparameter.
+3. **Zero config — the app decides.** Auto-detect GPU/CPU/RAM and pick the model size, batch size, precision, learning rate, epochs, and early-stopping automatically. The user never sees a hyperparameter.
 4. **Guardrails over freedom.** Can't start training without enough good data; the "Teach!" button stays asleep (greyed, with a friendly meter "12 of 30 minutes") until preconditions are met.
 5. **Reliable by construction.** Bundled runtime (no pip/CUDA install), deterministic seeds, checkpoint-and-resume on every crash/close, pre-flight hardware check, offline-first, local-only data.
 6. **Always show progress and payoff.** Live "smartness" bar (1 − WER on a held-out set), a mascot that reacts, and an immediate "Try it" microphone at the end.
@@ -65,7 +65,7 @@
 
 - **Screen 0 — New project.** "What should we teach?" Name it; pick a language by flag, or "Let it figure out" (auto language ID via Whisper). One SQLite project folder is created.
 - **Screen 1 — Give it examples.** A big mic button shows sentences karaoke-style to read aloud (sourced from a built-in prompt set per language), *or* drag-and-drop existing audio. **Silero VAD** auto-trims silence; a live meter counts "minutes of good audio." Real-time quality checks flag clipping/too-quiet/too-noisy with a thumbs-up/down.
-- **Screen 2 — Check the words.** The app auto-drafts transcripts with **faster-whisper**; the child reads along and taps any wrong word to fix it (color-coded by model confidence). **Forced alignment** (NeMo Forced Aligner / WhisperX) auto-segments long recordings into sentence clips. This is the *only* "work," and it feels like a game.
+- **Screen 2 — Check the words.** The app auto-drafts transcripts with **faster-whisper**; the user reads along and taps any wrong word to fix it (color-coded by model confidence). **Forced alignment** (NeMo Forced Aligner / WhisperX) auto-segments long recordings into sentence clips. This is the *only* "work," and it feels like a game.
 - **Screen 3 — Teach it!** One button. The app picks everything, runs **LoRA/PEFT fine-tuning** (small, fast, low-VRAM, hard to diverge) on the chosen engine, shows an animated progress bar + live smartness meter, and auto-stops when it stops improving. Pause/Resume/Close-and-continue all work via checkpointing.
 - **Screen 4 — Try it & keep it.** Talk into the mic → live transcription appears. Buttons: **Save**, **Use on my computer** (export ONNX / CTranslate2 + a tiny runnable app via sherpa-onnx), **Make it better** (back to Screen 1, resume training).
 
@@ -76,8 +76,8 @@
 │  Shell:  Tauri (Rust, MIT/Apache) — one signed installer per OS │
 │          → embeds a local web UI; ~10 MB vs Electron ~150 MB    │
 ├───────────────────────────────────────────────────────────────┤
-│  UI:     Svelte + a kid-friendly component kit (big targets,    │
-│          mascot, sound). 4 wizard screens + hidden Grown-up mode│
+│  UI:     Svelte + a friendly component kit (big targets,        │
+│          mascot, sound). 4 wizard screens + hidden Advanced mode│
 ├───────────────────────────────────────────────────────────────┤
 │  API:    Python FastAPI backend (job server). Endpoints:        │
 │          ingest · vad-trim · draft-transcribe · align-segment · │
@@ -166,7 +166,7 @@ The user permits GPL. Two safe patterns so a GPL dependency doesn't force the *w
 |---|---|
 | CUDA/dependency fragility (the #1 killer) | Bundle everything via `uv`; CPU/int8 fallback; one-tap cloud |
 | LoRA underfits on hard languages | Director switches to XLS-R/wav2vec2-CTC or full fine-tune when data warrants |
-| Children produce too little / poor data | Sufficiency gate + live quality meter + karaoke prompts to gather clean reads |
+| Users produce too little / poor data | Sufficiency gate + live quality meter + karaoke prompts to gather clean reads |
 | Long training feels broken | Live smartness meter, ETA, pause/resume, early stop |
 | Licensing surprise | Default app to GPL-3.0 (user-approved) or isolate GPL via subprocess; auto credits screen |
 | Cross-platform packaging cost | Tauri + `uv`; CI build matrix; sign installers |

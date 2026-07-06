@@ -1,8 +1,8 @@
 # Optional denoise for noisy uploads (#30)
 
-Kids record in real rooms — fans, siblings, a TV down the hall. A noisy clip gets
+Users record in real rooms — fans, siblings, a TV down the hall. A noisy clip gets
 flagged "too noisy" by the quality checker (`audio/quality.py`, `SNR_MIN_DB`) and
-doesn't count toward the sufficiency gate, which can stall a child who actually
+doesn't count toward the sufficiency gate, which can stall a user who actually
 spoke clearly. Optional denoise cleans the recording *before* quality analysis so
 good speech buried under noise isn't thrown away.
 
@@ -29,11 +29,11 @@ path regardless of whether a backend is present.
 
 ## Two hard rules
 
-1. **Opt-in.** Denoise is never on by default. A grown-up enables it (a "this clip
-   sounds noisy — clean it up?" prompt, or a Grown-up-mode toggle). Default
+1. **Opt-in.** Denoise is never on by default. The user enables it (a "this clip
+   sounds noisy — clean it up?" prompt, or an Advanced-mode toggle). Default
    behaviour is unchanged: a noisy clip is flagged, not silently rewritten.
 2. **Never destructive.** `denoise_file()` writes a *new* file
-   (`<name>.denoised.wav`) and never modifies the original. The child's real
+   (`<name>.denoised.wav`) and never modifies the original. The user's real
    recording is always preserved; training/analysis can use the cleaned copy while
    the original stays recoverable.
 

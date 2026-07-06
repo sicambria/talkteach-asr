@@ -1,6 +1,6 @@
 """Forced alignment — split a long recording into sentence clips (#12).
 
-When a child reads a paragraph in one take, forced alignment maps each word to a
+When the user reads a paragraph in one take, forced alignment maps each word to a
 timestamp so we can cut clean per-sentence training clips on Screen 2. This is a
 **Tier C scaffold** (see project/docs/ROADMAP_STATUS.md): the adapter boundary and the
 pure sentence-grouping logic are here and tested; the heavy aligner backends
@@ -45,7 +45,7 @@ def group_into_sentences(words: list[AlignedWord]) -> list[Segment]:
 
     A new clip starts after any word whose text ends in sentence punctuation.
     Empty input → no segments. This is the boundary logic Screen 2 uses to slice
-    a long take into clips the child can review one at a time.
+    a long take into clips the user can review one at a time.
     """
     segments: list[Segment] = []
     if not words:

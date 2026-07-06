@@ -1,13 +1,13 @@
 # First-run self-test (roadmap #22)
 
-So a curious grown-up can prove the whole **Record → Check → Teach → Try** loop in
+So a curious user can prove the whole **Record → Check → Teach → Try** loop in
 ~2 minutes without recording anything, TalkTeach can seed a tiny toy dataset.
 
 - `backend/talkteach/selftest.py::make_toy_dataset` writes a handful of short,
   clean synthetic-tone WAVs paired with karaoke sentences as transcripts.
 - `POST /api/selftest` seeds them into the project DB (marked good) so the
   sufficiency meter moves and "Teach!" becomes verifiable. The UI exposes this as
-  a child-friendly "try a practice set" button.
+  a simple "try a practice set" button.
 - `scripts/make_toy_dataset.py [dest] [--lang] [--clips]` writes the set to a
   folder for manual end-to-end checks.
 

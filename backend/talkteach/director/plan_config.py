@@ -1,7 +1,7 @@
 """Build a *pinned* TrainingPlan from explicit config — for reproducible experiments.
 
 In the product, :func:`talkteach.director.policy.build_plan` derives every
-hyperparameter from the detected hardware/data/language so the child never sees a
+hyperparameter from the detected hardware/data/language so the user never sees a
 knob. That is exactly wrong for a benchmark: to compare engines fairly you must
 hold the hyperparameters fixed and known. :func:`plan_from_config` is the
 experiment-only counterpart — it takes a plain dict (typically one cell of a

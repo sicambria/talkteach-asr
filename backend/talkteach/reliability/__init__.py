@@ -1,7 +1,7 @@
 """TalkTeach reliability — pre-flight checks and graceful-degradation helpers.
 
 The pre-flight module verifies disk, memory, GPU/compute and microphone before
-training, and reports problems in child-app language without ever crashing or
+training, and reports problems in plain language without ever crashing or
 hard-blocking unless training truly cannot run.
 """
 

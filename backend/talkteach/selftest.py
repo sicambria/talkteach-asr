@@ -1,7 +1,7 @@
 """First-run self-test: a tiny toy dataset so "Teach!" is verifiable (#22).
 
 On first launch the app can seed a handful of short, synthetic spoken-tone clips
-(paired with karaoke prompts as transcripts) so a curious grown-up can prove the
+(paired with karaoke prompts as transcripts) so a curious user can prove the
 whole Record → Check → Teach → Try loop end-to-end in ~2 minutes without
 recording anything. The clips are synthetic tones — enough to exercise the
 pipeline and the *simulation*; a real fine-tune wants real speech.

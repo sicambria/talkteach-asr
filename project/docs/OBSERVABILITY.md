@@ -1,8 +1,8 @@
 # Observability (roadmap #41)
 
-TalkTeach is offline and built for children, so observability is **local-first and
+TalkTeach is offline and built for users, so observability is **local-first and
 private by default** (DECISIONS.md D-008). There is no telemetry; nothing is sent
-anywhere unless a grown-up deliberately exports and shares it.
+anywhere unless the user deliberately exports and shares it.
 
 ## Structured logging
 
@@ -10,7 +10,7 @@ anywhere unless a grown-up deliberately exports and shares it.
 JSON-lines** file handler (`~/.talkteach/default/logs/talkteach.jsonl`, 1 MB ×3)
 plus a console handler. JSON lines are greppable and machine-readable without a
 logging framework. `configure_logging()` runs once on server startup (in the
-FastAPI lifespan) and is idempotent. Use `get_logger("area")` for a child logger.
+FastAPI lifespan) and is idempotent. Use `get_logger("area")` for a scoped logger.
 
 ## Help bundle ("Export a help bundle")
 
@@ -21,7 +21,7 @@ FastAPI lifespan) and is idempotent. Use `get_logger("area")` for a child logger
   redacted** (anything matching TOKEN/KEY/SECRET/PASSWORD/AUTH/HF_TOKEN).
 - `logs/talkteach.jsonl*` — the rotating logs.
 
-Nothing leaves the machine — the grown-up downloads the zip and shares it
+Nothing leaves the machine — the user downloads the zip and shares it
 intentionally with support. `export_help_bundle()` writes the same bundle to a
 file. A regression test (`tests/test_durability.py`) asserts secrets are redacted
 and non-secret env is kept.

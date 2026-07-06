@@ -1,8 +1,8 @@
 # Optional multi-GPU / distributed training (#56)
 
-TalkTeach targets a family laptop, so single-device training is the default and the
+TalkTeach targets a modest laptop, so single-device training is the default and the
 only path the product UI exposes. Multi-GPU is a **documented escape hatch** for
-power users with a workstation or a rented multi-GPU box — not a feature the child's
+power users with a workstation or a rented multi-GPU box — not a feature the user's
 flow needs.
 
 ## Why there is no in-app "use N GPUs" toggle

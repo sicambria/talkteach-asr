@@ -1,7 +1,7 @@
 """SQLite-backed persistence for a single TalkTeach project.
 
 One ``ProjectDB`` wraps one SQLite database file living inside a project
-folder. WAL journaling + autosave means a child's corrections are never lost,
+folder. WAL journaling + autosave means the user's corrections are never lost,
 even on an abrupt power cut.
 
 Stdlib only.

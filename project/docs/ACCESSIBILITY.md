@@ -1,7 +1,7 @@
 # Accessibility (#37)
 
-"So easily a 10-year-old can" has to include the 10-year-old who uses a screen
-reader, can't use a mouse, or reads more easily with a dyslexia-friendly font.
+"So easy anyone can" has to include people who use a screen reader,
+can't use a mouse, or read more easily with a dyslexia-friendly font.
 Accessibility isn't a polish pass here — it's part of the easy-to-use promise.
 This is the working checklist: what's in place and what's still owed.
 
@@ -58,7 +58,7 @@ This is the working checklist: what's in place and what's still owed.
   screens (New project, Pre-flight, Record) found **no new** serious/critical
   violations vs the pre-change baseline. The one serious finding — `color-contrast`
   on the primary/secondary buttons — is pre-existing (identical on the unchanged
-  Arena screen): it comes from the deliberately cheerful kid palette (white on
+  Arena screen): it comes from the deliberately cheerful palette (white on
   orange/teal) and is tracked under *High-contrast mode / WCAG-AA contrast* above,
   not introduced by the #37 sweep.
 - **Manual AT testing** on each OS (NVDA/VoiceOver/Orca) is still owed — see

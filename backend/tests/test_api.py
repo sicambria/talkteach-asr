@@ -229,7 +229,7 @@ def test_languages_endpoint_lists_all_supported_languages():
 def test_plan_preview_has_rationale():
     with TestClient(app) as client:
         body = client.get("/api/plan").json()
-        assert body["plan"]["rationale"], "grown-up mode needs the why"
+        assert body["plan"]["rationale"], "advanced mode needs the why"
         assert "engine" in body["plan"] and "hardware" in body
 
 

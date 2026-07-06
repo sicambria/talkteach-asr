@@ -1,6 +1,6 @@
 """Pre-flight checks — the friendly "ready to teach?" screen.
 
-Before a child (or grown-up) hits "Teach!", we quietly look at the machine:
+Before the user hits "Teach!", we quietly look at the machine:
 is there room on disk, enough memory, a GPU to go fast, a microphone to
 record with? Nothing here ever crashes the app or blocks training unless it
 genuinely *cannot* run. Slow is fine — we degrade gracefully (CPU/int8, or a
@@ -36,7 +36,7 @@ class CheckStatus(str, Enum):
 
 @dataclass(frozen=True)
 class CheckResult:
-    """The outcome of one check, in language a child-app can show directly."""
+    """The outcome of one check, in language the app can show directly."""
 
     name: str
     status: CheckStatus
