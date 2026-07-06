@@ -57,4 +57,3 @@ roadmap is complete and the core is real. Against the **pro toolsets' full
 surface**, the meaningful gaps are *data augmentation (#46)*, *dataset import
 (#47)*, and *subtitle/long-form transcription (#48/#49)* — all additive,
 none requiring new ML research, all now tracked. The rest are power-user niceties.
-</content>

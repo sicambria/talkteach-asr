@@ -1,0 +1,165 @@
+# TalkTeach — Product Assessment
+
+**Date:** 2026-07-06 · **Commit:** `e643042` · **Assessed version:** 0.1.0 (unreleased)
+**Scope:** whole product (backend, ML core, UI, desktop shell, packaging, docs, eng discipline)
+
+> **Location note:** this report was requested under `docs/product/`. The repo's
+> established docs convention is `project/docs/`. Kept here per the request; consider
+> consolidating later.
+
+---
+
+## Score: **530 / 1000**
+
+**One line:** An unusually honest, exceptionally well-tested *engineering spike* that
+is roughly **halfway to a shippable v1**. The internals are real, not Potemkin — a
+genuine LoRA fine-tune, a real director, a real wired UI, 188 green tests, and
+candid documentation. But as a **product** — "simple enough for anyone" to *install
+and train a model today* — it does not yet exist: there is no installer, no release,
+no built desktop shell, and the real training path never runs out of the box or in CI.
+
+The number is deliberately product-weighted. If this were scored purely as an
+engineering codebase it would land far higher (~750); the gap between those two
+numbers **is** the finding.
+
+### How the score is built (weighted rubric)
+
+| Dimension | Weight | Score /100 | Weighted | Why |
+|---|---:|---:|---:|---|
+| Core promise works end-to-end for a real user | 28% | 35 | 9.8 | Real LoRA loop exists and is tested via one opt-in integration test, but defaults to a **simulation**; real training needs a manual `[ml]` install + real clips, and there is no installed app to trigger it from. Unverified in this environment and in CI. |
+| Packaging / installability | 18% | 18 | 3.2 | No installer, **no published release, no git tag**, and `src-tauri/binaries/` is **empty** so the desktop shell can't spawn its backend as shipped. Backend runs only via manual `uv`/CLI. |
+| UX / product surface completeness | 15% | 70 | 10.5 | UI is genuinely complete: 7 screens all wired to the real API, builds cleanly, real accessibility work, real i18n plumbing, a rich benchmark "Arena". Held back by zero real translations and placeholder mascot art. |
+| ML correctness & verification | 14% | 58 | 8.1 | Real, CPU-runnable Whisper-LoRA **and** wav2vec2-CTC fine-tunes with real jiwer WER/CER and real CT2-int8/safetensors export. But nothing in default CI exercises the real path, and one advertised safety rail (rollback) is not actually wired. |
+| Engineering discipline (tests, CI, gates, docs honesty) | 15% | 90 | 13.5 | 188 fast tests green, CI matrix, ruff+mypy+eslint+prettier+clippy gates, a full ROADMAP traceability matrix and a DECISIONS log. Rare candour. Docked only for a few `✅` rows that overstate reality (below). |
+| Security & data integrity | 10% | 78 | 7.8 | Path-traversal fixed **and tested**, upload size/codec allow-list, locked Tauri CSP, SQL-injection-guarded data layer, no telemetry by default. Solid for this stage. |
+| **Total** | **100%** | | **~53** | **→ 530 / 1000** |
+
+**Band reference (product maturity):** 0–200 idea/README · 200–400 prototype ·
+**400–600 advanced prototype / pre-alpha** · 600–750 alpha (installable, rough) ·
+750–850 beta · 850+ shippable v1. TalkTeach sits at the **top of "advanced
+prototype"**: the hard integration risk it set out to retire (director + reliability
+plumbing) is genuinely retired and tested; the delivery risk (packaging + verified
+real training in a shipped app) is entirely ahead of it.
+
+---
+
+## What is genuinely strong (verified this session)
+
+- **The fast test suite is real and green:** `188 passed, 8 skipped` in ~25s, no GPU/ML deps. This is not a façade.
+- **The real ML loop is real.** `_whisper_train.py::run_real_training` builds a 🤗 `Dataset` + collator, wraps Whisper with `peft.LoraConfig` + `get_peft_model`, and drives a real `Seq2SeqTrainer.train(resume_from_checkpoint=...)` with a measured held-out WER. `wav2vec2_ctc` is a real CPU-capable CTC fine-tune too. Not stubs.
+- **The UI is a real product surface**, not a mock. Every screen calls the live API (`ui/src/lib/api.js`); it builds to a fresh `ui/dist/`; accessibility (`lib/a11y.js`, aria-live regions, keyboard-operable drop zone) is real work.
+- **The documentation is exceptionally honest.** The tier system (A/B/C), the `ROADMAP_STATUS.md` matrix, and `DECISIONS.md` (esp. D-012, the sim-vs-real dispatch) describe reality more candidly than most shipping products. This assessment mostly *confirms* their own self-report — the gaps below are where it drifts.
+
+---
+
+## Gaps (severity ≥ moderate)
+
+**Severity key** — **Critical:** blocks the core promise or any release ·
+**Major:** blocks a key flow for the target user, or a verified/`✅` claim materially
+overstates reality · **Moderate:** degrades a key flow or a smaller claim-vs-reality
+mismatch. (Minor polish excluded.) Each gap is tied to a ROADMAP item # or marked *untracked*.
+
+### Critical
+
+- **C1 — No shippable, installable artifact.** No installer, **no published GitHub
+  release, no git tag**, and `src-tauri/binaries/` is empty so the PyInstaller
+  backend sidecar was never built. The "download it, it just works" promise cannot
+  be met as-is. *Roadmap #16, #24 (tracked 🟡/C); the missing binary also undercuts #14/#15.*
+- **C2 — The core promise is unproven end-to-end and off by default.** Out of the
+  box `train()` runs the `[SIMULATION]` curve; the real loop requires a manual
+  `[ml]` install **and** real clips on disk **and** `TALKTEACH_FORCE_SIMULATION`
+  unset — and there is no installed app from which a non-technical user could do
+  any of that. Real training is exercised only by the opt-in `integration` test
+  (skipped unless `TALKTEACH_RUN_INTEGRATION=1`), which was **not** run in this
+  environment. *Roadmap #1–#5 (tier B); coverage #43.*
+
+### Major
+
+- **M1 — "Tauri verified end-to-end" overstates the shipped state (overclaim).**
+  `ROADMAP_STATUS.md` #14 and `PHASE0_STATUS.md` present the desktop shell as
+  verified window + sidecar spawn + live `/api/health 200`. That was a one-time
+  dev-box run; the sidecar binary it spawns (`src-tauri/binaries/talkteach-backend`)
+  **is not built or committed** (dir empty), so a fresh checkout cannot reproduce
+  it. *Untracked mismatch; relates to #14/#16.*
+- **M2 — NaN "auto-rollback to last good checkpoint" is not actually wired
+  (overclaim).** `ROADMAP_STATUS.md` #3 marks it `✅` and the training code emits
+  "rolled back to the last good point," but `observe_good_checkpoint` only *writes*
+  `last_good_checkpoint` — **no production code reads it**. Real recovery rides
+  entirely on HF `load_best_model_at_end=True`, which is itself silently dropped in
+  the last-resort trainer-arg branch. NaN *detection + halt* are real; *rollback* is
+  aspirational. *Roadmap #3 (marked ✅).*
+- **M3 — No automated test ever exercises the real training path or the
+  production dispatch.** The fast suite forces simulation (`conftest.py` autouse
+  `TALKTEACH_FORCE_SIMULATION=1`); the integration test calls `run_real_training`
+  **directly**, bypassing the `should_simulate` routing in `whisper_lora.py`. So
+  regressions in the real loop *or* in the real-vs-sim decision would pass CI
+  undetected. *Roadmap #43; untracked nuance.*
+- **M4 — The director is uncalibrated.** Every VRAM tier, LR/epoch/patience, LoRA
+  rank, and audio-quality threshold in `director/policy.py` / `audio/quality.py` is
+  an admitted "proposed default," never empirically tuned. The product's central
+  pillar — "every ML decision made automatically and *well*" — is unvalidated.
+  *Roadmap #6 (tracked 🟡).*
+
+### Moderate
+
+- **Mo1 — i18n ships plumbing but zero real translations.** Only an `en` catalog
+  plus a synthetic `qa` pseudo-locale exist; no non-English `.json`/`.po`. A
+  non-English child still cannot use the app, though #36 is marked `✅`. Plumbing
+  done, payload absent. *Roadmap #36 (tracked as plumbing).*
+- **Mo2 — Export breadth is partial.** CT2-int8 and safetensors are real; ONNX/
+  sherpa is real code but **untested/unverified**; GGUF and TorchScript are honest
+  dry-run scaffolds. "Use on my computer" only truly delivers two of five targets.
+  *Roadmap #4, #57 (tracked 🟡).*
+- **Mo3 — Held-out eval can be optimistic.** The eval split is a random 10% of the
+  *same* (often TTS-generated) clips, with no guard against sentence/speaker overlap
+  between train and test. Reported "smartness"/WER may overstate real-world accuracy.
+  *Untracked.*
+- **Mo4 — Accessibility is half-done.** Keyboard nav + axe pass are real, but there
+  is no manual screen-reader certification, the kid colour palette **fails WCAG-AA
+  contrast**, and reduced-motion / high-contrast / dyslexia-font / RTL are absent.
+  *Roadmap #37 (tracked partial).*
+- **Mo5 — In-app recordings may not be analyzable without bundled ffmpeg.** Browser
+  `MediaRecorder` emits `webm`; without a bundled ffmpeg the server path treats
+  non-WAV as "accepted but unchecked," so the primary *record-in-app* flow can
+  produce audio that isn't quality-checked or reliably trainable. *Roadmap #10, #20
+  (tracked 🟡).*
+- **Mo6 — No user-facing getting-started for the desktop app.** The quick start is
+  backend-developer-only (`uv`, `pytest`, `python -m talkteach.app`). The target
+  user ("anyone") has no path to follow. *Partially Roadmap #44.*
+- **Mo7 — Breadth items still design-only.** Single-project app layer (#29), cloud
+  fallback (#27), diarization (#33), mascot art (#31). All correctly tracked as
+  C/🟡 — listed here only for completeness; individually low-moderate. *Tracked.*
+
+---
+
+## The 6 moves that would most raise the score
+
+1. **Build + commit the sidecar and cut one real installer** (any single OS). Turns
+   C1 from "impossible" to "rough but real" and unlocks C2's user path. *(#14/#16/#24)*
+2. **Run the real training path in CI** on a tiny toy model, *through* the production
+   dispatch — not by calling `run_real_training` directly. Retires M3 and converts
+   "real code exists" into "real training verified." *(#43)*
+3. **Either wire the checkpoint rollback or downgrade the claim.** Make production
+   read `last_good_checkpoint`, or restate #3 as "detect + halt (recovery via
+   `load_best_model_at_end`)." *(#3 — done in this pass, see below.)*
+4. **Calibrate the director** against ≥1 real dataset/hardware pair and record the
+   deltas. The whole "automatic and smart" value prop rests on this. *(#6)*
+5. **Ship one real non-English translation** end-to-end to prove the i18n payload,
+   not just the switch. *(#36)*
+6. **Add a plain-language "install & train your first model" guide** aimed at the
+   non-technical target user. *(#44)*
+
+---
+
+## Methodology
+
+- Ran the backend fast suite directly (`.venv/bin/python -m pytest -q`) → **188
+  passed, 8 skipped**.
+- Two independent ground-truth code audits (frontend/Tauri; ML/training) rather than
+  trusting the self-reported status matrix.
+- Inspected the sim-vs-real dispatch (`whisper_lora.py`, `_whisper_train.py`,
+  `_train_common.py`), export paths, `src-tauri/`, release/tag/binary state, and git
+  history (45 commits, 2026-06-28 → 2026-07-06, single author).
+- **Not run here:** the `[ml]` integration test (multi-GB download). Real
+  end-to-end training is therefore **claimed via the opt-in test, not confirmed in
+  this environment.**

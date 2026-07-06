@@ -4,6 +4,11 @@ Authoritative status of every item in [`ROADMAP.md`](ROADMAP.md). This is the
 spine of the Phase 0 effort: each item maps to a **tier**, the
 **evidence** (file/test/doc), and the **commit** that delivered it.
 
+> **External assessment (2026-07-06):** an independent product-maturity review
+> scored the whole product **530/1000** ("advanced prototype") and corrected three
+> `✅` overclaims now reflected in rows #3, #14, #43 below. See
+> [`../../docs/product/PRODUCT_ASSESSMENT_2026-07-06.md`](../../docs/product/PRODUCT_ASSESSMENT_2026-07-06.md).
+
 Tiers (see [`DECISIONS.md`](DECISIONS.md) D-001):
 
 - **A — done & verified here**: real code + tests that pass in this environment.
@@ -19,7 +24,7 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 |---|------|------|--------|----------|
 | 1 | Real Whisper-LoRA training loop | B | ✅ | `engines/whisper_lora.py` (real loop), pure helpers in `engines/_whisper_train.py`, `tests/test_whisper_train.py`; e2e behind `-m integration` |
 | 2 | Real held-out eval → WER smartness | B | ✅ | `compute_metrics` + `wer`/`cer` in `engines/_whisper_train.py`, `tests/test_whisper_train.py` |
-| 3 | Safety rails wired into the loop | B | ✅ | seed/grad-clip/NaN-guard rollback in `_whisper_train.py` + callback; `tests/test_whisper_train.py::test_nan_guard` |
+| 3 | Safety rails wired into the loop | B | 🟡 | seed + grad-clip + NaN **detect-and-halt** real in `_whisper_train.py` + callback; `tests/test_whisper_train.py::test_nan_guard`. **Caveat (2026-07-06 audit):** the named checkpoint *rollback* is not wired — `observe_good_checkpoint` writes `last_good_checkpoint` but no production code reads it; recovery rides on HF `load_best_model_at_end` (itself dropped in the fallback arg branch). Either wire it or restate the "rolled back" message. |
 | 4 | Real export (CT2 + ONNX/sherpa) | B | 🟡 | `engines/whisper_lora.py::export` merges LoRA→CT2 int8; ONNX/sherpa scaffold + `EXPORT.md` |
 | 5 | Real draft + "Try it" transcription | B | ✅ | `engines/whisper_lora.py::transcribe` (faster-whisper); CPU/int8 path documented |
 | 6 | Calibrate the director | C | 🟡 | `CALIBRATION.md` (protocol + harness `scripts/calibrate.py`); constants stay proposed defaults. TTS×ASR benchmark added: `BENCHMARKING.md`, `scripts/benchmark.py`, `talkteach/tts/` (espeak+piper) |
@@ -30,7 +35,7 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 | 11 | Silero VAD trim/segment | B | ✅ | `audio/vad.py` (guarded), pure segmentation logic tested in `tests/test_audio_pipeline.py` |
 | 12 | Forced alignment | C | 🟡 | `audio/align.py` adapter scaffold + `ALIGNMENT.md` |
 | 13 | Live recording-quality feedback | A/B | ✅ | backend helper `audio/quality.py::live_meter` + `tests/test_audio_pipeline.py`; **UI live meter delivered** — client-side WebAudio RMS bar on `Screen1_Record.svelte` (AnalyserNode, per-frame level, teardown on stop/destroy), verified moving in a headless Playwright run |
-| 14 | Compile the Tauri shell | A | ✅ | **compiled + ran end-to-end** (2026-06-28): `npm run tauri dev` → window + sidecar spawn + live `/api/health` 200; recipe in README + `setup.sh`. Per-OS installers still a release-pipeline step (`RELEASING.md`) |
+| 14 | Compile the Tauri shell | A | 🟡 | **compiled + ran end-to-end** (2026-06-28, dev box): `npm run tauri dev` → window + sidecar spawn + live `/api/health` 200; recipe in README + `setup.sh`. **Caveat (2026-07-06 audit):** not reproducible from a fresh checkout — `src-tauri/binaries/` is empty, so the `talkteach-backend` sidecar it spawns must be built first (`scripts/build_sidecar.py`, #16). Per-OS installers still a release-pipeline step (`RELEASING.md`) |
 | 15 | Tauri sidecar auto-spawn backend | B | ✅ | `src-tauri/src/lib.rs` sidecar spawn + `tauri.conf.json` externalBin; `SIDECAR.md` |
 | 16 | No-install bundled runtime | C | 🟡 | `scripts/build_sidecar.py` (PyInstaller sidecar) + `BUNDLING.md` (tiny core + uv ML pack) |
 | 17 | Checkpoint/resume exercised e2e | A | ✅ | `find_latest_checkpoint` + resume in `tests/test_whisper_train.py`, `tests/test_durability.py`; sim writes per-epoch checkpoints (`tests/test_engines.py`) |
@@ -59,7 +64,7 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 | 40 | Job durability | A | ✅ | `app.py` startup reconcile, `tests/test_durability.py` |
 | 41 | Observability | A | ✅ | `obs/logging.py` structured logs, help-bundle exporter; `OBSERVABILITY.md` |
 | 42 | Dependency hygiene | A | ✅ | npm audit notes, TestClient/httpx warning fix; `DEPENDENCIES.md` |
-| 43 | Test coverage for real paths | A | ✅ | 100 fast tests + 3 `-m integration` (real train **and** CT2 export **and** faster-whisper transcribe, all verified) |
+| 43 | Test coverage for real paths | A | 🟡 | 188 fast tests (green, 2026-07-06) + 3 `-m integration` (real train, CT2 export, faster-whisper transcribe). **Caveat (audit):** the integration tests call `run_real_training` **directly**, bypassing the `should_simulate` production dispatch, and the fast suite forces simulation — so no automated test exercises the real path *through* production routing. A regression in the real loop or the real-vs-sim decision would pass CI. Add a tiny toy-model CI leg through `train()`. |
 | 44 | OSS project hygiene | A | ✅ | CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, CHANGELOG, templates |
 | 45 | Landscape currency | A | ✅ | `LANDSCAPE.md` re-verification checklist + cadence |
 
