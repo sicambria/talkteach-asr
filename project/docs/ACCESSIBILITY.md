@@ -31,7 +31,12 @@ This is the working checklist: what's in place and what's still owed.
 
 - **Screen-reader certification**: test with NVDA/VoiceOver/Orca on each OS. The
   live regions above are wired, but an end-to-end SR pass on real assistive tech is
-  still owed (needs a screen reader + a human — deferred).
+  still owed (needs a screen reader + a human — deferred). Two known items for that
+  pass: the "Saved ✓" chip inserts its `aria-live` region *together with* its text,
+  so the first save may not announce on some readers (a persistent region toggled
+  on save would fix it); and the pre-flight screen's not-ok / backend-error
+  branches are simple conditionals that were type-checked but not observed live
+  (the "ready" path was, with real `/api/preflight` data).
 - **High-contrast mode / WCAG-AA contrast**: honour `prefers-contrast` and offer an
   explicit toggle;
   audit colour contrast to WCAG AA (the quiet/good/loud meter must not rely on
