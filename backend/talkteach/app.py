@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from . import __version__, config
 from .audio.quality import ClipQuality, analyze_samples
 from .benchmark import BenchmarkReport, run_benchmark, scoreboard_payload
+from .data.import_manifest import DatasetImportError, import_dataset
 from .data.project import ProjectDB
 from .director import (
     DataProfile,
@@ -700,6 +701,77 @@ def run_metrics(run_id: int) -> dict:
         "curve": curve,
         "has_curve": bool(curve),
     }
+
+
+def _import_content_root(tmp: Path) -> Path:
+    """Descend past the wrapping folder(s) a browser ``webkitdirectory`` upload adds
+    (files arrive as ``<picked-folder>/clip.wav``) to the directory that actually
+    holds the data, so the tested auto-detector sees a folder-of-pairs / LibriSpeech
+    root — not a lone subdir."""
+    root = tmp
+    while True:
+        entries = list(root.iterdir())
+        if len(entries) == 1 and entries[0].is_dir():
+            root = entries[0]
+        else:
+            return root
+
+
+@app.post("/api/import")
+async def import_data(files: list[UploadFile]) -> dict:
+    """Import an existing folder of audio + transcripts (#47).
+
+    The browser sends a folder via ``<input webkitdirectory>``, each file's relative
+    path preserved as its upload filename; we rebuild the tree in a throwaway temp
+    dir (skipping any path-traversal filename) and hand the content root to the
+    tested :func:`import_dataset` auto-detector (folder-of-pairs, LibriSpeech, or an
+    in-folder CSV/JSON/TSV manifest). Matched audio is copied into the project clip
+    dir under a traversal-safe uuid name (#7) and inserted as good clips."""
+    import tempfile
+
+    config.ensure_dirs()
+    tmp = Path(tempfile.mkdtemp(prefix="tt_import_"))
+    try:
+        tmp_resolved = tmp.resolve()
+        for f in files:
+            dest = (tmp / (f.filename or "")).resolve()
+            if not dest.is_relative_to(tmp_resolved):
+                continue  # skip traversal attempts ("../evil")
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(await f.read())
+
+        root = _import_content_root(tmp)
+        manifest_files = sorted(
+            p for p in root.rglob("*") if p.suffix.lower() in (".csv", ".json", ".jsonl", ".tsv")
+        )
+        try:
+            manifest = import_dataset(manifest_files[0] if manifest_files else root)
+        except DatasetImportError as e:
+            return {"imported": 0, "skipped": 0, "issues": [str(e)]}
+
+        clip_dir = config.DEFAULT_PROJECT_DIR / "clips"
+        clip_dir.mkdir(parents=True, exist_ok=True)
+        imported = 0
+        issues: list[str] = []
+        with _db() as db:
+            for entry in manifest:
+                src_audio = Path(entry["path"])
+                if not src_audio.is_file():
+                    issues.append(f"missing audio for “{(entry.get('text') or '')[:30]}”")
+                    continue
+                stored = clip_dir / f"clip_{uuid.uuid4().hex}{src_audio.suffix.lower()}"
+                shutil.copyfile(src_audio, stored)
+                db.add_clip(
+                    str(stored),
+                    float(entry.get("duration_s") or 0.0),
+                    is_good=True,
+                    issues=[],
+                    transcript=entry.get("text") or "",
+                )
+                imported += 1
+        return {"imported": imported, "skipped": len(manifest) - imported, "issues": issues}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 @app.get("/api/eval/{run_id}")

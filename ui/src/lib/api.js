@@ -266,6 +266,22 @@ export async function evalReport(runId) {
   return unwrap(res, "I couldn't check where it still struggles");
 }
 
+/**
+ * POST /api/import — import an existing folder of audio + transcripts (#47).
+ * Pass a FileList/array from an <input webkitdirectory>; each file's
+ * webkitRelativePath is preserved so the server can rebuild the folder.
+ * @param {FileList|File[]} fileList
+ * @returns {Promise<{imported:number, skipped:number, issues:string[]}>}
+ */
+export async function importData(fileList) {
+  const form = new FormData();
+  for (const f of fileList) {
+    form.append('files', f, f.webkitRelativePath || f.name);
+  }
+  const res = await fetch(url('/api/import'), { method: 'POST', body: form });
+  return unwrap(res, "I couldn't import that folder");
+}
+
 // --- Benchmark "Arena" (advanced) -------------------------------------------
 
 /**

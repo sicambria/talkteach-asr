@@ -30,6 +30,8 @@ const EN = {
   'newproject.error': "Something went wrong. Let's try again.",
   'newproject.starting': 'Starting…',
   'newproject.go': "Let's go! ▶",
+  'newproject.import': '📁 Import a folder of recordings instead',
+  'newproject.importing': 'Importing…',
 
   // Pre-flight screen (#18)
   'preflight.title': 'Is everything ready?',

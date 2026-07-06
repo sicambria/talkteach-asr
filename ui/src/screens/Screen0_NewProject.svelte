@@ -3,7 +3,7 @@
   // Name the project, pick a language (or let the computer figure it out),
   // then start. jargon-free everywhere.
   import { createEventDispatcher, onMount } from 'svelte';
-  import { createProject, getLanguages } from '../lib/api.js';
+  import { createProject, getLanguages, importData } from '../lib/api.js';
   import { project, advancedMode } from '../lib/store.js';
   import { t } from '../lib/i18n.js';
   import { focusOnMount } from '../lib/a11y.js';
@@ -27,6 +27,32 @@
   let letItFigureOut = false; // when true we send null
   let busy = false;
   let errorMsg = '';
+
+  // Import an existing folder of recordings instead of recording from scratch (#47).
+  let importing = false;
+  let importMsg = '';
+
+  async function importFolder(e) {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    errorMsg = '';
+    importMsg = '';
+    if (!name.trim()) name = 'Imported project';
+    importing = true;
+    try {
+      const code = letItFigureOut ? null : languageCode;
+      const res = await createProject(name.trim(), code);
+      project.set({ project_id: res.project_id, name: name.trim(), language_code: code });
+      const imp = await importData(files);
+      const skipped = imp.issues && imp.issues.length ? ` (${imp.issues.length} skipped)` : '';
+      importMsg = `Imported ${imp.imported} clip${imp.imported === 1 ? '' : 's'}${skipped}.`;
+      if (imp.imported > 0) dispatch('done');
+    } catch (err) {
+      errorMsg = err.message || "I couldn't import that folder.";
+    } finally {
+      importing = false;
+    }
+  }
 
   // The full ~99-language set (Whisper) loaded from the backend, so the picker
   // isn't limited to the friendly quick-list above. Languages outside this set
@@ -151,6 +177,24 @@
     {busy ? $t('newproject.starting') : $t('newproject.go')}
   </button>
 
+  <label class="import-alt">
+    <input
+      type="file"
+      webkitdirectory
+      directory
+      multiple
+      on:change={importFolder}
+      disabled={importing}
+      hidden
+    />
+    <span class="ghost-link"
+      >{importing ? $t('newproject.importing') : $t('newproject.import')}</span
+    >
+  </label>
+  {#if importMsg}
+    <p class="chosen" aria-live="polite">{importMsg}</p>
+  {/if}
+
   {#if $advancedMode}
     <div class="advanced">
       <h3>Advanced</h3>
@@ -216,6 +260,19 @@
   .lang.picked {
     border-color: var(--tt-primary);
     background: var(--tt-sun);
+  }
+
+  .import-alt {
+    display: inline-block;
+    margin-top: 12px;
+    cursor: pointer;
+  }
+
+  .ghost-link {
+    color: var(--tt-ink-soft);
+    font-weight: 700;
+    text-decoration: underline;
+    font-size: 1rem;
   }
 
   .error {

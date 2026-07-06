@@ -515,3 +515,33 @@ def test_eval_report_shapes(monkeypatch):
         assert body["best_val_wer"] == 0.25
         assert "top_substitutions" in body["report"]
         assert body["hardest"][0]["reference"] == "the dog ran"  # the harder clip ranks first
+
+
+# --- Dataset import (#47) ---
+
+
+def test_import_folder_pairs_adds_clips():
+    with TestClient(app) as client:
+        client.post("/api/project", json={"name": "imp"})
+        files = [
+            ("files", ("mydata/hello.wav", _good_wav_bytes(0.5), "audio/wav")),
+            ("files", ("mydata/hello.txt", b"hello there", "text/plain")),
+        ]
+        r = client.post("/api/import", files=files)
+        assert r.status_code == 200
+        assert r.json()["imported"] == 1
+        clips = client.get("/api/clips").json()["clips"]
+        assert any("hello there" in (c.get("transcript") or "") for c in clips)
+
+
+def test_import_skips_traversal_filename():
+    with TestClient(app) as client:
+        client.post("/api/project", json={"name": "imp2"})
+        files = [
+            ("files", ("../evil.wav", _good_wav_bytes(0.3), "audio/wav")),
+            ("files", ("mydata/ok.wav", _good_wav_bytes(0.3), "audio/wav")),
+            ("files", ("mydata/ok.txt", b"ok now", "text/plain")),
+        ]
+        r = client.post("/api/import", files=files)
+        assert r.status_code == 200
+        assert r.json()["imported"] == 1  # only the safe pair; traversal file dropped
