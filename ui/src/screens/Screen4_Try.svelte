@@ -33,6 +33,19 @@
   let formats = [];
   let exportFmt = 'ctranslate2';
 
+  // Advanced decode controls (#50). Left at defaults → transcribe behaves as before.
+  let decodeBeam = 5;
+  let decodeHotwords = '';
+  let decodeTemp = '';
+
+  function decodeOptions() {
+    const o = {};
+    if (Number(decodeBeam) !== 5) o.beam_size = Number(decodeBeam);
+    if (decodeHotwords.trim()) o.hotwords = decodeHotwords.trim();
+    if (decodeTemp !== '' && decodeTemp != null) o.temperature = Number(decodeTemp);
+    return Object.keys(o).length ? o : null;
+  }
+
   onMount(async () => {
     try {
       const res = await exportFormats();
@@ -84,7 +97,7 @@
     busy = true;
     capSaved = false;
     try {
-      const res = await transcribe(blob);
+      const res = await transcribe(blob, $advancedMode ? decodeOptions() : null);
       heardText = res.text || '';
       captions = { srt: res.srt || '', vtt: res.vtt || '', txt: res.text || '' };
     } catch (e) {
@@ -216,6 +229,31 @@
         </label>
       {/if}
 
+      <p class="adv-sub">Decode controls (used next time you record)</p>
+      <label class="adv-field">
+        <span>Beam size</span>
+        <input type="number" min="1" max="10" bind:value={decodeBeam} />
+      </label>
+      <label class="adv-field">
+        <span>Hotwords</span>
+        <input
+          type="text"
+          placeholder="words to favour, space-separated"
+          bind:value={decodeHotwords}
+        />
+      </label>
+      <label class="adv-field">
+        <span>Temperature</span>
+        <input
+          type="number"
+          min="0"
+          max="1"
+          step="0.1"
+          placeholder="auto"
+          bind:value={decodeTemp}
+        />
+      </label>
+
       <p class="adv-meta">run: {JSON.stringify($currentRun)}</p>
     </div>
   {/if}
@@ -253,6 +291,16 @@
 
   .adv-field span {
     font-weight: 700;
+  }
+
+  .adv-field input {
+    flex: 1;
+    max-width: 60%;
+  }
+
+  .adv-sub {
+    font-weight: 700;
+    margin: 12px 0 2px;
   }
 
   .adv-field select {

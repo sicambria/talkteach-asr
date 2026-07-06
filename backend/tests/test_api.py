@@ -481,3 +481,37 @@ def test_transcribe_decode_options_build():
     assert opts.beam_size == 3
     assert opts.hotwords == ("cat", "dog")
     assert opts.temperature == (0.4,)
+
+
+# --- Accuracy / "where it struggles" report (#52) ---
+
+
+def test_eval_report_unknown_run_404():
+    with TestClient(app) as client:
+        r = client.get("/api/eval/999999")
+        assert r.status_code == 404
+
+
+def test_eval_report_shapes(monkeypatch):
+    import talkteach.app as appmod
+
+    class _FakeEngine:
+        def transcribe(self, path, model_dir=None, base_checkpoint=None, options=None):
+            return "the cat sat"
+
+    monkeypatch.setattr(appmod, "get_engine", lambda kind: _FakeEngine())
+    with TestClient(app) as client:
+        client.post("/api/project", json={"name": "eval-proj"})
+        with ProjectDB.open(config.DEFAULT_DB_PATH) as db:
+            db.add_clip("a.wav", 1.0, True, [], transcript="the cat sat")
+            db.add_clip("b.wav", 1.0, True, [], transcript="the dog ran")
+            run_id = db.create_run(engine="whisper_lora", base_checkpoint="x", plan_json="{}")
+            db.update_run(run_id, best_val_wer=0.25)
+        r = client.get(f"/api/eval/{run_id}")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["available"] is True
+        assert body["n_clips"] == 2
+        assert body["best_val_wer"] == 0.25
+        assert "top_substitutions" in body["report"]
+        assert body["hardest"][0]["reference"] == "the dog ran"  # the harder clip ranks first

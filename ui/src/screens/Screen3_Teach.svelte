@@ -4,7 +4,7 @@
   // every ~1.5s and show a progress bar and a "How smart is it?" meter.
   // jargon-free: no "training", "epochs as numbers only", no "WER".
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import { startTraining, trainProgress, getPlan, metrics } from '../lib/api.js';
+  import { startTraining, trainProgress, getPlan, metrics, evalReport } from '../lib/api.js';
   import { sufficiency, currentRun, advancedMode } from '../lib/store.js';
   import { TRAIN_POLL_MS } from '../lib/constants.js';
   import { t } from '../lib/i18n.js';
@@ -59,6 +59,22 @@
   $: curve = curveData?.curve || [];
   $: lossPts = curve.length ? sparkPoints(curve, 'loss') : '';
   $: werPts = curve.length ? sparkPoints(curve, 'wer') : '';
+
+  // "Where it still struggles" report (#52) — an active-learning signal, loaded on
+  // demand from Advanced mode. Held-out accuracy is best_val_wer (the curve/meter).
+  let report = null;
+  let reportBusy = false;
+  async function loadReport() {
+    if (!runId) return;
+    reportBusy = true;
+    try {
+      report = await evalReport(runId);
+    } catch (e) {
+      report = { available: false, message: e.message || "Couldn't build the report." };
+    } finally {
+      reportBusy = false;
+    }
+  }
 
   onMount(async () => {
     try {
@@ -268,6 +284,43 @@
             </p>
           {/if}
         </div>
+
+        <div class="report">
+          <button class="ghost" on:click={loadReport} disabled={reportBusy}>
+            {reportBusy ? 'Checking…' : 'Where does it still struggle?'}
+          </button>
+          {#if report}
+            {#if report.available === false}
+              <p class="muted">{report.message || 'Report needs the ML pack installed.'}</p>
+            {:else}
+              {#if report.best_val_wer != null}
+                <p>
+                  Held-out accuracy:
+                  <strong>{((1 - report.best_val_wer) * 100).toFixed(1)}%</strong>
+                  ({(report.best_val_wer * 100).toFixed(1)}% WER on unseen clips)
+                </p>
+              {/if}
+              {#if report.hardest && report.hardest.length}
+                <p><strong>Hardest clips to fix or relabel next:</strong></p>
+                <ul class="rationale">
+                  {#each report.hardest as h}
+                    <li>
+                      “{h.reference}” → heard “{h.hypothesis}” ({Math.round(h.wer * 100)}% off)
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+              {#if report.report?.top_substitutions?.length}
+                <p>
+                  <strong>Most common confusions:</strong>
+                  {#each report.report.top_substitutions.slice(0, 5) as s, i}{i > 0
+                      ? ', '
+                      : ' '}{s.ref}→{s.hyp} ({s.count}){/each}
+                </p>
+              {/if}
+            {/if}
+          {/if}
+        </div>
       {/if}
 
       <p class="adv-meta">run_id: {runId} · progress: {JSON.stringify(progress)}</p>
@@ -338,6 +391,11 @@
 
   .muted {
     color: var(--tt-ink-soft);
+  }
+
+  .report {
+    text-align: left;
+    margin: 10px 0;
   }
 
   .adv-meta {

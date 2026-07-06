@@ -255,6 +255,17 @@ export async function metrics(runId) {
   return unwrap(res, "I couldn't load the training metrics");
 }
 
+/**
+ * GET /api/eval/{run_id} — "where it still struggles" report (#52): held-out
+ * best_val_wer headline + hardest clips + top word confusions (active-learning).
+ * @param {number|string} runId
+ * @returns {Promise<{available:boolean, best_val_wer:number|null, n_clips:number, hardest:object[], report:object|null, cosmetic:object|null, message?:string}>}
+ */
+export async function evalReport(runId) {
+  const res = await fetch(url(`/api/eval/${encodeURIComponent(runId)}`));
+  return unwrap(res, "I couldn't check where it still struggles");
+}
+
 // --- Benchmark "Arena" (advanced) -------------------------------------------
 
 /**

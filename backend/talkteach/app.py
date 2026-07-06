@@ -41,6 +41,7 @@ from .director import (
 )
 from .engines import get_engine
 from .engines.base import EngineUnavailableError, TrainProgress
+from .eval.report import error_report, normalized_vs_raw, worst_utterances
 from .obs import experiment
 from .reliability.preflight import run_preflight
 from .transcript.decode import DecodeOptions
@@ -698,6 +699,43 @@ def run_metrics(run_id: int) -> dict:
         "best_val_wer": run.get("best_val_wer"),
         "curve": curve,
         "has_curve": bool(curve),
+    }
+
+
+@app.get("/api/eval/{run_id}")
+def eval_report_endpoint(run_id: int) -> dict:
+    """Advanced-mode "where it still struggles" report (#52, feeds #32).
+
+    Runs the run's model on the project's good clips and returns the per-utterance
+    and word-confusion breakdown — an *active-learning* signal ("fix/relabel these
+    next"), deliberately **not** a generalization score (evaluating on the training
+    clips would be optimistic). The honest held-out figure is ``best_val_wer`` — the
+    same number the smartness meter uses. Guarded: needs ``[ml]`` to run the model,
+    degrading to ``available:false`` like transcribe rather than crashing."""
+    with _db() as db:
+        run = db.get_run(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="That run wasn't found.")
+        clips = db.list_clips(only_good=True)
+    base = {"best_val_wer": run.get("best_val_wer"), "n_clips": len(clips)}
+    if not clips:
+        return {**base, "available": True, "hardest": [], "report": None, "cosmetic": None}
+    references = [c["transcript"] or "" for c in clips]
+    paths = [c["path"] for c in clips]
+    model_dir = run.get("checkpoint_path") or str(config.DEFAULT_PROJECT_DIR / "runs" / str(run_id))
+    engine = get_engine(EngineKind.WHISPER_LORA)
+    hypotheses: list[str] = []
+    try:
+        for p in paths:
+            hypotheses.append(engine.transcribe(p, model_dir=model_dir))
+    except EngineUnavailableError as e:
+        return {**base, "available": False, "message": str(e), "hardest": [], "report": None}
+    return {
+        **base,
+        "available": True,
+        "hardest": [dataclasses.asdict(s) for s in worst_utterances(references, hypotheses, k=5)],
+        "report": error_report(references, hypotheses),
+        "cosmetic": normalized_vs_raw(references, hypotheses),
     }
 
 
