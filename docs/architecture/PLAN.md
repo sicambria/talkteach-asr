@@ -1,7 +1,7 @@
 # Implementation plan — Phase 0
 
 This is the working plan for the effort tracked in
-[`ROADMAP_STATUS.md`](ROADMAP_STATUS.md). It is ordered by the tightest
+[`ROADMAP_STATUS.md`](../roadmap/ROADMAP_STATUS.md). It is ordered by the tightest
 constraint outward: guardrails first (so they gate everything after), then the
 P0 promise (make training real + secure), then P1 product, then P2/P3 breadth.
 
@@ -19,6 +19,70 @@ P0 promise (make training real + secure), then P1 product, then P2/P3 breadth.
 4. **Logical commits.** One coherent unit per commit, message explains *why*.
 5. **Document as we go.** Plans here, decisions in `DECISIONS.md`, errors and
    insights in [`LEARNINGS.md`](LEARNINGS.md).
+
+## First Principles Engineering
+
+Apply first-principles thinking before making architectural or implementation
+decisions. Decompose every problem into its fundamental objectives, constraints,
+assumptions, and measurable requirements rather than following existing
+implementations by default.
+
+For every significant component:
+
+- identify the core problem being solved;
+- distinguish essential complexity from accidental complexity;
+- challenge inherited assumptions;
+- evaluate alternative solution spaces;
+- justify the chosen design using evidence, benchmarks, and trade-off analysis;
+- explicitly document why simpler or more general approaches were rejected.
+
+Avoid local optimizations that increase overall system complexity. Optimize for
+correctness, simplicity, maintainability, extensibility, reproducibility, and
+measurable real-world performance.
+
+See [`DECISIONS.md`](DECISIONS.md) D-016.
+
+## Open Source Reuse Before Reinvention
+
+Treat existing, well-maintained open-source software as the default
+implementation strategy.
+
+Before implementing any non-trivial algorithm, framework, utility, workflow,
+parser, optimizer, benchmark, visualization, or infrastructure component:
+
+- actively search for mature, production-proven OSS alternatives;
+- compare multiple candidates using objective evaluation criteria;
+- document trade-offs including maturity, maintenance activity, community
+  adoption, license compatibility, security history, performance, extensibility,
+  and long-term sustainability;
+- prefer composition over custom implementation whenever practical;
+- minimize custom code by leveraging proven libraries.
+
+Only implement custom solutions when at least one of the following is true:
+
+- no suitable OSS solution exists;
+- measurable performance or capability requirements cannot be achieved;
+- licensing prevents use;
+- security or compliance requires a custom implementation;
+- repository-specific requirements fundamentally differ from available solutions.
+
+Every custom implementation must include documented justification explaining why
+existing OSS solutions were not adopted.
+
+See [`DECISIONS.md`](DECISIONS.md) D-017.
+
+## Continuous Technology Discovery
+
+During repository analysis, continuously identify opportunities to replace
+custom implementations with higher-quality OSS components. Produce a migration
+backlog ranked by expected impact, engineering effort, technical risk,
+maintenance cost reduction, and projected improvement in benchmark scores.
+Whenever a replacement is proposed, estimate expected gains in correctness,
+performance, maintainability, reliability, developer productivity, and total cost
+of ownership, and validate these estimates through reproducible benchmarks before
+adoption.
+
+See [`DECISIONS.md`](DECISIONS.md) D-018.
 
 ## Commit sequence
 

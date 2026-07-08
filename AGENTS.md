@@ -38,6 +38,22 @@ Full definitions in `backend/talkteach/sota/domains.py`.
 Validation scripts in `scripts/sota/validate_dXX_*.py`.
 Scoreboard in `docs/sota-benchmarks/SCOREBOARD.md`.
 
+## Engineering Philosophy
+
+TalkTeach follows three standing engineering rules, documented in full at
+`docs/architecture/PLAN.md` and formalized as D-016/D-017/D-018 in
+`docs/architecture/DECISIONS.md`:
+
+1. **First Principles Engineering** — decompose problems into objectives,
+   constraints, and measurable requirements before choosing solutions. Challenge
+   inherited assumptions. Justify designs with evidence and trade-off analysis.
+2. **Open Source Reuse Before Reinvention** — search for mature OSS alternatives
+   before implementing any non-trivial component. Custom code requires documented
+   justification.
+3. **Continuous Technology Discovery** — continuously identify custom code that
+   could be replaced by higher-quality OSS; rank by impact; validate through
+   reproducible benchmarks.
+
 ## Guardrails (must verify before committing)
 - [ ] `make test` all green (198 tests)
 - [ ] No `[SIMULATION]` in real-path results

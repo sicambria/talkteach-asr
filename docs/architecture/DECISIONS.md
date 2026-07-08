@@ -430,3 +430,126 @@ Rejected: (a) surfacing everything in the Easy wizard — it would bloat the one
 that must stay simple; (b) a full de-infantilization (removing the mascot / neutral
 palette) — out of scope for this pass (labels-only tone was the chosen tier). Plan of
 record: `docs/plans/advanced-mode-ui-sweep.md` (scored + advisor-gated).
+
+---
+
+## D-016 — First Principles Engineering as a real-time design rule
+
+Context: the project has grown from Phase-0 scaffold to 15 SOTA domains, 30
+experiments, and >400 decision entries. As complexity compounds, the temptation
+grows to follow existing patterns or popular frameworks by default rather than
+reasoning from first principles about what each component actually needs.
+
+Options (score /100):
+1. **Mandate first-principles decomposition for every significant component** — 94 —
+   prevents cargo-cult architecture; forces explicit articulation of objectives,
+   constraints, and assumptions before choosing a solution; the decomposition
+   itself becomes documentation and review artefact.
+2. Follow established patterns from similar projects — 60 — faster but risks
+   importing accidental complexity and misaligned assumptions; TalkTeach is unusual
+   (offline desktop, training wizard, zero-config director) so patterns built for
+   server-side API services or notebook-based research often don't transfer cleanly.
+3. Delegate all design decisions to the AI coding assistant — 25 — abdicates
+   engineering judgment; the AI may replicate patterns from unrelated domains.
+4. Require formal architecture review for every change — 50 — introduces process
+   friction disproportionate to a small team's velocity; first-principles thinking
+   per component is lighter-weight and more actionable.
+5. "Ship the simplest thing that works" with no explicit decomposition — 55 —
+   works for small decisions but provides no defence against complexity
+   accumulation across 30+ components.
+
+Decision: **Option 1.** For every significant component: identify the core
+problem; distinguish essential from accidental complexity; challenge inherited
+assumptions; evaluate alternatives; justify the design with evidence and trade-off
+analysis; document why simpler or more general approaches were rejected. Optimize
+for correctness, simplicity, maintainability, extensibility, reproducibility, and
+measurable real-world performance. Avoid local optimizations that increase overall
+system complexity.
+
+Consequence: every substantial PR should make the first-principles reasoning
+visible — either in the commit message, the PR description, or a new/updated
+D-entry. The ADR-lite format already encodes "context → options scored →
+decision → consequence," which is a natural fit. The `docs/architecture/PLAN.md`
+Principles section records this as a standing engineering rule.
+
+## D-017 — Open Source Reuse Before Reinvention
+
+Context: TalkTeach integrates many third-party components (Whisper, CTranslate2,
+jiwer, faster-whisper, Silero VAD, espeak, piper, ruff, structlog, SQLite), but
+the decision to use (or not use) each one has been recorded ad hoc in separate
+D-entries. A standing policy makes the default explicit: existing, well-maintained
+OSS is the first choice.
+
+Options (score /100):
+1. **Codify "OSS first" as a standing engineering policy with documented
+   exceptions** — 92 — makes the expectation unambiguous for humans and AI agents;
+   prevents unnecessary reinvention; surfaces decision debt when custom code
+   exists without a written OSS-avoidance justification.
+2. Continue ad-hoc OSS evaluation per component — 65 — worked so far (jiwer over
+   hand-rolled WER, CT2 over custom export, ruff over flake8+black+isort) but
+   doesn't scale as the decision surface grows; ad-hoc evaluation is easy to skip.
+3. Require OSS for everything, no exceptions — 40 — unrealistic: the director
+   policy, trainer adapter, and experiment harness are TalkTeach-specific by
+   nature; the policy would force contortions.
+4. Prefer custom implementations to avoid dependency risk — 25 — contradicts the
+   project's actual track record (20+ OSS deps, zero regretted); increases
+   maintenance burden and bug surface.
+5. Assign a dependency curator to periodically audit — 55 — useful but reactive;
+   the proactive "before implementing" rule catches problems earlier.
+
+Decision: **Option 1.** Before implementing any non-trivial algorithm, utility,
+workflow, parser, optimizer, benchmark, visualization, or infrastructure
+component: search for mature OSS alternatives; compare multiple candidates;
+document trade-offs (maturity, maintenance, community, license, security,
+performance, extensibility, sustainability); prefer composition over custom
+implementation. Custom solutions require documented justification: no suitable OSS
+exists, measurable requirements cannot be met, licensing prevents use,
+security/compliance mandates custom, or requirements fundamentally differ.
+
+Consequence: every new dependency must be justified in a D-entry or a
+`THIRD_PARTY.md` entry; every custom implementation without an OSS-avoidance
+justification is a review finding. The `docs/architecture/PLAN.md` Principles
+section records this as a standing rule. Existing custom code (director policy,
+experiment harness, trainer adapter) already has implicit justification
+(repository-specific requirements) but should be documented explicitly.
+
+## D-018 — Continuous Technology Discovery as an ongoing improvement process
+
+Context: the OSS landscape evolves constantly (new ASR engines, quantization
+methods, alignment tools, TTS models). A one-time architecture review freezes the
+tech stack at a moment in time. Without a standing process, the project
+accumulates "unknown unknowns" — custom code that could have been replaced by a
+newer, better OSS component if someone had looked.
+
+Options (score /100):
+1. **Continuous discovery: identify replacement opportunities, rank them by
+   impact/effort/risk, validate through benchmarks before adoption** — 90 — turns
+   tech-stack maintenance from a reactive fire drill into a ranked, evidence-based
+   pipeline; the benchmark harness (D-013) already provides the measurement
+   infrastructure to validate "better."
+2. Periodic architecture review (e.g. quarterly) — 70 — structured but slow;
+   misses opportunities between reviews; quarterly is an eternity in the ML tools
+   ecosystem.
+3. Delegate to AI-assisted codebase analysis — 60 — useful as a trigger (AI
+   proposes replacements) but must be gated by human judgment and reproducible
+   benchmarks; the policy should describe the workflow, not just the tool.
+4. Do nothing; trust engineers to notice — 40 — passive; OSS-ecosystem awareness
+   varies across contributors; what one person knows, another doesn't.
+5. Automatically upgrade all dependencies to latest — 20 — maximises freshness but
+   ignores compatibility, stability, and the fact that "newer" ≠ "better" for
+   every use case.
+
+Decision: **Option 1.** Continuously identify opportunities to replace custom
+implementations with higher-quality OSS components. Produce a migration backlog
+ranked by expected impact, engineering effort, technical risk, maintenance cost
+reduction, and projected benchmark improvement. For each proposed replacement:
+estimate expected gains in correctness, performance, maintainability, reliability,
+developer productivity, and TCO; validate estimates through reproducible
+benchmarks before adoption. The benchmark harness (TTS×ASR WER/CER/time matrix,
+D-013) is the validation scaffold.
+
+Consequence: the migration backlog lives as a living document (initially in
+`COMPETITIVE_GAPS.md` or a new `TECH_RADAR.md`). Proposals that clear the
+benchmark gate become regular D-entries (like D-003 jiwer, D-009 ruff). The
+`docs/architecture/PLAN.md` Principles section records this as a standing process
+rule.

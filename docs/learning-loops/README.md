@@ -151,6 +151,7 @@ Results are also appended manually to `OVERALL.md` Part C for narrative context.
 | `docs/sota-benchmarks/SCOREBOARD.md` | Auto-generated scoreboard table |
 | `docs/sota-benchmarks/VALIDATION.md` | How to run validation, Docker, CI, troubleshooting |
 | `docs/ml/CALIBRATION.md` | Original calibration protocol and `scripts/calibrate.py` |
-| `docs/architecture/DECISIONS.md` | Decision log — where calibration changes are recorded |
+| `docs/architecture/DECISIONS.md` | Decision log — where calibration changes are recorded. D-016/D-017/D-018 codify the standing engineering rules. |
+| `docs/architecture/PLAN.md` | Implementation plan & standing engineering principles (first principles, OSS reuse, continuous discovery). |
 | `OVERALL.md` | Part B: the 30-experiment program. Part C: results log. |
 | `AGENTS.md` | Tool configuration for AI assistants |

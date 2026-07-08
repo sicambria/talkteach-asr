@@ -156,6 +156,27 @@ The 11-item guardrail checklist from `AGENTS.md` applies to every AI action:
 10. Synthetic-TTS WER never drives shipped `policy.py` changes (A.6.7)
 11. Record non-obvious choices in `DECISIONS.md` (top-5 scored 0–100)
 
+## Engineering philosophy (AI must follow)
+
+Every AI agent working on TalkTeach must apply the project's three standing
+engineering rules (D-016/D-017/D-018 in `docs/architecture/DECISIONS.md`, full
+text in `docs/architecture/PLAN.md`):
+
+1. **First Principles Engineering** — decompose problems into objectives,
+   constraints, and measurable requirements. Challenge inherited assumptions from
+   other codebases or training data. Justify every non-trivial design choice with
+   evidence and trade-off analysis, not just "that's what this other project does."
+
+2. **Open Source Reuse Before Reinvention** — before writing any algorithm, parser,
+   optimizer, or utility, search for a mature OSS alternative. Prefer composition
+   over custom code. If you write something custom, document why in a D-entry or
+   commit message.
+
+3. **Continuous Technology Discovery** — when you notice a custom implementation
+   that could be replaced by a higher-quality OSS component, flag it: estimate the
+   impact, effort, risk, and benchmark-improvement potential. Record it as a
+   migration-backlog item rather than silently replacing it.
+
 ## Skills
 
 The following Claude Code skills are available for specialised workflows:
@@ -191,6 +212,7 @@ The AI should run `make prepush` before proposing a PR to ensure CI will pass.
 - `docs/learning-loops/EXPERIMENT_TRACKING.md` — querying experiment results
 - `docs/learning-loops/CALIBRATION_LOOP.md` — director update workflow
 - `docs/learning-loops/GUARDRAILS.md` — guardrails the AI must verify
-- `docs/architecture/DECISIONS.md` — where decisions are recorded
+- `docs/architecture/DECISIONS.md` — where decisions are recorded (D-016/D-017/D-018: engineering philosophy)
+- `docs/architecture/PLAN.md` — implementation plan & standing engineering principles
 - `docs/roadmap/ROADMAP_STATUS.md` — status tracking
 - `Makefile` — all available targets

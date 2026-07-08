@@ -18,7 +18,7 @@ need no manual. Start with the [root README](../README.md) for the overview.
 | Doc | What it is |
 | --- | --- |
 | [DECISIONS.md](architecture/DECISIONS.md) | Decision log (ADR-lite) — every non-obvious choice, top-5 scored 0–100. |
-| [PLAN.md](architecture/PLAN.md) | Implementation plan / commit sequence (internal working doc). |
+| [PLAN.md](architecture/PLAN.md) | Implementation plan / commit sequence + standing engineering principles (first principles, OSS reuse, continuous discovery). |
 | [LEARNINGS.md](architecture/LEARNINGS.md) | Retrospective — what went wrong and the gotchas. |
 | [LANDSCAPE.md](architecture/LANDSCAPE.md) | Keeping the headline claim current. |
 | [COMPETITIVE_GAPS.md](architecture/COMPETITIVE_GAPS.md) | Parity with the best existing toolsets. |
