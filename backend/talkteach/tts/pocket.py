@@ -53,9 +53,6 @@ _POCKET_LANGUAGES: dict[str, str] = {
     "es": "spanish_24l",
 }
 
-# File extensions recognised as voice-cloning samples.
-_CLONE_EXTENSIONS: frozenset[str] = frozenset({".wav", ".mp3", ".flac", ".ogg", ".m4a"})
-
 
 class PocketTTSProvider(TTSProvider):
     """Synthesize speech with Kyutai's Pocket TTS (CPU, voice cloning).
@@ -81,7 +78,8 @@ class PocketTTSProvider(TTSProvider):
         download_dir: str | None = None,
     ) -> None:
         self.default_voice = default_voice
-        self.language = language
+        # Normalise short codes (``"en"``) to Pocket TTS config names (``"english"``).
+        self.language = _POCKET_LANGUAGES.get(language, language)
         self.quantize = quantize
         self.download_dir = (
             Path(download_dir) if download_dir else (config.DATA_ROOT / "pocket_tts")
@@ -111,24 +109,16 @@ class PocketTTSProvider(TTSProvider):
         return self._model
 
     def _ensure_voice(self, voice: str | None) -> Any:
-        name = voice or self.default_voice or _POCKET_VOICES.get("en", "alba")
-        if name is None:
-            raise TTSUnavailableError(
-                "no voice specified and no default configured — "
-                "pass a voice name, WAV path, or safetensors path"
-            )
-
-        if name in self._voice_cache:
-            return self._voice_cache[name]
-
+        # ``voice or self.default_voice`` is None when neither is set → use default
+        # catalog voice for English. The ``_POCKET_VOICES.get`` fallback means
+        # ``name`` is always a string after this line.
+        name = voice or self.default_voice or _POCKET_VOICES["en"]
         model = self._ensure_model()
-        state = model.get_state_for_audio_prompt(name)  # type: ignore[attr-defined]
-        self._voice_cache[name] = state
-        return state
 
-    def _resolve_voice(self, language: str | None) -> str | None:
-        lang = (language or "en").strip().lower()
-        return _POCKET_VOICES.get(lang)
+        if name not in self._voice_cache:
+            self._voice_cache[name] = model.get_state_for_audio_prompt(name)  # type: ignore[attr-defined]
+
+        return self._voice_cache[name]
 
     def synthesize(
         self,
