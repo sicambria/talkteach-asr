@@ -23,6 +23,8 @@ tts:
     voice: en
   - provider: piper
     voice: en_US-lessac-low   # 16 kHz native, small + fast to download
+  - provider: pocket-tts
+    voice: alba               # needs backend[pocket-tts], downloads ~100M weights
 
 # Both engines are in the same `small` (CPU/edge) fairness bracket, so they compete
 # head-to-head here. benchmarks/full.yaml shows the full small/medium/large matrix.

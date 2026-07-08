@@ -11,12 +11,14 @@ from __future__ import annotations
 from .base import TTSProvider, TTSUnavailableError
 from .espeak import EspeakProvider
 from .piper import PiperProvider
+from .pocket import PocketTTSProvider
 
 # Registry: name → zero-arg factory. Kept as factories (not instances) so importing
 # this package never constructs a provider or touches an optional dependency.
 _PROVIDERS: dict[str, type[TTSProvider]] = {
     "espeak": EspeakProvider,
     "piper": PiperProvider,
+    "pocket-tts": PocketTTSProvider,
 }
 
 
@@ -43,6 +45,7 @@ def get_tts_provider(name: str, **kwargs: object) -> TTSProvider:
 __all__ = [
     "EspeakProvider",
     "PiperProvider",
+    "PocketTTSProvider",
     "TTSProvider",
     "TTSUnavailableError",
     "available_providers",

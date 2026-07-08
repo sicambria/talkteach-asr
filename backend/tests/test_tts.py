@@ -1,6 +1,6 @@
 """Tests for the TTS providers and dataset builder (roadmap #1/#6).
 
-Three tiers, by dependency:
+Four tiers, by dependency:
 
 * **Dep-light (always run):** the registry, availability reporting, and the
   stdlib resampler in ``tts.base`` — no binary, no model, no torch.
@@ -9,6 +9,8 @@ Three tiers, by dependency:
 * **piper (``-m integration``):** real neural synthesis; needs the ``[tts]`` extra
   and downloads a small voice on first run, so it's opt-in like the other
   network/heavy paths.
+* **pocket-tts (``-m integration``):** real neural synthesis + voice cloning; needs
+  the ``[pocket-tts]`` extra. Downloads ~100M weights on first run.
 """
 
 from __future__ import annotations
@@ -20,12 +22,19 @@ import numpy as np
 import pytest
 
 from talkteach.audio.quality import Verdict, analyze_file
-from talkteach.tts import EspeakProvider, PiperProvider, available_providers, get_tts_provider
+from talkteach.tts import (
+    EspeakProvider,
+    PiperProvider,
+    PocketTTSProvider,
+    available_providers,
+    get_tts_provider,
+)
 from talkteach.tts.base import normalize_wav, wav_duration_s
 from talkteach.tts.dataset import synthesize_dataset
 
 _HAS_ESPEAK = EspeakProvider._binary() is not None
 _HAS_PIPER = importlib.util.find_spec("piper") is not None
+_HAS_POCKET_TTS = importlib.util.find_spec("pocket_tts") is not None
 # These tests synthesize *and* run the audio-quality gate, which decodes via
 # soundfile — an [ml] extra. The espeak marker means "binary + [ml]" (see
 # pyproject markers); without soundfile the test would ImportError instead of
@@ -49,9 +58,10 @@ def _write_wav(path: str, freq: float, rate: int, seconds: float = 1.0, channels
 
 
 def test_registry_lists_known_providers():
-    assert set(available_providers()) >= {"espeak", "piper"}
+    assert set(available_providers()) >= {"espeak", "piper", "pocket-tts"}
     assert isinstance(get_tts_provider("espeak"), EspeakProvider)
     assert isinstance(get_tts_provider("piper"), PiperProvider)
+    assert isinstance(get_tts_provider("pocket-tts"), PocketTTSProvider)
 
 
 def test_unknown_provider_raises():
@@ -110,6 +120,29 @@ def test_piper_synthesizes_good_clip(tmp_path):
     out = str(tmp_path / "hello.wav")
     provider = get_tts_provider("piper", download_dir=str(tmp_path / "voices"))
     provider.synthesize("look at the big blue sky today", out)
+    with wave.open(out, "rb") as wf:
+        assert wf.getframerate() == 16_000 and wf.getnchannels() == 1
+    assert analyze_file(out).verdict is Verdict.GOOD
+
+
+# -- pocket-tts (neural + voice cloning, downloads weights) ------------------
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _HAS_POCKET_TTS, reason="pocket-tts not installed ([pocket-tts] extra)")
+def test_pocket_tts_registered():
+    """PocketTTSProvider is available in the registry and reports the right type."""
+    provider = get_tts_provider("pocket-tts")
+    assert isinstance(provider, PocketTTSProvider)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _HAS_POCKET_TTS, reason="pocket-tts not installed ([pocket-tts] extra)")
+def test_pocket_tts_synthesizes_good_clip(tmp_path):
+    """Real synthesis via Pocket TTS with a catalog voice."""
+    out = str(tmp_path / "hello.wav")
+    provider = get_tts_provider("pocket-tts", default_voice="alba", language="english")
+    provider.synthesize("the cat sat on the warm mat", out)
     with wave.open(out, "rb") as wf:
         assert wf.getframerate() == 16_000 and wf.getnchannels() == 1
     assert analyze_file(out).verdict is Verdict.GOOD

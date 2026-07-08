@@ -40,6 +40,8 @@ tts:
     voice: en
   - provider: piper
     voice: en_US-lessac-medium   # 22 kHz neural voice, resampled to 16 kHz
+  - provider: pocket-tts
+    voice: alba                  # needs backend[pocket-tts], best quality + voice cloning
 
 engines:
   # ── small — CPU / edge (≤ ~170 M params), the CI-runnable bracket ───────────

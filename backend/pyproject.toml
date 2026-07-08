@@ -37,6 +37,10 @@ export = [
 # Synthetic speech for testing/benchmarking (roadmap #6). espeak-ng is a *system*
 # binary (apt-get install espeak-ng); only the neural piper voice is a pip dep.
 tts = ["piper-tts>=1.2"]
+# Kyutai Pocket TTS — high-quality neural TTS + voice cloning on CPU (roadmap #6).
+# Pulls in torch>=2.5 and ~100M weights on first use. Kept separate from [tts]
+# because pocket-tts brings torch (the [tts] group is intentionally torch-free).
+pocket-tts = ["pocket-tts>=2.1"]
 # NeMo is GPU-only and heavy; isolated so the base/[ml] installs stay light. The
 # NeMo engine self-skips without a GPU (see project/docs/BENCHMARKING.md).
 nemo = ["nemo_toolkit[asr]>=1.23"]
