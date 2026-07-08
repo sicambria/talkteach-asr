@@ -11,19 +11,41 @@ from collections.abc import Sequence
 from pathlib import Path
 
 
+def _normalize_text(text: str) -> str:
+    """Standard ASR text normalization: lowercase, remove punctuation, collapse whitespace."""
+    import re
+
+    text = text.lower()
+    text = re.sub(r"[^\w\s']", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
 def wer(references: list[str], hypotheses: list[str]) -> float:
-    """Word Error Rate via jiwer. Returns 0.0–1.0."""
+    """Word Error Rate via jiwer. Returns 0.0–1.0.
+
+    Applies standard ASR normalization (lowercase, remove punctuation) before
+    computing WER, matching the convention used in Whisper, LibriSpeech, and
+    most academic ASR benchmarks.
+    """
     from jiwer import process_words
 
-    output = process_words(references, hypotheses)
+    refs = [_normalize_text(r) for r in references]
+    hyps = [_normalize_text(h) for h in hypotheses]
+    output = process_words(refs, hyps)
     return output.wer
 
 
 def cer(references: list[str], hypotheses: list[str]) -> float:
-    """Character Error Rate via jiwer. Returns 0.0–1.0."""
+    """Character Error Rate via jiwer. Returns 0.0–1.0.
+
+    Applies the same normalization as wer().
+    """
     from jiwer import cer as _cer
 
-    return _cer(references, hypotheses)
+    refs = [_normalize_text(r) for r in references]
+    hyps = [_normalize_text(h) for h in hypotheses]
+    return _cer(refs, hyps)
 
 
 def rtf(total_audio_seconds: float, total_decode_seconds: float) -> float:

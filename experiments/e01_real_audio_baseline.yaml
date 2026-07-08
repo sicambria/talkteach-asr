@@ -1,0 +1,51 @@
+# Experiment E01: First Real-Audio Baseline
+# Pre-registered hypothesis (OVERALL.md Part B):
+#   Reproduce synthetic TTS baseline, then establish first real-audio WER on LibriSpeech.
+#
+# Status: COMPLETE (2026-07-08)
+# Results: docs/testing/journey-s1-real-audio-baseline.md
+
+experiment: e01_real_audio_baseline
+hypothesis: |
+  whisper-tiny on LibriSpeech test-clean will reproduce published WER (~8.3%)
+  within CI, establishing the first real-audio accuracy baseline for TalkTeach.
+
+metric: wer_on_librichspeech_test_clean
+binding_axis: WER (pooled, normalized)
+far_budget: N/A (open vocabulary transcription)
+
+baseline:
+  synthetic_proxy: 0.131  # whisper-tiny on synthetic TTS (quick.yaml)
+  published_whisper_tiny: 0.083  # OpenAI (2023) on full test-clean
+
+dod: |
+  Real-audio WER within published range (CI covers 8.3%)
+  AND at least 4 SOTA domains scored >=600 (bronze or better)
+
+results:
+  whisper_tiny_wer: 0.0516
+  whisper_small_wer: 0.0269
+  whisper_base_wer: 0.0317
+  domains_scored: 4  # D01, D04, D06, D12
+  overall_mean: 788  # silver
+
+banked: true
+banked_claims:
+  - "whisper-small achieves 2.69% WER on LibriSpeech test-clean (800/gold)"
+  - "Speed-accuracy trade-off: tiny (RTF 0.082, WER 5.16%) vs small (RTF 0.495, WER 2.69%)"
+  - "Noise robustness delta 8.7pp at 0dB SNR (800/gold)"
+  - "Speaker equity sigma 0.91% on 2 speakers (950/diamond, directional)"
+
+caveats:
+  - "D12 n=2 speakers (directional only)"
+  - "D06 uses synthetic noise (upper bound)"
+  - "First 100 sorted clips per domain"
+  - "HF datasets v5 incompat blocks D02, D07 (B-001)"
+
+bugs_found_and_fixed:
+  - "LibriSpeech .trans.txt naming convention (speaker-chapter.trans.txt)"
+  - "WER normalization missing punctuation stripping (jiwer default behavior)"
+
+next_lever: |
+  Fine-tune whisper-small on in-domain data (Stage 2/E12).
+  Expected >=20% relative WER reduction, could close gap to SOTA (1.8%).
