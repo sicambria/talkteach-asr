@@ -7,7 +7,7 @@
 PY := backend/.venv/bin/python
 RUFF := backend/.venv/bin/ruff
 
-.PHONY: help setup setup-ml test lint format check ui-check rust-check integration benchmark report sota sota-smoke sota-download experiment experiments-db all prepush
+.PHONY: help setup setup-ml test lint format check ui-check rust-check integration benchmark report sota sota-smoke sota-rescore sota-download experiment experiments-db all prepush
 
 help:  ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -47,6 +47,9 @@ sota: sota-download  ## Run full SOTA validation (train+eval) — needs [ml], CP
 sota-smoke:  ## Fast SOTA smoke: D01+D04 only, no training (CI-safe, ~5 min with [ml]).
 	backend/.venv/bin/python scripts/sota/validate_d01_wer_clean.py --baseline-only --json /tmp/sota_d01.json || true
 	backend/.venv/bin/python scripts/sota/validate_d04_rtf.py --baseline-only --json /tmp/sota_d04.json || true
+
+sota-rescore:  ## Re-apply scoring policy to the banked SCOREBOARD.json and regenerate (seconds, no GPU/network).
+	$(PY) -m talkteach.sota.rescore
 
 experiment:  ## Run a pre-registered experiment from experiments/<name>.yaml.
 	backend/.venv/bin/python -m talkteach.obs.sweep_runner --config experiments/$(EXP).yaml

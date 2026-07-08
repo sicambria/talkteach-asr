@@ -14,6 +14,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Use the project venv by default (bare `python` is often absent); override with PYTHON=...
+PYTHON="${PYTHON:-$REPO_ROOT/backend/.venv/bin/python}"
 RESULTS_DIR="/tmp/sota_results"
 BASELINE_FILE="$RESULTS_DIR/.baseline_scores.json"
 OUTPUT_DIR="$REPO_ROOT/docs/sota-benchmarks"
@@ -75,7 +77,7 @@ for script in "${SCRIPTS[@]}"; do
   json_out="$RESULTS_DIR/${name}.json"
 
   echo "--- $name ---"
-  if python "$script" $EXTRA_ARGS --json "$json_out" 2>&1; then
+  if "$PYTHON" "$script" $EXTRA_ARGS --json "$json_out" 2>&1; then
     echo "  OK"
   else
     echo "  FAILED (exit code $?)"
@@ -86,7 +88,7 @@ done
 
 echo "=== Collecting results ==="
 SCORES_JSON="$RESULTS_DIR/all_scores.json"
-python -c "
+"$PYTHON" -c "
 import json, glob, os
 
 results_dir = '$RESULTS_DIR'
@@ -107,11 +109,12 @@ echo ""
 echo "=== Generating SCOREBOARD.md ==="
 cd "$REPO_ROOT/backend"
 PYTHONPATH="$REPO_ROOT/backend:$REPO_ROOT" \
-  python -c "
+  "$PYTHON" -c "
 import json, sys
 from pathlib import Path
 from talkteach.sota.harness import Scoreboard, SOTAResult
 from talkteach.sota.report import generate
+from talkteach.sota.scoring import aggregate_headline
 
 data = json.loads(Path('$SCORES_JSON').read_text())
 results = []
@@ -135,11 +138,21 @@ for d in data:
     )
     results.append(r)
 
-sb = Scoreboard(domains=results)
-scores_only = [r.score_0_1000 for r in results if r.score_0_1000 > 0]
-sb.overall_mean = sum(scores_only) / len(scores_only) if scores_only else 0.0
+# Honest headline: mean over adequately-powered domains only (small-n gate),
+# with under-powered results flagged directional. Also sets r.directional.
+h = aggregate_headline(results)
+sb = Scoreboard(
+    domains=results,
+    overall_mean=h['overall_mean'],
+    overall_band=h['overall_band'],
+    num_total=h['num_total'],
+    num_measured=h['num_measured'],
+    num_eligible=h['num_eligible'],
+    num_directional=h['num_directional'],
+    num_unmeasured=h['num_unmeasured'],
+)
 md, jd = generate(sb, Path('$OUTPUT_DIR'))
-print(f'  SCOREBOARD.md written ({len(results)} domains)')
+print(f'  SCOREBOARD.md written ({len(results)} domains, headline {sb.overall_mean:.0f}/{sb.overall_band}, {sb.num_eligible} powered)')
 " 2>&1
 
 # --- regression check ---
@@ -147,8 +160,8 @@ echo ""
 if [ -f "$BASELINE_FILE" ]; then
   echo "=== Regression check vs baseline ==="
   REGRESSIONS=0
-  python -c "
-import json
+  "$PYTHON" -c "
+import json, sys
 baseline = json.load(open('$BASELINE_FILE'))
 current = json.load(open('$SCORES_JSON'))
 regressions = 0

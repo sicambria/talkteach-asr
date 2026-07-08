@@ -1,5 +1,12 @@
 # SOTA Validation — Running the Benchmarks
 
+> **Reference appendix to [`OVERALL.md`](../../OVERALL.md)** — the single authoritative SOTA
+> document. To **re-apply the scoring policy to already-banked measurements** without a GPU or
+> re-measurement (seconds), run **`make sota-rescore`**: it rewrites
+> [`SCOREBOARD.md`](SCOREBOARD.md) / `.json` from their own raw metrics and preserves the
+> measurement `generated` stamp. A *fresh* measurement (`make sota-baseline` / `make sota`)
+> advances the stamp — then update the stamp reference at the top of `OVERALL.md`.
+
 How to run the SOTA benchmark suite, what each command does, what you need
 installed, and how to troubleshoot common failures.
 

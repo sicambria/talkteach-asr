@@ -27,7 +27,9 @@ results:
   whisper_small_wer: 0.0269
   whisper_base_wer: 0.0317
   domains_scored: 4  # D01, D04, D06, D12
-  overall_mean: 788  # silver
+  overall_mean: 788  # as-scored 2026-07-08 under the pre-small-n-gate policy; SUPERSEDED —
+  # the current headline is provisional (small-n gate excludes D04/D06/D12); see
+  # docs/sota-benchmarks/SCOREBOARD.json and OVERALL.md Part E.
 
 banked: true
 banked_claims:

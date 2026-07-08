@@ -9,6 +9,20 @@ import math
 import time
 from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from talkteach.sota.domains import Domain
+
+# Overall-band thresholds, shared by the harness and the rescore entrypoint.
+OVERALL_BANDS: list[tuple[int, str]] = [
+    (1000, "sota"),
+    (950, "diamond"),
+    (900, "platinum"),
+    (800, "gold"),
+    (700, "silver"),
+    (600, "bronze"),
+]
 
 
 def _normalize_text(text: str) -> str:
@@ -197,3 +211,84 @@ def aggregate_wer(
             weighted = float(np.sum(arr * d) / total)
             return mean, weighted
     return mean, mean
+
+
+def assess_headline_eligibility(domain: Domain, metrics: dict[str, Any]) -> tuple[bool, str]:
+    """Whether a *measured* domain has enough samples to count toward the headline.
+
+    A domain that produced a score can still be statistically under-powered
+    (e.g. a per-speaker variance over n=2 speakers, or a WER over fewer clips
+    than the domain declares). Such results are kept and shown with their score,
+    but flagged "directional" and excluded from the overall mean so the headline
+    reflects only adequately-powered evidence.
+
+    Returns (eligible, reason); reason is "" when eligible.
+    """
+    # Per-speaker metrics need enough distinct speakers, not merely enough clips.
+    min_speakers = int(getattr(domain, "min_speakers", 0) or 0)
+    if min_speakers > 0:
+        n_spk = int(metrics.get("num_speakers", 0) or 0)
+        if n_spk < min_speakers:
+            return False, f"directional: {n_spk} speaker(s) < {min_speakers} required"
+    # Clip-count validity against the domain's own declared minimum.
+    min_samples = int(getattr(domain, "min_samples", 0) or 0)
+    n_clips = int(metrics.get("num_clips", metrics.get("num_samples", 0)) or 0)
+    if min_samples > 0 and n_clips > 0 and n_clips < min_samples:
+        return False, f"directional: {n_clips} clips < {min_samples} required"
+    return True, ""
+
+
+def aggregate_headline(results: Sequence[Any], min_eligible_for_band: int = 3) -> dict[str, Any]:
+    """Compute the honest headline from per-domain results.
+
+    - measured    = score > 0 (attempted and produced a number)
+    - eligible    = measured AND adequately powered (assess_headline_eligibility)
+    - directional = measured but under-powered (kept, shown, excluded from mean)
+    - overall_mean is the mean over *eligible* domains only; the band is
+      "provisional" until at least ``min_eligible_for_band`` domains are
+      adequately powered, so a single domain can't headline a grade.
+
+    Each result gains ``directional``/``directional_reason`` as a side effect.
+    Returns coverage counts + the overall mean/band.
+    """
+    from talkteach.sota.domains import get_domain
+
+    total = len(results)
+    measured = [r for r in results if getattr(r, "score_0_1000", 0) > 0]
+    eligible: list[Any] = []
+    directional: list[Any] = []
+
+    for r in measured:
+        dom = get_domain(r.domain_id)
+        ok, reason = (True, "")
+        if dom is not None:
+            ok, reason = assess_headline_eligibility(dom, getattr(r, "metrics", {}) or {})
+        # annotate the result in place (harness/report/rescore all read these)
+        try:
+            r.directional = not ok
+            r.directional_reason = reason
+        except AttributeError:
+            pass
+        (eligible if ok else directional).append(r)
+
+    scores = [r.score_0_1000 for r in eligible]
+    overall_mean = sum(scores) / len(scores) if scores else 0.0
+
+    if len(eligible) < min_eligible_for_band:
+        overall_band = "provisional"
+    else:
+        overall_band = "bronze"
+        for thresh, name in OVERALL_BANDS:
+            if overall_mean >= thresh:
+                overall_band = name
+                break
+
+    return {
+        "overall_mean": overall_mean,
+        "overall_band": overall_band,
+        "num_total": total,
+        "num_measured": len(measured),
+        "num_eligible": len(eligible),
+        "num_directional": len(directional),
+        "num_unmeasured": total - len(measured),
+    }

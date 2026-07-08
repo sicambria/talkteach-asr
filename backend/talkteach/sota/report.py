@@ -29,14 +29,20 @@ def generate_scoreboard_md(
     lines.append("# TalkTeach SOTA Scoreboard")
     lines.append("")
     lines.append(f"**Generated:** {scoreboard.generated}")
+    lines.append("")
+    lines.append(f"**Headline:** {scoreboard.overall_mean:.0f}/1000 — {scoreboard.overall_band}")
+    lines.append("")
     lines.append(
-        f"**Overall Mean:** {scoreboard.overall_mean:.0f}/1000 — Band: {scoreboard.overall_band}"
+        f"**Coverage:** {scoreboard.num_eligible}/{scoreboard.num_total} domains "
+        f"adequately powered · {scoreboard.num_directional} directional (measured but "
+        f"under-powered, excluded from the mean) · {scoreboard.num_unmeasured} "
+        f"unmeasured/blocked. The headline is the mean over adequately-powered domains only."
     )
     lines.append("")
     lines.append("## Summary")
     lines.append("")
     lines.append("| # | Domain | Score | Band | Primary Metric | Value |")
-    lines.append("|---|---|---|---|---|")
+    lines.append("|---|---|---|---|---|---|")
 
     for i, r in enumerate(scoreboard.sorted_by_score, 1):
         emoji = BAND_EMOJI.get(r.band, "")
@@ -44,8 +50,9 @@ def generate_scoreboard_md(
         primary_val = r.metrics.get(primary_key, "—")
         if isinstance(primary_val, float):
             primary_val = f"{primary_val:.4f}"
+        band_cell = f"{r.band} ⚠︎ directional" if getattr(r, "directional", False) else r.band
         lines.append(
-            f"| {i} | {emoji} {r.domain_name} | **{r.score_0_1000}** | {r.band} | "
+            f"| {i} | {emoji} {r.domain_name} | **{r.score_0_1000}** | {band_cell} | "
             f"{primary_key} | {primary_val} |"
         )
 
@@ -59,6 +66,8 @@ def generate_scoreboard_md(
         lines.append(f"- **Score:** {r.score_0_1000}/1000 ({r.band})")
         lines.append(f"- **Engine:** {r.engine_used}")
         lines.append(f"- **Samples:** {r.num_samples}")
+        if getattr(r, "directional", False):
+            lines.append(f"- **Headline:** excluded — {r.directional_reason or 'under-powered'}")
         lines.append(f"- **SOTA Reference:** {r.sota_ref}")
         if r.notes:
             lines.append(f"- **Notes:** {r.notes}")
@@ -83,6 +92,13 @@ def generate_scoreboard_json(
         "generated": scoreboard.generated,
         "overall_mean": scoreboard.overall_mean,
         "overall_band": scoreboard.overall_band,
+        "coverage": {
+            "num_total": scoreboard.num_total,
+            "num_measured": scoreboard.num_measured,
+            "num_eligible": scoreboard.num_eligible,
+            "num_directional": scoreboard.num_directional,
+            "num_unmeasured": scoreboard.num_unmeasured,
+        },
         "domains": [],
     }
     for r in scoreboard.domains:
@@ -91,6 +107,8 @@ def generate_scoreboard_json(
             "domain_name": r.domain_name,
             "score_0_1000": r.score_0_1000,
             "band": r.band,
+            "directional": getattr(r, "directional", False),
+            "directional_reason": getattr(r, "directional_reason", ""),
             "metrics": r.metrics,
             "confidence_95": {k: list(v) for k, v in r.confidence_95.items()},
             "baseline_ref": r.baseline_ref,

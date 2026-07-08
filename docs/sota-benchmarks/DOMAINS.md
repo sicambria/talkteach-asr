@@ -1,5 +1,10 @@
 # SOTA Benchmark Domains
 
+> **Reference appendix to [`OVERALL.md`](../../OVERALL.md)** — the single authoritative SOTA
+> document. Domain definitions/anchors are single-sourced from
+> `backend/talkteach/sota/domains.py`; live scores live in the generated
+> [`SCOREBOARD.md`](SCOREBOARD.md). This file mirrors the code for reading convenience.
+
 All 15 domains defined in `backend/talkteach/sota/domains.py`. Each domain
 measures one dimension of ASR quality on a 0–1000 scale anchored to a specific
 real-world production system.
@@ -31,7 +36,9 @@ real-world production system.
 **Metric:** WER on LibriSpeech test-clean (read speech, studio quality).
 The most widely cited ASR benchmark.
 
-**SOTA=1000:** whisper-large-v3 @ ~1.8% WER on LibriSpeech test-clean (OpenAI, 2023)
+**SOTA=1000:** the 1000-tier (<1.0% WER) exceeds all known production ASR; reference
+whisper-large-v3 ≈ 1.8–2.7% WER on LibriSpeech test-clean depending on normalization
+(OpenAI HF model card ~2.7%)
 
 **Engines:** `whisper_lora`, `wav2vec2_ctc`
 
@@ -431,7 +438,7 @@ for d in ALL_DOMAINS:
 # Look up a specific domain
 d01 = get_domain("d01_wer_clean")
 print(d01.sota_1000_reference)
-# => "whisper-large-v3 @ 1.8% WER on LibriSpeech test-clean (OpenAI, 2023)"
+# => "whisper-large-v3 ≈ 1.8–2.7% WER on LibriSpeech test-clean depending on normalization ..."
 
 # Check if a value achieves a band
 from talkteach.sota.scoring import score_against_bands

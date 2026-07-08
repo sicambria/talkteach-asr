@@ -1,5 +1,10 @@
 # SOTA Benchmark Scale
 
+> **Reference appendix to [`OVERALL.md`](../../OVERALL.md)** — the single authoritative SOTA
+> document. Live scores are single-sourced from the generated
+> [`SCOREBOARD.md`](SCOREBOARD.md) / `.json`; this file explains the *scale and scoring*, it does
+> not hold current results. Regenerate the scoreboard with `make sota-rescore`.
+
 TalkTeach measures progress on a **1000-point scale** anchored to the best known
 real-world production ASR system. Score = 1000 means "at or above the best
 publicly documented system on this metric." Score = 0 means "not functional."
@@ -69,7 +74,7 @@ This is not an abstract target — it's a documented, publicly verifiable claim:
 
 | Domain | SOTA=1000 reference |
 |--------|-------------------|
-| D01 Clean WER | whisper-large-v3 @ ~1.8% WER on LibriSpeech test-clean (OpenAI, 2023) |
+| D01 Clean WER | whisper-large-v3 ≈ 1.8–2.7% WER on LibriSpeech test-clean (OpenAI HF card ~2.7%); 1000-tier (<1.0%) exceeds all known production ASR |
 | D02 Spontaneous | Best commercial APIs (Deepgram Nova-2, Whisper API) on Common Voice en |
 | D03 Training efficiency | whisper-tiny LoRA on A100: ~0.17 GPU-hr to converge on 1hr data |
 | D04 RTF | faster-whisper CT2 int8 tiny @ RTF ~0.02 on modern CPU |
@@ -87,9 +92,13 @@ This is not an abstract target — it's a documented, publicly verifiable claim:
 
 ## Overall score
 
-The overall TalkTeach SOTA score is the **mean** of all measured domain scores.
-An overall band is assigned by the same threshold logic. Domains that are
-"unmeasured" or "pending" are excluded from the mean.
+The overall TalkTeach SOTA score is the **mean over adequately-powered domains only**. A domain
+that produced a score but is statistically under-powered — too few clips against its declared
+`min_samples`, or a per-speaker metric over fewer than `min_speakers` speakers — is kept and shown
+but flagged **directional** and **excluded from the mean** (see `scoring.aggregate_headline`).
+"Unmeasured"/"pending" domains are excluded too. The headline reads **`provisional`** until at
+least 3 domains are adequately powered, so a single domain cannot headline a grade. Coverage
+(measured / directional / unmeasured) is reported beside the headline.
 
 ## Scoreboard
 
@@ -109,16 +118,17 @@ A typical scoreboard entry:
 
 ## TalkTeach's honest position
 
-As of `OVERALL.md` Part A.1:
+As of `OVERALL.md` Part A (see it for the current, single-sourced state):
 
 - **Capability-SOTA** (the product thesis: "there is no OSS next-next-finish GUI
   for training ASR") is largely delivered
-- **Accuracy-SOTA** (competitive WER against real benchmarks) has **zero baseline**
-  — no LibriSpeech, Common Voice, or FLEURS number exists
+- **Accuracy-SOTA** — a real-audio program **exists** (journey S1, 2026-07-08) but is early:
+  one adequately-powered domain (D01 clean-speech WER on real LibriSpeech), three under-powered
+  directional readings, the rest unmeasured or blocked (B-001). The headline is `provisional`.
 
-The 1000-point scale exists to change this. Each domain is pre-registered with a
-measurement method, a SOTA reference, and band thresholds. The first task
-(OVERALL.md E02) is to establish the first real-audio baseline.
+The 1000-point scale exists to grow this coverage. Each domain is pre-registered with a
+measurement method, a SOTA reference, and band thresholds. The current frontier (Stage 3) is
+model-size scaling + unblocking B-001 + making the baseline representative — see `OVERALL.md`.
 
 ## Band definitions per domain
 

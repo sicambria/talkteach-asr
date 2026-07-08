@@ -1,5 +1,15 @@
 # SOTA Methodology — Statistical Rigor
 
+> **Reference appendix to [`OVERALL.md`](../../OVERALL.md)** — the single authoritative SOTA
+> document. Live numbers are single-sourced from the generated
+> [`SCOREBOARD.md`](SCOREBOARD.md); this file documents the statistical protocol.
+>
+> **Headline gate (added 2026-07):** the overall band is the mean over *adequately-powered*
+> domains only. A measured domain that is under-powered — too few clips vs its declared
+> `min_samples`, or a per-speaker metric over fewer than `min_speakers` speakers — is kept and
+> shown but flagged **directional** and excluded from the mean (`scoring.aggregate_headline`).
+> The headline reads **`provisional`** until ≥3 domains are adequately powered.
+
 Every SOTA score is backed by a documented statistical protocol. This is not
 optional: unmeasured variance, small samples, or data leakage can inflate a score
 by 100+ points, creating the illusion of progress. The protocol is enforced by
