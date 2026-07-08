@@ -7,6 +7,7 @@
 # Usage:
 #   ./setup.sh                 # full install (system + rust + node + python light)
 #   ./setup.sh --with-ml       # also install the heavy ML stack (torch, transformers, …)
+#   ./setup.sh --with-sota     # install ML stack + download SOTA benchmark datasets (~2.1 GB)
 #   ./setup.sh --backend-only  # only the Python backend (no system/rust/node)
 #   ./setup.sh --skip-system   # skip the sudo apt/dnf/pacman/brew step
 #   ./setup.sh --skip-rust     # skip rustup + the root Tauri CLI (desktop build)
@@ -21,6 +22,7 @@ cd "$REPO_ROOT"
 
 # --- options -----------------------------------------------------------------
 WITH_ML=0
+WITH_SOTA=0
 SKIP_SYSTEM=0
 SKIP_RUST=0
 BACKEND_ONLY=0
@@ -28,6 +30,7 @@ BACKEND_ONLY=0
 for arg in "$@"; do
   case "$arg" in
     --with-ml)      WITH_ML=1 ;;
+    --with-sota)    WITH_ML=1; WITH_SOTA=1 ;;
     --skip-system)  SKIP_SYSTEM=1 ;;
     --skip-rust)    SKIP_RUST=1 ;;
     --backend-only) BACKEND_ONLY=1; SKIP_SYSTEM=1; SKIP_RUST=1 ;;
@@ -130,6 +133,16 @@ if [ "$BACKEND_ONLY" -eq 0 ]; then
 fi
 install_python || warn "python step failed"
 
+# --- SOTA datasets (optional, needs --with-sota) ------------------------------
+if [ "$WITH_SOTA" -eq 1 ]; then
+  log "Downloading SOTA benchmark datasets (~2.1 GB)"
+  if [ -x "$VENV_PY" ]; then
+    bash scripts/sota/download_data.sh || warn "SOTA data download failed/partial"
+  else
+    warn "Python venv not found — skip SOTA data download"
+  fi
+fi
+
 # --- verify ------------------------------------------------------------------
 log "Verifying"
 VENV_PY="$REPO_ROOT/backend/.venv/bin/python"
@@ -149,4 +162,5 @@ Next:
   Desktop app    : npm run tauri dev          (needs system deps + Rust)
   Real training  : re-run with --with-ml
   Benchmark      : python scripts/benchmark.py --config benchmarks/quick.yaml  (needs --with-ml)
+  SOTA benchmark : bash scripts/sota/run_all.sh --baseline  (needs --with-sota)
 EOF

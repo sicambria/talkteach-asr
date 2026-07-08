@@ -1,0 +1,44 @@
+FROM python:3.11-slim-bookworm
+
+LABEL org.opencontainers.image.title="TalkTeach SOTA Benchmark"
+LABEL org.opencontainers.image.description="Reproducible SOTA benchmark environment for TalkTeach ASR"
+LABEL org.opencontainers.image.source="https://github.com/sicambria/talkteach-asr"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    espeak-ng \
+    git \
+    curl \
+    ca-certificates \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN espeak-ng --version && ffmpeg -version | head -1
+
+WORKDIR /workspace
+
+ENV PYTHONUNBUFFERED=1
+ENV TALKTEACH_DATA_ROOT=/data
+ENV TALKTEACH_SOTA_CACHE=/data/.cache
+
+COPY backend/pyproject.toml backend/
+COPY backend/talkteach/__init__.py backend/talkteach/
+
+RUN pip install --no-cache-dir -e 'backend[ml,tts,export,dev]'
+
+COPY . .
+
+VOLUME ["/data"]
+
+RUN mkdir -p /data/.cache/huggingface
+
+ENTRYPOINT ["python", "-m", "pytest", "-q"]
+CMD ["--tb=short"]
+
+LABEL talkteach.commands="\
+  SOTA all domains:  bash scripts/sota/run_all.sh --baseline\n\
+  SOTA single:       python scripts/sota/validate_d01_wer_clean.py\n\
+  Experiments:       python -m talkteach.obs.experiment_db --recent 10\n\
+  Tests:             python -m pytest -q\n\
+  Integration:       TALKTEACH_RUN_INTEGRATION=1 python -m pytest -m integration\
+"

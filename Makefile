@@ -7,7 +7,7 @@
 PY := backend/.venv/bin/python
 RUFF := backend/.venv/bin/ruff
 
-.PHONY: help setup setup-ml test lint format check ui-check rust-check integration benchmark report all prepush
+.PHONY: help setup setup-ml test lint format check ui-check rust-check integration benchmark report sota sota-smoke sota-download experiment experiments-db all prepush
 
 help:  ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -32,6 +32,27 @@ benchmark:  ## Run the TTS×ASR benchmark + print the ELO scoreboard (needs setu
 
 report:  ## Run the full benchmark fully automatically and RECORD benchmarks/REPORT.md.
 	bash scripts/full_report.sh
+
+SOTA_ENGINES ?= whisper-tiny,whisper-small
+
+sota-download:  ## Download all SOTA benchmark datasets (~2.1 GB).
+	bash scripts/sota/download_data.sh
+
+sota-baseline: sota-download  ## Measure baseline (untrained) WER across all SOTA domains.
+	bash scripts/sota/run_all.sh --baseline --engines $(SOTA_ENGINES)
+
+sota: sota-download  ## Run full SOTA validation (train+eval) — needs [ml], CPU: hours.
+	bash scripts/sota/run_all.sh --engines $(SOTA_ENGINES)
+
+sota-smoke:  ## Fast SOTA smoke: D01+D04 only, no training (CI-safe, ~5 min with [ml]).
+	backend/.venv/bin/python scripts/sota/validate_d01_wer_clean.py --baseline-only --json /tmp/sota_d01.json || true
+	backend/.venv/bin/python scripts/sota/validate_d04_rtf.py --baseline-only --json /tmp/sota_d04.json || true
+
+experiment:  ## Run a pre-registered experiment from experiments/<name>.yaml.
+	backend/.venv/bin/python -m talkteach.obs.sweep_runner --config experiments/$(EXP).yaml
+
+experiments-db:  ## Show recent experiment results from the experiment registry.
+	backend/.venv/bin/python -m talkteach.obs.experiment_db --recent 10
 
 lint:  ## Lint Python (ruff) without modifying files.
 	$(RUFF) check backend/talkteach backend/tests
