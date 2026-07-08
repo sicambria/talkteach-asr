@@ -142,7 +142,7 @@
   "hooks": {
     "requiredBinaries": [],
     "prePushLogDir": ".prepush-logs",
-    "priorHooksPath": ".harness/hooks",
+    "priorHooksPath": null,
     "managed": true,
     "chained": {
       "pre-push": [
