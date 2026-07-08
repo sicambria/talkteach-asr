@@ -1,0 +1,222 @@
+{
+  "generated": "2026-07-08T14:00:54.165418+00:00",
+  "overall_mean": 787.5,
+  "overall_band": "silver",
+  "domains": [
+    {
+      "domain_id": "d01_wer_clean",
+      "domain_name": "ASR Accuracy \u2014 Clean Speech",
+      "score_0_1000": 800,
+      "band": "gold",
+      "metrics": {
+        "wer": 0.02685,
+        "cer": 0.00852,
+        "num_clips": 100
+      },
+      "confidence_95": {
+        "wer": [
+          0.02194,
+          0.07053
+        ]
+      },
+      "baseline_ref": "whisper-small CT2 int8, beam=5, 100 LS test-clean clips",
+      "sota_ref": "whisper-large-v3 @ 1.8% WER on LibriSpeech test-clean (OpenAI, 2023)",
+      "num_samples": 100,
+      "engine_used": "small",
+      "notes": "First real-audio baseline. 2.69% WER - 0.89pp from SOTA."
+    },
+    {
+      "domain_id": "d04_rtf",
+      "domain_name": "Inference Speed - Real-Time Factor",
+      "score_0_1000": 600,
+      "band": "bronze",
+      "metrics": {
+        "rtf": 0.495,
+        "num_clips": 20
+      },
+      "confidence_95": {},
+      "baseline_ref": "whisper-small CT2 int8, 20 LS test-clean clips",
+      "sota_ref": "faster-whisper CT2 int8 tiny @ RTF ~0.02 on modern CPU",
+      "num_samples": 20,
+      "engine_used": "small",
+      "notes": "~2x real-time. Accuracy-speed trade-off vs tiny (RTF 0.082, WER 5.16%)."
+    },
+    {
+      "domain_id": "d06_noise_robustness",
+      "domain_name": "Noise Robustness - WER at 0dB SNR",
+      "score_0_1000": 800,
+      "band": "gold",
+      "metrics": {
+        "wer_delta_at_0db": 0.08696,
+        "clean": 0.01708,
+        "num_clips": 30
+      },
+      "confidence_95": {},
+      "baseline_ref": "whisper-small, synthetic noise, 5 SNR levels",
+      "sota_ref": "Denoised Whisper + DeepFilterNet: delta <3% at 0dB SNR",
+      "num_samples": 30,
+      "engine_used": "small",
+      "notes": "8.7pp degradation at 0dB. Denoising needed for improvement."
+    },
+    {
+      "domain_id": "d12_speaker_equity",
+      "domain_name": "Speaker/Accent Generalization",
+      "score_0_1000": 950,
+      "band": "diamond",
+      "metrics": {
+        "per_speaker_wer_std": 0.00909,
+        "speaker_wer_spread": 0.01286,
+        "num_speakers": 2
+      },
+      "confidence_95": {},
+      "baseline_ref": "whisper-small, 2 LS speakers",
+      "sota_ref": "Best commercial ASR: per-speaker WER sigma < 1.5%",
+      "num_samples": 2,
+      "engine_used": "small",
+      "notes": "n=2 speakers (directional). Full 40-speaker measurement needed."
+    },
+    {
+      "domain_id": "d02_wer_spontaneous",
+      "domain_name": "ASR Accuracy - Spontaneous/Conversational",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Blocked: HF datasets v5 incompat (B-001)"
+    },
+    {
+      "domain_id": "d03_train_efficiency",
+      "domain_name": "Training Efficiency",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Requires training run"
+    },
+    {
+      "domain_id": "d05_data_efficiency",
+      "domain_name": "Data Efficiency",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Requires training at multiple data sizes"
+    },
+    {
+      "domain_id": "d07_multilingual",
+      "domain_name": "Multilingual Coverage",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Blocked: HF datasets v5 incompat (B-001)"
+    },
+    {
+      "domain_id": "d08_export_fidelity",
+      "domain_name": "Export Portability",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Requires CT2 export + compare to fp32"
+    },
+    {
+      "domain_id": "d09_augmentation",
+      "domain_name": "Augmentation Efficacy",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Requires training with augmentation variants"
+    },
+    {
+      "domain_id": "d10_decoding",
+      "domain_name": "Decoding Quality",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Requires beam/hotword sweep"
+    },
+    {
+      "domain_id": "d11_longform",
+      "domain_name": "Long-Form Reliability",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Requires long-form audio"
+    },
+    {
+      "domain_id": "d13_director_accuracy",
+      "domain_name": "Director Auto-Selection",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Requires director calibration"
+    },
+    {
+      "domain_id": "d14_quality_gate",
+      "domain_name": "Data Quality Gate",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Requires hand-labelled quality set"
+    },
+    {
+      "domain_id": "d15_resource_efficiency",
+      "domain_name": "Resource Efficiency",
+      "score_0_1000": 0,
+      "band": "unmeasured",
+      "metrics": {},
+      "confidence_95": {},
+      "baseline_ref": "",
+      "sota_ref": "",
+      "num_samples": 0,
+      "engine_used": "",
+      "notes": "Requires disk/RAM measurement"
+    }
+  ]
+}
