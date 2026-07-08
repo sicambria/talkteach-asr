@@ -388,14 +388,14 @@ existing pure-helper + guarded-ML bar (D-002), and keep the rest at its honest t
   NOT invent a `TrainingArguments` flag that maps to nothing.
 
 Rejected: (a) faking installers/cloud/art/GPU items to mark them "done" — dishonest;
-they stay deferred with reasons (see `plans/roadmap-parity-batch.md`). (b) pulling
+they stay deferred with reasons (see `docs/plans/roadmap-parity-batch.md`). (b) pulling
 the 🟡 app-surface items (#29 multi-project, #34 publish, #30 denoise) into this
 batch — they need UI refactors / network-auth / a neural model, i.e. outside the
 "additive + pure + CPU-testable" boundary that defines this batch.
 
 Consequence: every new module imports torch-free and is exercised by the default
 `make test`; heavy paths stay guarded and CLI-invocable on an `[ml]` machine. The
-plan of record is `plans/roadmap-parity-batch.md` (scored + advisor-gated).
+plan of record is `docs/plans/roadmap-parity-batch.md` (scored + advisor-gated).
 
 ## D-015 — Easy/Advanced product tiers + surfacing the parity features in the UI
 
@@ -409,7 +409,7 @@ toggle (`advancedMode`) that reveals full detail/config. The persona wording is
 gone across the repo (one code identifier renamed: `grownUpMode → advancedMode`; no
 API/DB/i18n-key changes). The friendly Easy-mode tone (mascot, bright palette,
 "smartness" meter) is **kept on purpose** — friendly ≠ childish — and is the right
-register for an easy tier. Plan of record: `plans/terminology-easy-advanced.md`.
+register for an easy tier. Plan of record: `docs/plans/terminology-easy-advanced.md`.
 
 **Where shipped-but-UI-less features live.** The parity batch (#46–57, D-014) shipped
 backend + CLI only. Advanced mode is their home: export-format picker (#57),
@@ -429,4 +429,4 @@ Two honesty rules we held:
 Rejected: (a) surfacing everything in the Easy wizard — it would bloat the one path
 that must stay simple; (b) a full de-infantilization (removing the mascot / neutral
 palette) — out of scope for this pass (labels-only tone was the chosen tier). Plan of
-record: `plans/advanced-mode-ui-sweep.md` (scored + advisor-gated).
+record: `docs/plans/advanced-mode-ui-sweep.md` (scored + advisor-gated).

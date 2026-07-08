@@ -26,11 +26,11 @@ GUI that actually trains state-of-the-art ASR models.* TalkTeach is mostly
 > and safety rails, verified end-to-end on `whisper-tiny` via the opt-in
 > `integration` test. It trains for real when the `[ml]` extra is installed and
 > real recordings exist, and otherwise falls back to a clearly-marked simulation
-> (see [`project/docs/DECISIONS.md`](project/docs/DECISIONS.md) D-012). The Svelte UI is wired to the live
+> (see [`docs/architecture/DECISIONS.md`](docs/architecture/DECISIONS.md) D-012). The Svelte UI is wired to the live
 > API; the Tauri shell compiles and spawns the backend as a sidecar — verified
 > end-to-end (window + sidecar + live API round-trip). See
-> [`project/docs/ROADMAP_STATUS.md`](project/docs/ROADMAP_STATUS.md) for the per-item status
-> matrix and [`project/docs/PHASE0_STATUS.md`](project/docs/PHASE0_STATUS.md) for real vs.
+> [`docs/roadmap/ROADMAP_STATUS.md`](docs/roadmap/ROADMAP_STATUS.md) for the per-item status
+> matrix and [`docs/roadmap/PHASE0_STATUS.md`](docs/roadmap/PHASE0_STATUS.md) for real vs.
 > scaffolded.
 
 ---
@@ -38,7 +38,7 @@ GUI that actually trains state-of-the-art ASR models.* TalkTeach is mostly
 ## Why it exists
 
 The design is the direct implementation of **Part B** of the research report
-[`reports/ASR_training_GUI_wizard_research_and_design_2026-06-27.md`](reports/ASR_training_GUI_wizard_research_and_design_2026-06-27.md),
+[`docs/reports/ASR_training_GUI_wizard_research_and_design_2026-06-27.md`](docs/reports/ASR_training_GUI_wizard_research_and_design_2026-06-27.md),
 included in this repo. That report (Part A) verified — across a deep-research run,
 48 claims adversarially 3-vote-checked — that no open-source tool ships a
 easy GUI that trains the best models end-to-end, and (Part C) names the
@@ -80,10 +80,10 @@ live from `GET /api/languages`). A language **outside** Whisper's set is still
 trainable: the director automatically switches the base model to **wav2vec2 /
 XLS-R**, so low-resource and even unwritten languages work given enough audio. Or
 choose **"Let it figure out"** and Whisper auto-detects. Full list + details:
-[`project/docs/LANGUAGES.md`](project/docs/LANGUAGES.md).
+[`docs/features/LANGUAGES.md`](docs/features/LANGUAGES.md).
 
 **Interface** (the app's own text): **English only** today; the translation
-scaffold and plan are in [`project/docs/I18N.md`](project/docs/I18N.md).
+scaffold and plan are in [`docs/features/I18N.md`](docs/features/I18N.md).
 
 ## Quick start (backend)
 
@@ -163,7 +163,7 @@ the Vite-only `npm run dev` browser preview, run the backend manually on `:8756`
 | `backend/talkteach/app.py` | FastAPI job server | **Real + tested** |
 | `ui/` | Svelte 4 four-screen wizard + Advanced **Arena** scoreboard, wired to the live API | **Builds + svelte-check/eslint/prettier clean** |
 | `src-tauri/` | Tauri v2 shell — spawns the backend as a sidecar | **Compiles + runs** (verified end-to-end); needs WebKit/GTK present |
-| `project/docs/` | Status matrix, decisions, per-feature design docs | — |
+| `docs/` | Status matrix, decisions, per-feature design docs | — |
 
 ## Testing
 
@@ -188,8 +188,8 @@ pytest -m espeak                                           # measurement-is-real
 python scripts/benchmark.py --config benchmarks/quick.yaml   # needs backend[ml,tts]
 ```
 
-See [project/docs/BENCHMARKING.md](project/docs/BENCHMARKING.md) for the
-engine-comparison methodology and [project/docs/TTS.md](project/docs/TTS.md) for the
+See [docs/ml/BENCHMARKING.md](docs/ml/BENCHMARKING.md) for the
+engine-comparison methodology and [docs/ml/TTS.md](docs/ml/TTS.md) for the
 speech generators.
 
 Lint/type/format gates: `ruff check`, `ruff format --check`, `mypy talkteach`
@@ -202,7 +202,7 @@ Copyright © 2026 Gaspar Incze and TalkTeach contributors.
 **GPL-3.0-or-later** (see [`LICENSE`](LICENSE)) — the lowest-friction path given
 the project reuses copyleft-adjacent tooling and the maintainer approved GPL (see
 report B.6). Third-party components and their **verified** licenses are listed in
-[`project/docs/THIRD_PARTY.md`](project/docs/THIRD_PARTY.md); a credits screen will surface these
+[`docs/architecture/THIRD_PARTY.md`](docs/architecture/THIRD_PARTY.md); a credits screen will surface these
 in-app per Phase 2.
 
 ## Contributing & community
@@ -212,4 +212,4 @@ in-app per Phase 2.
 - **[Code of conduct](.github/CODE_OF_CONDUCT.md)** — the standards we hold each other to.
 - **[Security policy](.github/SECURITY.md)** — how to report a vulnerability privately.
 - **[Changelog](CHANGELOG.md)** — what changed, release by release.
-- **[Docs index](project/docs/README.md)** — the full design/decision/feature docs.
+- **[Docs index](docs/README.md)** — the full design/decision/feature docs.

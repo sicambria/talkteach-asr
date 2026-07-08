@@ -1,7 +1,7 @@
 # Plan: TTS-backed end-to-end ASR benchmark harness + docs reorg
 
 > In-repo canonical record of the plan executed for the TTS/benchmark work.
-> Status tracked in commits; see `project/docs/BENCHMARKING.md` and `TTS.md` for usage.
+> Status tracked in commits; see `docs/ml/BENCHMARKING.md` and `TTS.md` for usage.
 
 ## Context
 
@@ -16,8 +16,8 @@ TTS×ASR report. Plus a CI fast-path proving the measurement is real, and a docs
 
 ## Phases
 
-0. **Docs reorg** (separate commit): `docs/` → `project/docs/`, `DECISIONS.md` →
-   `project/docs/`, community-health files → `.github/`; only `README`/`LICENSE`/
+0. **Docs reorg** (separate commit): `project/docs/` → `docs/`, `DECISIONS.md` →
+   `docs/`, community-health files → `.github/`; only `README`/`LICENSE`/
    `CHANGELOG` at root; ~40 cross-references rewritten; `git mv` preserves history.
 1. **TTS package** `backend/talkteach/tts/`: `TTSProvider` ABC (mirrors `ASREngine`),
    `EspeakProvider` (system binary), `PiperProvider` (neural, `[tts]`), registry,
@@ -38,7 +38,7 @@ TTS×ASR report. Plus a CI fast-path proving the measurement is real, and a docs
    and **training-improves** (opt-in, loose bounds). New `benchmark-smoke` CI job
    (`apt-get install espeak-ng` + `[ml,tts]`, `pytest -m espeak`); default `python` job
    stays dep-light.
-6. **Docs**: `project/docs/BENCHMARKING.md` + `TTS.md`; decision record; this plan;
+6. **Docs**: `docs/ml/BENCHMARKING.md` + `TTS.md`; decision record; this plan;
    README cross-link.
 
 ## Tiering / caveats

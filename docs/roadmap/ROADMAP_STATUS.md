@@ -7,7 +7,7 @@ spine of the Phase 0 effort: each item maps to a **tier**, the
 > **External assessment (2026-07-06):** an independent product-maturity review
 > scored the whole product **530/1000** ("advanced prototype") and corrected three
 > `✅` overclaims now reflected in rows #3, #14, #43 below. See
-> [`../../docs/product/PRODUCT_ASSESSMENT_2026-07-06.md`](../../docs/product/PRODUCT_ASSESSMENT_2026-07-06.md).
+> [`../assessment/2026-07-06.md`](../assessment/2026-07-06.md).
 
 Tiers (see [`DECISIONS.md`](DECISIONS.md) D-001):
 
@@ -73,7 +73,7 @@ Status: ✅ delivered · 🟡 partial · ⬜ not started.
 The tractable additive slice (#46–#57) is now built — pure-Python, CPU/CI-tested,
 following the pure-helper + guarded-ML split (D-002). ITN (part of #51), the neural
 punctuation model, live multi-GPU (#56), and GGUF/TorchScript export stay scaffold/
-doc (reasons in each row + the plan `plans/roadmap-parity-batch.md`).
+doc (reasons in each row + the plan `docs/plans/roadmap-parity-batch.md`).
 
 | # | Item | Tier | Status | Evidence |
 |---|------|------|--------|----------|

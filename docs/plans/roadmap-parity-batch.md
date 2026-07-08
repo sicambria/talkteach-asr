@@ -17,7 +17,7 @@
 Bring TalkTeach to parity with the pro toolsets on the additive capabilities the
 gap analysis (`COMPETITIVE_GAPS.md`) named — all pure-Python, no new ML research —
 following the repo's established **pure-helper + guarded-ML** pattern
-(`project/docs/DECISIONS.md` D-002): real CPU/CI-testable logic in torch-free
+(`docs/architecture/DECISIONS.md` D-002): real CPU/CI-testable logic in torch-free
 modules, heavy paths import-guarded, one test file per capability, one design-doc
 touch, and a `ROADMAP_STATUS.md` row flip per item.
 
@@ -186,6 +186,6 @@ pure-and-CPU-testable — and these three fall outside it, not by neglect.
 - WER/CER helpers to build richer eval on: `backend/talkteach/engines/_train_common.py:60`.
 - Test/marker conventions + dep-light default: `backend/pyproject.toml` `[tool.pytest.ini_options]` markers; pure-parity test style `backend/tests/test_p2p3.py:1`.
 - Verify contract: `Makefile:51` (`check: lint test`), lint = ruff + ruff format + mypy (`Makefile:36`).
-- Status matrix to update: `project/docs/ROADMAP_STATUS.md:71` (parity rows #46–#57).
-- Formats matrix to update: `project/docs/FORMATS.md:29` (#47/#48/#57 rows).
+- Status matrix to update: `docs/roadmap/ROADMAP_STATUS.md:71` (parity rows #46–#57).
+- Formats matrix to update: `docs/architecture/FORMATS.md:29` (#47/#48/#57 rows).
 - Commit target = `main` directly (repo has no AGENTS.md worktree contract; per user memory).

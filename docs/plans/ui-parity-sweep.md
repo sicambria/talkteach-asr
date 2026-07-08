@@ -219,8 +219,8 @@ copy; advanced mode for technical detail):
 - Record stream to tap for the meter: `ui/src/screens/Screen1_Record.svelte:89`
   (`getUserMedia`), teardown site `:95-99` (`onstop`), `:77-80` (`onDestroy`).
 - i18n scaffold: `ui/src/lib/i18n.js:29` (`t` derived store, English fallback),
-  `:34` (`availableLocales`), `:26` (`locale` writable). Doc: `project/docs/I18N.md`.
-- a11y baseline + what's owed: `project/docs/ACCESSIBILITY.md` "Already present"
+  `:34` (`availableLocales`), `:26` (`locale` writable). Doc: `docs/features/I18N.md`.
+- a11y baseline + what's owed: `docs/features/ACCESSIBILITY.md` "Already present"
   vs "Pending"; existing `:focus-visible` at `ui/src/styles.css:148`; the
   keyboard-gap to fix (`role="button"` drop zone, no handler)
   `Screen1_Record.svelte:218-227`.
@@ -230,7 +230,7 @@ copy; advanced mode for technical detail):
   evidence, not committed infra.
 - Cached chromium for the axe harness: `~/.cache/ms-playwright/chromium-1228`
   (present); npm registry reachable (`npm view @axe-core/cli` → 4.12.1).
-- Status matrix rows to flip: `project/docs/ROADMAP_STATUS.md:32` (#13), `:37`
+- Status matrix rows to flip: `docs/roadmap/ROADMAP_STATUS.md:32` (#13), `:37`
   (#18), `:55` (#36), `:56` (#37).
 - Commit target = `main` directly (repo has no worktree contract; per user memory
   "always commit").

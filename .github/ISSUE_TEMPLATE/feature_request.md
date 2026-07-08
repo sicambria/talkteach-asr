@@ -7,7 +7,7 @@ assignees: ''
 ---
 
 <!--
-Before filing: skim project/docs/ROADMAP.md — your idea may already be tracked there
+Before filing: skim docs/roadmap/ROADMAP.md — your idea may already be tracked there
 with a tier and priority. Linking to it (or saying "not on the roadmap yet") is
 the most useful thing you can do.
 -->
@@ -23,7 +23,7 @@ What you'd like to happen.
 
 ## Which roadmap tier / priority does this map to?
 
-<!-- See project/docs/ROADMAP.md. Tick the closest one. -->
+<!-- See docs/roadmap/ROADMAP.md. Tick the closest one. -->
 
 - [ ] **P0** — makes training *real* (the core promise)
 - [ ] **P0** — security / data integrity (before any release)
@@ -47,5 +47,5 @@ How does this fit the product promises? In particular:
 
 ## Alternatives considered
 
-<!-- Per project/docs/DECISIONS.md, non-obvious choices get top-5 options scored 0–100. If you
+<!-- Per docs/architecture/DECISIONS.md, non-obvious choices get top-5 options scored 0–100. If you
 already have alternatives in mind, list them — it makes the decision entry easy. -->

@@ -72,12 +72,12 @@ column — it is the mapping, not a product surface.
   These are shown to users → reposition carefully.
 - **G4 — Backend comments/docstrings:** the remaining ~25 backend files (comments
   only; no behavior change).
-- **G5 — Living docs:** `README.md`, `ui/README.md`, `project/docs/*` (ROADMAP,
+- **G5 — Living docs:** `README.md`, `ui/README.md`, `docs/*` (ROADMAP,
   ROADMAP_STATUS, DECISIONS, all design docs), `CHANGELOG.md` (add an entry).
 - **G6 — Historical artifacts (advisor #3: lean inclusive — "entire repo"):**
   completed plans (`plans/ui-parity-sweep.md`, 3 hits) and design docs describe the
   *current* product → **include them**. The dated external snapshots
-  (`reports/*_2026-06-27.md` 7 hits, `docs/product/PRODUCT_ASSESSMENT_2026-07-06.md`
+  (`docs/reports/*_2026-06-27.md` 7 hits, `docs/assessment/2026-07-06.md`
   2 hits) → **update terminology only, never scores/substance** (they're records of
   a point-in-time finding). Note the inclusive choice in the commit. **Do NOT touch
   `plans/terminology-easy-advanced.md`** (the spec, per Guardrail C).

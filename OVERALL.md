@@ -3,8 +3,8 @@
 > Created 2026-07-08. **No prior `OVERALL.md` existed** (nothing in the repo referenced
 > one); this is the first. It is the single-page answer to *"where are we now, and what
 > are the next best experiments toward state-of-the-art?"* It sits above the roadmap docs
-> ([`ROADMAP.md`](project/docs/ROADMAP.md), [`ROADMAP_STATUS.md`](project/docs/ROADMAP_STATUS.md),
-> [`CALIBRATION.md`](project/docs/CALIBRATION.md), [`BENCHMARKING.md`](project/docs/BENCHMARKING.md))
+> ([`ROADMAP.md`](docs/roadmap/ROADMAP.md), [`ROADMAP_STATUS.md`](docs/roadmap/ROADMAP_STATUS.md),
+> [`CALIBRATION.md`](docs/ml/CALIBRATION.md), [`BENCHMARKING.md`](docs/ml/BENCHMARKING.md))
 > and points down into them.
 
 ---

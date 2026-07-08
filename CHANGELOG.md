@@ -18,7 +18,7 @@ versions; we'll call them out under **Changed** with a ⚠️.
   `⚙` toggle — full detail/config). One code identifier renamed
   (`grownUpMode → advancedMode`); no API/DB/i18n-key changes. The friendly Easy-mode
   tone (mascot, palette, "smartness" meter) is kept on purpose. See DECISIONS.md
-  D-015, `plans/terminology-easy-advanced.md`.
+  D-015, `docs/plans/terminology-easy-advanced.md`.
 
 ### Added
 
@@ -39,7 +39,7 @@ versions; we'll call them out under **Changed** with a ⚠️.
   - **Dataset import (#47):** `POST /api/import` (`<input webkitdirectory>`,
     traversal-safe copy) + Screen0 "Import a folder"; folder-of-pairs / LibriSpeech /
     in-folder manifest via the tested auto-detector.
-  - See DECISIONS.md D-015, `plans/advanced-mode-ui-sweep.md`.
+  - See DECISIONS.md D-015, `docs/plans/advanced-mode-ui-sweep.md`.
 - **UI parity sweep (#18, #13, #36, #37)** — front-end gaps closed with Svelte 4 +
   WebAudio only (no new runtime deps).
   - **Pre-flight screen (#18):** `ScreenPreflight.svelte` renders live
@@ -60,7 +60,7 @@ versions; we'll call them out under **Changed** with a ⚠️.
     manual screen-reader certification, WCAG-AA contrast, high-contrast/dyslexia
     toggles, reduced-motion, and RTL remain tracked in `ACCESSIBILITY.md`.
 - **Competitive-parity batch (#46–#57)** — additive, pure-Python, CPU/CI-tested
-  (torch-free imports; heavy paths guarded). See `project/docs/ROADMAP_STATUS.md`
+  (torch-free imports; heavy paths guarded). See `docs/roadmap/ROADMAP_STATUS.md`
   and `DECISIONS.md` D-014.
   - **Subtitles (#48):** SRT / VTT / timestamped text via `transcript/subtitles.py`;
     Whisper now exposes real per-segment timestamps (`transcribe_segments`).
@@ -94,7 +94,7 @@ The first public release. **Phase 0 built a tested vertical slice** that validat
 the hard part (the director + reliability + dependency plumbing) for real, with
 tests, before the wizard polish; the **Phase 0** build-out then
 turned the simulated edges into real product behaviour, gated behind honest tiers
-(see `project/docs/DECISIONS.md` D-001 and `project/docs/ROADMAP_STATUS.md`).
+(see `docs/architecture/DECISIONS.md` D-001 and `docs/roadmap/ROADMAP_STATUS.md`).
 **110+ passing fast tests, no GPU and no ML framework required.**
 
 ### Added
@@ -117,10 +117,10 @@ turned the simulated edges into real product behaviour, gated behind honest tier
   `/api/plan`, `/api/selftest`, and `/api/help-bundle`. Threaded training jobs
   with live status, the gate enforced (HTTP 409), and graceful `available:false`
   responses when `[ml]` is absent.
-- **Planning spine** so the breadth stays honest and traceable: `project/docs/DECISIONS.md`
-  (ADR-lite, top-5-scored choices), `project/docs/ROADMAP.md` (prioritized P0–P3 + X),
-  `project/docs/ROADMAP_STATUS.md` (per-item tier + evidence matrix), `project/docs/PLAN.md`, and
-  `project/docs/LEARNINGS.md`.
+- **Planning spine** so the breadth stays honest and traceable: `docs/architecture/DECISIONS.md`
+  (ADR-lite, top-5-scored choices), `docs/roadmap/ROADMAP.md` (prioritized P0–P3 + X),
+  `docs/roadmap/ROADMAP_STATUS.md` (per-item tier + evidence matrix), `docs/architecture/PLAN.md`, and
+  `docs/architecture/LEARNINGS.md`.
 - **Lint / type / CI guardrails** (roadmap X #38–39): ruff (lint + format) and
   mypy for the backend, svelte-check for the UI, configured in
   `backend/pyproject.toml`; GitHub Actions CI and `make` targets (`test`, `lint`,
@@ -150,7 +150,7 @@ turned the simulated edges into real product behaviour, gated behind honest tier
   languages (single source of truth in `director/language.py`), and the New-Project
   screen pairs friendly quick-picks with a searchable box for all of them, plus
   "let it figure out" (auto-detect) and the XLS-R fallback for any non-Whisper
-  language. Documented in `project/docs/LANGUAGES.md`.
+  language. Documented in `docs/features/LANGUAGES.md`.
 - **Tauri v2 desktop shell:** idiomatic `lib.rs` + `main.rs`, valid `Cargo.toml`
   and `tauri.conf.json` with a complete icon set, and a root `package.json`
   orchestrator exposing `npm run tauri`.
@@ -163,8 +163,8 @@ turned the simulated edges into real product behaviour, gated behind honest tier
   "help bundle" exporter (`/api/help-bundle`); no telemetry by default (D-008).
 - **OSS project hygiene** (X #44): `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
   `SECURITY.md`, this changelog, GitHub issue/PR templates + Dependabot, and the
-  research report under `reports/` that the design implements.
-- **Per-feature design docs** under `project/docs/` (engines, calibration,
+  research report under `docs/reports/` that the design implements.
+- **Per-feature design docs** under `docs/` (engines, calibration,
   alignment, releasing, cloud fallback, multi-project, denoise, diarization,
   model packs, i18n, accessibility, mascot, landscape currency).
 

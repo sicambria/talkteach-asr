@@ -28,4 +28,4 @@ piper   wav2vec2  ok      0.191  0.047  0.809      4.4
 
 - **WER / CER** (lower is better) on the shared, held-out eval set are the ground-truth metrics. **Train(s)** is wall-clock fine-tune time.
 - **ELO** is a leaderboard layer: each engine plays one match per (TTS, clip) and wins the clips it transcribes with lower WER. It aggregates across voices and clip difficulty into one number; with few clips treat it as indicative.
-- Engines compared on **WER/CER/train-time**, not a single export format (formats differ per engine). See `project/docs/BENCHMARKING.md`.
+- Engines compared on **WER/CER/train-time**, not a single export format (formats differ per engine). See `docs/ml/BENCHMARKING.md`.

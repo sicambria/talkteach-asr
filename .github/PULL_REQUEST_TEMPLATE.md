@@ -12,7 +12,7 @@ reasoning, not just the diff. Link the issue/roadmap item if there is one. -->
 
 Closes #
 
-## Tier (see project/docs/DECISIONS.md D-001)
+## Tier (see docs/architecture/DECISIONS.md D-001)
 
 - [ ] **A** — done & verified here (real code + passing tests)
 - [ ] **B** — coded & guarded; full run needs network/GPU/root (behind a marker;
@@ -24,8 +24,8 @@ Closes #
 - [ ] `make check` is green (ruff + format-check + mypy + pytest); `make ui-check` too if this touches the UI
 - [ ] Added/updated **tests** for the behaviour I changed
 - [ ] Updated **`CHANGELOG.md`** under `[Unreleased]`
-- [ ] Updated **`project/docs/ROADMAP_STATUS.md`** if a roadmap item changed tier/status
-- [ ] Recorded any non-obvious choice in **`project/docs/DECISIONS.md`** (top-5, scored 0–100)
+- [ ] Updated **`docs/roadmap/ROADMAP_STATUS.md`** if a roadmap item changed tier/status
+- [ ] Recorded any non-obvious choice in **`docs/architecture/DECISIONS.md`** (top-5, scored 0–100)
 - [ ] PR **title** is a valid conventional-commit subject
 - [ ] Kept the promises: **offline-first**, **no GPU required** for the pure
       core, **children's recordings stay on device** (no telemetry without opt-in)

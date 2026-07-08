@@ -47,7 +47,7 @@
 
 # Part B — Design: "TalkTeach" — train a speech model so easily a 10-year-old can
 
-> **Implementation status (2026-06-28):** Part B is implemented in **this repository** (`talkteach-asr`). **Phase 0 (spike) is complete and tested** — the FastAPI job server, the zero-config *director* (B.5), the audio quality/sufficiency loop, the SQLite data layer, reliability pre-flight (B.7), the engine adapter, and a four-screen Svelte/Tauri scaffold (B.2–B.3), with **110+ passing fast tests** and a live-booting backend; real LoRA training, ffmpeg/VAD export, and the desktop shell followed. See [`project/docs/PHASE0_STATUS.md`](../project/docs/PHASE0_STATUS.md) and [`project/docs/ROADMAP_STATUS.md`](../project/docs/ROADMAP_STATUS.md) for the current per-item status.
+> **Implementation status (2026-06-28):** Part B is implemented in **this repository** (`talkteach-asr`). **Phase 0 (spike) is complete and tested** — the FastAPI job server, the zero-config *director* (B.5), the audio quality/sufficiency loop, the SQLite data layer, reliability pre-flight (B.7), the engine adapter, and a four-screen Svelte/Tauri scaffold (B.2–B.3), with **110+ passing fast tests** and a live-booting backend; real LoRA training, ffmpeg/VAD export, and the desktop shell followed. See [`docs/roadmap/PHASE0_STATUS.md`](../roadmap/PHASE0_STATUS.md) and [`docs/roadmap/ROADMAP_STATUS.md`](../roadmap/ROADMAP_STATUS.md) for the current per-item status.
 
 > **Design goal (literal):** a smart 10-year-old, with no help and no jargon, can teach a computer to understand a chosen voice/language and end up with a working, exportable model — in under an hour, offline, on Windows/macOS/Linux, without a single config file, and without being able to break it.
 

@@ -7,7 +7,7 @@ how to report a problem privately, and what to expect back.
 
 > **The privacy promise, in one line:** recordings, transcripts, projects, and
 > trained models **never leave the device by default**, and there is **no
-> telemetry without explicit opt-in** (see `project/docs/DECISIONS.md` D-008). A bug that
+> telemetry without explicit opt-in** (see `docs/architecture/DECISIONS.md` D-008). A bug that
 > breaks this promise is a security bug, not a feature request.
 
 ## Supported versions
@@ -62,20 +62,20 @@ input on a trusted machine" plus "don't let local data escape." In scope:
 - **Path traversal / arbitrary file write.** Uploads and project paths must stay
   inside the project directory. Crafted filenames (e.g. `../../…`) must not
   escape it. We sanitize uploads to a server-generated name with an extension
-  allow-list (`project/docs/DECISIONS.md` D-004); regressions in that boundary are in scope.
+  allow-list (`docs/architecture/DECISIONS.md` D-004); regressions in that boundary are in scope.
 - **The local backend binding.** The server binds to **`127.0.0.1:8756`** and
   must not be exposed on a routable interface. Anything that would bind it more
   broadly, or that lets a remote/cross-origin page reach it, is in scope.
 - **The Tauri Content-Security-Policy.** The shipped CSP is locked to `'self'`
   plus the local backend origin (`http://127.0.0.1:8756` and `ws:` for live
-  progress) — see `project/docs/DECISIONS.md` D-005. Any way to bypass or weaken it, or to
+  progress) — see `docs/architecture/DECISIONS.md` D-005. Any way to bypass or weaken it, or to
   load remote/active content into the webview, is in scope.
 - **Data privacy of children's recordings.** Anything that causes recordings,
   transcripts, projects, or models to leave the device without explicit user
   action — silent network calls, telemetry that isn't opt-in, logs that leak raw
   audio or PII, an export that phones home — is **in scope and taken seriously.**
 - **Upload validation.** Size limits and the codec/extension allow-list that
-  guard the analyze/upload endpoints (roadmap #9; see `project/docs/DECISIONS.md` D-004).
+  guard the analyze/upload endpoints (roadmap #9; see `docs/architecture/DECISIONS.md` D-004).
 - **Dependency vulnerabilities** that are actually reachable in the app
   (Python `[ml]`/runtime deps, npm UI deps, Rust crates).
 
