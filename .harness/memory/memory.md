@@ -4,6 +4,7 @@
 > Update this in the same change as the work it describes.
 
 ## Now
+- Last captured session: 2026-07-08 (see `.harness/memory/episodic/2026-07-08.md`)
 - (nothing yet — kaizen just installed)
 
 ## Invariants to remember
