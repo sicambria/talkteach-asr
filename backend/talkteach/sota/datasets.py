@@ -116,7 +116,7 @@ def download_hf_dataset(
         return output_dir
 
     print(f"[sota] Loading {hf_name} ({config}, {split}) from Hugging Face...")
-    ds = load_dataset(hf_name, config, split=split, trust_remote_code=True)
+    ds = load_dataset(hf_name, config, split=split)
 
     if max_samples and len(ds) > max_samples:
         ds = ds.select(range(max_samples))
@@ -210,15 +210,17 @@ def get_transcript(
     if txt_path.exists():
         return txt_path.read_text().strip()
 
-    # Try LibriSpeech convention: .trans.txt in the same directory
-    trans_path = audio_path.parent / f"{audio_path.parent.name}.trans.txt"
-    if trans_path.exists():
+    # Try LibriSpeech convention: *.trans.txt in the same directory
+    # LibriSpeech .trans.txt files are named {speaker_id}-{chapter_id}.trans.txt
+    trans_files = list(audio_path.parent.glob("*.trans.txt"))
+    if trans_files:
         base = audio_path.stem
-        for line in trans_path.read_text().splitlines():
-            if line.startswith(base):
-                parts = line.split(" ", 1)
-                if len(parts) == 2:
-                    return parts[1].strip()
+        for trans_path in trans_files:
+            for line in trans_path.read_text().splitlines():
+                if line.startswith(base):
+                    parts = line.split(" ", 1)
+                    if len(parts) == 2:
+                        return parts[1].strip()
     return None
 
 
