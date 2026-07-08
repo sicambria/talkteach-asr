@@ -5,6 +5,8 @@
 **Area:** SOTA data loading  
 **Status:** resolved  
 **Trigger:** D01 baseline returned 0 clips and WER=-1.0 despite LibriSpeech test-clean being cached on disk
+**Guardrail Links:** `backend/talkteach/sota/datasets.py:213-222` (fixed get_transcript), `docs/testing/journey-s1-real-audio-baseline.md` (fidelity gate report)
+**Automation Links:** `backend/talkteach/sota/datasets.py` (fixed get_transcript), `backend/talkteach/sota/harness.py` (measure_base_wer with num_clips check), `scripts/sota/validate_d01_wer_clean.py` (D01 validation harness)
 
 ## Summary
 

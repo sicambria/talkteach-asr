@@ -5,6 +5,8 @@
 **Area:** SOTA scoring pipeline  
 **Status:** resolved  
 **Trigger:** First real-audio measurement on LibriSpeech returned WER 16.8% for whisper-tiny, 2× published value (~8.3%)
+**Guardrail Links:** `backend/talkteach/sota/scoring.py:14-47` (fixed wer/cer), `docs/testing/journey-s1-real-audio-baseline.md` (fidelity gate report)
+**Automation Links:** `backend/talkteach/sota/scoring.py` (normalized wer/cer), `backend/tests/test_whisper_train.py` (wer unit tests exist), `scripts/journey/s2_spike.py` (reproducible eval harness)
 
 ## Summary
 

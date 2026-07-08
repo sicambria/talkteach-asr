@@ -60,15 +60,13 @@ Using a larger pretrained model (distil-large-v3, distil-large-v3.5, or medium) 
 
 ## Standards & Guardrails Evidence
 
-| Dimension | Evidence |
-|-----------|----------|
-| Tests / shift-left | 198 fast tests pass; spike protocol (1 epoch, small data) before scaling |
-| Reused patterns / grounding | `plan_from_config` for pinned plans; `SOTAHarness.measure_base_wer` for WER |
-| Security | N/A — benchmark measurements only, no user data |
-| Evidence classification | WER numbers are measured (banked) with 95% CI; model comparisons are directional when n<100 |
-| Reproducibility | Fixed seed (42), fixed clip ordering, documented normalization; all scripts in `scripts/journey/` |
-| Statistical validity | Per-clip WER with bootstrap CI (scoring.py:36); at least 50 clips for ≥5% difference detectability |
-| Baseline / SOTA calibration | whisper-large-v3 @ 1.8% anchored at 1000; intermediate bands benchmarked against published numbers |
+- [x] Tests / shift-left: `backend/tests/test_whisper_train.py:8` — 198 fast tests pass before any experiment
+- [x] Reused patterns / grounding: `scripts/sota/validate_d01_wer_clean.py:16` — SOTAHarness for WER; `backend/talkteach/director/plan_config.py:43` — plan_from_config for pinned plans
+- [x] Security: N/A — benchmark measurements only, no user data or secrets involved
+- [x] Evidence classification: `backend/talkteach/sota/scoring.py:14` — WER measured (banked) with 95% CI; model comparisons directional when n<100
+- [x] Reproducibility: `backend/talkteach/sota/scoring.py:14` — fixed seed (42), normalized text, documented protocol in `docs/testing/journey-s1-real-audio-baseline.md`
+- [x] Statistical validity: `backend/talkteach/sota/scoring.py:58` — bootstrap CI on per-clip WER; ≥50 clips for ≥5% difference detectability
+- [x] Baseline / SOTA calibration: `backend/talkteach/sota/domains.py:46` — D01 bands anchored to whisper-large-v3 @ 1.8%; intermediate bands verified against published whisper model sizes
 
 ## Execution Order
 

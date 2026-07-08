@@ -5,6 +5,8 @@
 **Area:** training / fine-tuning  
 **Status:** active  
 **Trigger:** Stage 2 spike: LoRA fine-tune whisper-tiny on 30-60 min LibriSpeech → WER worsened
+**Guardrail Links:** `experiments/e02_lora_finetune_spike.yaml` (falsified hypothesis), `docs/testing/journey-s2-finetune-spike.md` (experiment report), `scripts/journey/s2_spike.py` (spike harness)
+**Automation Links:** `scripts/journey/s2_spike.py` (reusable spike harness), `experiments/e02_lora_finetune_spike.yaml` (pre-registered experiment), `backend/talkteach/director/plan_config.py` (pinned training plans)
 
 ## Summary
 
