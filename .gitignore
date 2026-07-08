@@ -35,6 +35,9 @@ piper_voices/
 .idea/
 .vscode/
 
+# Personal Claude Code overrides (e.g. statusline console) — machine-specific, never shared
+.claude/settings.local.json
+
 # Secrets & signing material — NEVER commit. These live ONLY in GitHub Actions
 # encrypted secrets (see project/docs/RELEASING.md). The patterns below are a
 # safety net; the `detect-private-key` pre-commit hook is the second line.
