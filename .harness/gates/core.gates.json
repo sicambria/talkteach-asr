@@ -1,0 +1,25 @@
+{
+  "name": "core",
+  "chains": {
+    "pre-commit": [
+      { "id": "plan-evidence", "run": ["node", ".harness/scripts/audits/verify-plan-evidence.mjs"] },
+      { "id": "secret-scan", "run": ["node", ".harness/scripts/audits/verify-secrets.mjs", "--staged"] },
+      { "id": "identity-scan", "run": ["node", ".harness/scripts/audits/verify-identity.mjs", "--staged"] },
+      { "id": "test-gaming", "run": ["node", ".harness/scripts/audits/verify-test-gaming.mjs", "--staged"] },
+      { "id": "slopcheck", "run": ["node", ".harness/scripts/audits/verify-slopcheck.mjs"] },
+      { "id": "decision-log", "run": ["node", ".harness/scripts/audits/verify-decision-log.mjs"] },
+      { "id": "learning-loop", "run": ["node", ".harness/scripts/audits/verify-learning-loop.mjs"] }
+    ],
+    "pre-push": [
+      { "id": "secret-scan", "run": ["node", ".harness/scripts/audits/verify-secrets.mjs"] },
+      { "id": "identity-scan", "run": ["node", ".harness/scripts/audits/verify-identity.mjs"] },
+      { "id": "slopcheck", "run": ["node", ".harness/scripts/audits/verify-slopcheck.mjs"] },
+      { "id": "learning-loop", "run": ["node", ".harness/scripts/audits/verify-learning-loop.mjs"] },
+      { "id": "verify", "run": ["node", ".harness/scripts/verify.mjs", "--phase", "prepush"] }
+    ],
+    "guardrails": [
+      { "id": "plan-evidence", "run": ["node", ".harness/scripts/audits/verify-plan-evidence.mjs"] },
+      { "id": "learning-loop", "run": ["node", ".harness/scripts/audits/verify-learning-loop.mjs"] }
+    ]
+  }
+}

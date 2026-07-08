@@ -1,0 +1,202 @@
+{
+  "version": 1,
+  "defaultBranch": "main",
+  "repo": {
+    "name": "talkteach-asr"
+  },
+  "docs": {
+    "core": [
+      {
+        "path": "AGENTS.md",
+        "required": true
+      },
+      {
+        "path": "README.md",
+        "required": false
+      }
+    ],
+    "markdownRoots": [
+      "docs"
+    ],
+    "learningLoop": {
+      "errorsDir": "docs/errors",
+      "auditsDir": "docs/audits",
+      "requiredMetadata": [
+        "Date",
+        "Type",
+        "Area",
+        "Status",
+        "Trigger",
+        "Guardrail Links",
+        "Automation Links"
+      ],
+      "requiredSections": [
+        "## Summary",
+        "## Root Cause",
+        "## Prevention",
+        "## Guardrail Updates",
+        "## Automation Follow-Up"
+      ],
+      "allowedTypes": [
+        "incident",
+        "reference"
+      ],
+      "allowedStatuses": [
+        "active",
+        "monitoring",
+        "resolved"
+      ]
+    }
+  },
+  "plan": {
+    "planTypes": [
+      "FEATURE",
+      "BUG",
+      "RCA",
+      "TECHDEBT",
+      "IMPROVEMENT",
+      "SPIKE",
+      "CHORE",
+      "TEST",
+      "EXPERIMENT",
+      "BENCHMARK",
+      "ABLATION",
+      "REPRODUCTION",
+      "DATASET"
+    ],
+    "dirs": {
+      "active": "docs/plans",
+      "worktrees": "docs/plans/worktrees",
+      "done": "docs/plans/done"
+    },
+    "claimsFile": "docs/plans/worktree-current-state.md",
+    "evidenceHeading": "## Standards & Guardrails Evidence",
+    "dimensions": [
+      {
+        "key": "Tests / shift-left",
+        "match": "test",
+        "core": true
+      },
+      {
+        "key": "Reused patterns / grounding",
+        "match": "reuse|pattern|grounding",
+        "core": true
+      },
+      {
+        "key": "Security",
+        "match": "security|privacy",
+        "core": true
+      },
+      {
+        "key": "Evidence classification",
+        "match": "evidence|fact|measurement|derived|inference|assumption|hypothesis|speculation|open question",
+        "core": false
+      },
+      {
+        "key": "Reproducibility",
+        "match": "reproduc|seed|determinism|environment|manifest|artifact|version",
+        "core": false
+      },
+      {
+        "key": "Statistical validity",
+        "match": "statistic|significance|confidence interval|p-value|effect size|power|paired|bootstrap",
+        "core": false
+      },
+      {
+        "key": "Baseline / SOTA calibration",
+        "match": "baseline|sota|state-of-the-art|leaderboard|ablation|control",
+        "core": false
+      }
+    ],
+    "requiredDocumentation": [],
+    "evidenceMode": "grounding"
+  },
+  "branchGuard": {
+    "exemptPaths": [
+      "^docs/",
+      "\\.md$",
+      "^\\.gitignore$",
+      "^\\.harness/memory/",
+      "^\\.harness/archive/"
+    ],
+    "substantivePaths": []
+  },
+  "worktree": {
+    "base": null,
+    "dirPrefix": null,
+    "sharedLinks": [
+      "node_modules"
+    ]
+  },
+  "guard": {
+    "sessionTokenName": "harness-session-token",
+    "maxCalls": 40,
+    "staleMinutes": 30,
+    "docs": [],
+    "scaffolderCommands": [
+      "incident:new",
+      "audit:finding",
+      "next:execute"
+    ]
+  },
+  "hooks": {
+    "requiredBinaries": [],
+    "prePushLogDir": ".prepush-logs",
+    "priorHooksPath": null,
+    "managed": true
+  },
+  "verify": {
+    "test": "",
+    "lint": "",
+    "build": "npm run build",
+    "e2e": "",
+    "healthcheck": ""
+  },
+  "gates": {
+    "core": "core",
+    "adapters": []
+  },
+  "audits": {
+    "testGaming": {
+      "enabled": true
+    },
+    "slopcheck": {
+      "enabled": true,
+      "allowlist": []
+    }
+  },
+  "review": {
+    "providerDiversity": "soft"
+  },
+  "security": {
+    "secretScanner": "none",
+    "allowlistPath": ".harness/security/allowlist.yaml",
+    "baselinePath": ".harness/security/.secrets.baseline",
+    "identity": {
+      "enabled": true
+    }
+  },
+  "mcp": {
+    "registry": []
+  },
+  "agents": [
+    "claude"
+  ],
+  "overlays": [
+    "claude",
+    "cursor",
+    "codex",
+    "opencode",
+    "copilot"
+  ],
+  "mode": "full",
+  "fingerprint": {
+    "language": "javascript",
+    "framework": null,
+    "orm": null,
+    "db": null,
+    "e2e": null
+  },
+  "adapter": "python",
+  "profile": "scientific"
+}

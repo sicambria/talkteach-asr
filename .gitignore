@@ -55,3 +55,6 @@ secrets/
 *.keystore
 *.mobileprovision
 *.asc
+.prepush-logs/
+.harness/state/
+.worktrees/

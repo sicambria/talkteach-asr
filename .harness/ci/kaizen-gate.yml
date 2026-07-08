@@ -1,0 +1,19 @@
+# kaizen CI backstop — the un-bypassable enforcement anchor (gate this with branch protection).
+# Local hooks can be bypassed (--no-verify); this job cannot. Copied to .github/workflows/ by init.
+name: kaizen-gate
+on:
+  push: { branches: ["**"] }
+  pull_request: {}
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - name: Doctor (enforcement integrity)
+        run: node .harness/scripts/doctor.mjs
+      - name: Core guardrails chain
+        run: node .harness/scripts/gates/run-gates.mjs guardrails
+      - name: Verify contract
+        run: node .harness/scripts/verify.mjs --phase prepush
