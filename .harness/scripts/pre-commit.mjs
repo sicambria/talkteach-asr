@@ -9,6 +9,7 @@ import { loadConfig } from './lib/config.mjs';
 import { repoRoot, currentBranch, stagedPaths, mergeInProgress } from './lib/repo.mjs';
 import { isBlockedEdit } from './lib/branch-guard.mjs';
 import { runChain } from './gates/run-gates.mjs';
+import { runChainedHooks } from './lib/chained-hooks.mjs';
 
 const root = repoRoot();
 const config = loadConfig(root);
@@ -28,4 +29,8 @@ if (guard.blocked) {
   process.exit(1);
 }
 
-process.exit(runChain('pre-commit', root, config));
+const rc = runChain('pre-commit', root, config);
+if (rc !== 0) process.exit(rc);
+
+// Chain the repo's pre-existing pre-commit controls so kaizen never weakens them (no-op if none).
+process.exit(runChainedHooks('pre-commit', root, config, { args: process.argv.slice(2) }));

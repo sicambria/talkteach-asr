@@ -143,7 +143,12 @@
     "requiredBinaries": [],
     "prePushLogDir": ".prepush-logs",
     "priorHooksPath": ".harness/hooks",
-    "managed": true
+    "managed": true,
+    "chained": {
+      "pre-push": [
+        ".git/hooks/pre-push"
+      ]
+    }
   },
   "verify": {
     "test": "make test",

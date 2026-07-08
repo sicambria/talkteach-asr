@@ -7,14 +7,21 @@
  * un-bypassable guarantee is the CI backstop gated by branch protection.
  */
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, existsSync, appendFileSync, readdirSync, unlinkSync } from 'node:fs';
+import { mkdirSync, existsSync, appendFileSync, readdirSync, unlinkSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './lib/config.mjs';
 import { repoRoot } from './lib/repo.mjs';
 import { runChain } from './gates/run-gates.mjs';
+import { runChainedHooks } from './lib/chained-hooks.mjs';
 
 const root = repoRoot();
 const config = loadConfig(root);
+
+// Buffer git's stdin (the pushed-ref list) ONCE up front so it can be forwarded verbatim to any
+// chained pre-push hook — a hook that filters by ref would misbehave without it. Guard against a TTY
+// (manual invocation) so readFileSync(0) can't block; git runs hooks with stdin closed after the refs.
+let prePushStdin = Buffer.alloc(0);
+try { if (!process.stdin.isTTY) prePushStdin = readFileSync(0); } catch { /* no stdin — empty */ }
 const logDir = path.join(root, config.hooks?.prePushLogDir || '.prepush-logs');
 
 function log(line) {
@@ -46,6 +53,13 @@ if (doc.status !== 0) { log('✗ pre-push: /doctor failed — enforcement is bro
 // (2) pre-push gate chain
 log('→ pre-push: gate chain');
 rc = runChain('pre-push', root, config);
+
+// (3) chained prior controls — the repo's own pre-push hooks keep firing (never weakened). Forward
+//     git's hook args + the buffered ref list so a ref-aware hook behaves exactly as before.
+if (rc === 0) {
+  log('→ pre-push: chained prior controls');
+  rc = runChainedHooks('pre-push', root, config, { args: process.argv.slice(2), stdin: prePushStdin });
+}
 
 if (rc === 0) log(`[pre-push] OK — log ${path.relative(root, logFile)}`);
 else log(`[pre-push] FAILED (rc ${rc}) — log ${path.relative(root, logFile)}`);
