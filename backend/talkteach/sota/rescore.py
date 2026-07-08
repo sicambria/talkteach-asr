@@ -60,18 +60,25 @@ def rescore_scoreboard(data: dict[str, Any]) -> Scoreboard:
             if isinstance(v, list) and len(v) == 2:
                 ci[k] = (float(v[0]), float(v[1]))
         domain = get_domain(d.get("domain_id", ""))
+        metrics = d.get("metrics", {}) or {}
+        # Derive display fields from single sources when the stored JSON omits them:
+        # the domain name from the definition, the sample count from the metrics
+        # (num_clips/num_speakers) — so measured domains never render "Samples: 0".
+        num_samples = int(d.get("num_samples", 0) or 0)
+        if not num_samples:
+            num_samples = int(metrics.get("num_clips", metrics.get("num_speakers", 0)) or 0)
         r = SOTAResult(
             domain_id=d.get("domain_id", ""),
-            domain_name=d.get("domain_name", ""),
+            domain_name=d.get("domain_name") or (domain.name if domain else ""),
             score_0_1000=int(d.get("score_0_1000", 0) or 0),
             band=d.get("band", "unmeasured"),
-            metrics=d.get("metrics", {}) or {},
+            metrics=metrics,
             confidence_95=ci,
             baseline_ref=d.get("baseline_ref", ""),
             # Refresh the anchor from the (possibly corrected) domain definition
             # so anchor-hygiene fixes propagate without hand-editing the JSON.
             sota_ref=(domain.sota_1000_reference if domain else d.get("sota_ref", "")),
-            num_samples=int(d.get("num_samples", 0) or 0),
+            num_samples=num_samples,
             engine_used=d.get("engine_used", ""),
             notes=d.get("notes", ""),
         )

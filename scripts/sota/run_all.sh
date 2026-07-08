@@ -16,6 +16,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # Use the project venv by default (bare `python` is often absent); override with PYTHON=...
 PYTHON="${PYTHON:-$REPO_ROOT/backend/.venv/bin/python}"
+# The validation scripts import `scripts.sota.common` and `talkteach.*`, so the
+# repo root and backend must be importable for every per-script run (not just the
+# final generation step). Export once here so the harness is self-contained.
+export PYTHONPATH="$REPO_ROOT:$REPO_ROOT/backend${PYTHONPATH:+:$PYTHONPATH}"
 RESULTS_DIR="/tmp/sota_results"
 BASELINE_FILE="$RESULTS_DIR/.baseline_scores.json"
 OUTPUT_DIR="$REPO_ROOT/docs/sota-benchmarks"
@@ -110,49 +114,19 @@ echo "=== Generating SCOREBOARD.md ==="
 cd "$REPO_ROOT/backend"
 PYTHONPATH="$REPO_ROOT/backend:$REPO_ROOT" \
   "$PYTHON" -c "
-import json, sys
+import json
+from datetime import datetime, timezone
 from pathlib import Path
-from talkteach.sota.harness import Scoreboard, SOTAResult
+from talkteach.sota.rescore import rescore_scoreboard
 from talkteach.sota.report import generate
-from talkteach.sota.scoring import aggregate_headline
 
+# Reuse the single reconstruction path (rescore_scoreboard): applies the small-n +
+# partial-scope gates, derives display fields, flags directional. A full run is a
+# fresh measurement, so it advances the 'generated' stamp.
 data = json.loads(Path('$SCORES_JSON').read_text())
-results = []
-for d in data:
-    ci = {}
-    for k, v in d.get('confidence_95', {}).items():
-        if isinstance(v, list) and len(v) == 2:
-            ci[k] = (float(v[0]), float(v[1]))
-    r = SOTAResult(
-        domain_id=d.get('domain_id', ''),
-        domain_name=d.get('domain_name', ''),
-        score_0_1000=d.get('score_0_1000', 0),
-        band=d.get('band', 'unmeasured'),
-        metrics=d.get('metrics', {}),
-        confidence_95=ci,
-        baseline_ref=d.get('baseline_ref', ''),
-        sota_ref=d.get('sota_ref', ''),
-        num_samples=d.get('num_samples', 0),
-        engine_used=d.get('engine_used', ''),
-        notes=d.get('notes', ''),
-    )
-    results.append(r)
-
-# Honest headline: mean over adequately-powered domains only (small-n gate),
-# with under-powered results flagged directional. Also sets r.directional.
-h = aggregate_headline(results)
-sb = Scoreboard(
-    domains=results,
-    overall_mean=h['overall_mean'],
-    overall_band=h['overall_band'],
-    num_total=h['num_total'],
-    num_measured=h['num_measured'],
-    num_eligible=h['num_eligible'],
-    num_directional=h['num_directional'],
-    num_unmeasured=h['num_unmeasured'],
-)
-md, jd = generate(sb, Path('$OUTPUT_DIR'))
-print(f'  SCOREBOARD.md written ({len(results)} domains, headline {sb.overall_mean:.0f}/{sb.overall_band}, {sb.num_eligible} powered)')
+sb = rescore_scoreboard({'domains': data, 'generated': datetime.now(timezone.utc).isoformat()})
+generate(sb, Path('$OUTPUT_DIR'))
+print(f'  SCOREBOARD.md written ({sb.num_total} domains, headline {sb.overall_mean:.0f}/{sb.overall_band}, {sb.num_eligible} powered)')
 " 2>&1
 
 # --- regression check ---

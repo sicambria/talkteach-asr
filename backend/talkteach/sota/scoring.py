@@ -218,12 +218,21 @@ def assess_headline_eligibility(domain: Domain, metrics: dict[str, Any]) -> tupl
 
     A domain that produced a score can still be statistically under-powered
     (e.g. a per-speaker variance over n=2 speakers, or a WER over fewer clips
-    than the domain declares). Such results are kept and shown with their score,
-    but flagged "directional" and excluded from the overall mean so the headline
-    reflects only adequately-powered evidence.
+    than the domain declares) OR *scope-partial* (the metric only covers part of
+    the domain's definition — e.g. int8-only export fidelity, a beam sweep with no
+    hotword biasing, a long-form proxy shorter than 60 min). Such results are kept
+    and shown with their score, but flagged "directional" and excluded from the
+    overall mean so the headline reflects only adequately-powered, in-scope evidence.
 
     Returns (eligible, reason); reason is "" when eligible.
     """
+    # Scope-partial: measured, but the metric only partially covers the domain.
+    # This is the single chokepoint — a measure method sets metrics["partial"];
+    # aggregate_headline reads eligibility from here, so the exclusion always sticks
+    # even when the sample count is adequate.
+    partial = metrics.get("partial")
+    if partial:
+        return False, f"directional: {partial}"
     # Per-speaker metrics need enough distinct speakers, not merely enough clips.
     min_speakers = int(getattr(domain, "min_speakers", 0) or 0)
     if min_speakers > 0:

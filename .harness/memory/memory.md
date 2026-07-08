@@ -6,8 +6,8 @@
 ## Now
 - Last captured session: 2026-07-08 (see `.harness/memory/episodic/2026-07-08.md`)
 - **Active experiments:** E01 (banked), E02 (falsified). Next: Stage 3 — model-size scaling.
-- **Blockers:** B-001 (HF datasets v5 incompat — blocks D02, D07)
-- **Scoreboard:** headline **provisional** — 1/15 domains adequately powered (D01 clean WER, gold), 3 directional (D04/D06/D12), 11 unmeasured/blocked. Numbers single-sourced in `docs/sota-benchmarks/SCOREBOARD.md`; canonical narrative in `OVERALL.md`. Regenerate with `make sota-rescore`.
+- **Blockers:** B-001 torchcodec decode barrier **FIXED** (loader uses `Audio(decode=False)`+soundfile). D02 still blocked by CV17 `EmptyDatasetError` (datasets v5 / gated); D07 needs multi-config FLEURS (metric counts languages, spec is single en_us).
+- **Scoreboard:** headline **provisional** — **8/15 measured** but only **1 eligible** (D01 clean WER, gold). **7 directional**: under-powered (D04/D06/D12) + **scope-partial** (D08/D10/D11/D15, gated out by `metrics["partial"]`). **7 abstain (`human_needed`, score 0, never fabricated)**: D02/D07 (loader) + D03/D05/D09/D13 (need training) + D14 (needs labels). No `validate_*` may hardcode a positive score (static test). Numbers single-sourced in `docs/sota-benchmarks/SCOREBOARD.md`; canonical narrative in `OVERALL.md`. Regenerate: full `bash scripts/sota/run_all.sh --baseline --engines small`; re-present only with `make sota-rescore`.
 
 ## Journey State (2026-07-08)
 - **S1 (banked):** First real-audio baseline — whisper-small clean-speech in the gold band (D01),

@@ -58,3 +58,50 @@ def write_result(result: dict[str, Any], json_path: Path | None) -> None:
         json_path.parent.mkdir(parents=True, exist_ok=True)
         json_path.write_text(json.dumps(result, indent=2, default=str))
     print(json.dumps(result, indent=2, default=str))
+
+
+def write_domain_result(result: Any, json_path: Path | None) -> None:
+    """Serialize a harness SOTAResult uniformly (domain_name, num_samples, notes).
+
+    Thin-wrapper validation scripts share this so every domain's JSON carries the
+    same fields — including ``num_samples`` and error ``notes`` that ad-hoc payloads
+    used to drop, which then rendered as "Samples: 0" / blank notes on the board.
+    """
+    write_result(
+        {
+            "domain_id": result.domain_id,
+            "domain_name": result.domain_name,
+            "score_0_1000": result.score_0_1000,
+            "band": result.band,
+            "metrics": result.metrics,
+            "confidence_95": {k: list(v) for k, v in result.confidence_95.items()},
+            "baseline_ref": result.baseline_ref,
+            "sota_ref": result.sota_ref,
+            "num_samples": result.num_samples,
+            "engine_used": result.engine_used,
+            "notes": result.notes,
+        },
+        json_path,
+    )
+
+
+def write_abstention(domain: Any, requires: str, json_path: Path | None) -> None:
+    """Emit an honest abstention for a domain this harness cannot self-measure.
+
+    Score 0 (band ``human_needed``) so the result is counted as *unmeasured* by
+    ``aggregate_headline`` (measured == score > 0) and can never contribute a
+    fabricated grade to the scoreboard. Carries no invented metric values —
+    only a status describing what real measurement would require.
+    """
+    write_result(
+        {
+            "domain_id": domain.id,
+            "score_0_1000": 0,
+            "band": "human_needed",
+            "metrics": {"status": "not measured", "requires": requires},
+            "confidence_95": {},
+            "baseline_ref": "",
+            "sota_ref": domain.sota_1000_reference,
+        },
+        json_path,
+    )

@@ -16,6 +16,7 @@ BAND_EMOJI: dict[str, str] = {
     "bronze": "🥉",
     "pending": "⏳",
     "unmeasured": "❓",
+    "human_needed": "🧑‍🔬",
     "error": "⚠️",
 }
 
