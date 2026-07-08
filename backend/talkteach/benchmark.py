@@ -283,6 +283,18 @@ def run_benchmark(
 # espeak still covers them. Extend as voices are verified.
 _PIPER_VOICES: dict[str, str] = {"en": "en_US-lessac-low"}
 
+# Known Pocket TTS voices per language. Pocket TTS has multi-lingual support with
+# its own catalog of voices per language. See the Pocket TTS README for the full
+# list. Languages absent here fall through to ``configured_voice``.
+_POCKET_VOICES: dict[str, str] = {
+    "en": "alba",
+    "fr": "estelle",
+    "de": "juergen",
+    "pt": "rafael",
+    "it": "giovanni",
+    "es": "lola",
+}
+
 
 def _resolve_voice(provider: str, language: str, configured_voice: str | None) -> str | None:
     """Pick the TTS voice for ``(provider, language)``.
@@ -296,6 +308,8 @@ def _resolve_voice(provider: str, language: str, configured_voice: str | None) -
         return language
     if p == "piper":
         return _PIPER_VOICES.get(language)
+    if p in ("pocket-tts", "pocket"):
+        return _POCKET_VOICES.get(language) or configured_voice
     return configured_voice  # unknown provider: trust the configured voice
 
 
