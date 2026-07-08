@@ -44,6 +44,7 @@ done
 log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
+VENV_PY="$REPO_ROOT/backend/.venv/bin/python"
 
 # --- 1. system packages (sudo) ----------------------------------------------
 install_system() {
@@ -145,7 +146,6 @@ fi
 
 # --- verify ------------------------------------------------------------------
 log "Verifying"
-VENV_PY="$REPO_ROOT/backend/.venv/bin/python"
 if [ -x "$VENV_PY" ]; then
   ( cd "$REPO_ROOT/backend" && "$VENV_PY" -m pytest -q ) && echo "  backend tests: OK"
 fi

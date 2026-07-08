@@ -259,8 +259,8 @@ def compare_runs(
     if not a or not b:
         return {"error": "one or both run_ids not found"}
 
-    a_wer = a["best_wer"] or a["wer"] or float("inf")
-    b_wer = b["best_wer"] or b["wer"] or float("inf")
+    a_wer = _safe_wer(a)
+    b_wer = _safe_wer(b)
 
     return {
         "run_a": run_id_a,
@@ -270,6 +270,15 @@ def compare_runs(
         "delta_wer": a_wer - b_wer if a_wer != float("inf") and b_wer != float("inf") else None,
         "winner": run_id_a if a_wer < b_wer else run_id_b,
     }
+
+
+def _safe_wer(row: sqlite3.Row | dict[str, Any]) -> float:
+    """Extract WER from a row, handling None and treating 0.0 as valid."""
+    for key in ("best_wer", "wer"):
+        v = row[key]
+        if v is not None:
+            return float(v)
+    return float("inf")
 
 
 def regression_check(
@@ -283,11 +292,11 @@ def regression_check(
     if not best:
         return {"regression": False, "reason": "no prior baseline"}
 
-    prev_best = best.get("best_wer") or best.get("wer")
-    if prev_best is None:
+    prev_best = _safe_wer(best)
+    if prev_best == float("inf"):
         return {"regression": False, "reason": "no prior WER"}
 
-    delta = current_wer - float(prev_best)
+    delta = current_wer - prev_best
     return {
         "regression": delta > tolerance,
         "current_wer": current_wer,

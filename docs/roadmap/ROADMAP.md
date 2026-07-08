@@ -136,8 +136,8 @@ with `[ml]` installed.
 
 Derived by comparing TalkTeach against **Hugging Face Transformers, NVIDIA NeMo,
 and SpeechBrain** (full analysis + rationale in
-[`COMPETITIVE_GAPS.md`](COMPETITIVE_GAPS.md)). These are additive and need no new
-ML research; formats/use-case coverage is mapped in [`FORMATS.md`](FORMATS.md).
+[`COMPETITIVE_GAPS.md`](../architecture/COMPETITIVE_GAPS.md)). These are additive and need no new
+ML research; formats/use-case coverage is mapped in [`FORMATS.md`](../architecture/FORMATS.md).
 
 46. **Data augmentation** — SpecAugment + speed/pitch perturbation + noise/RIR
     mixing; the director auto-enables it for tiny datasets (biggest small-data win).

@@ -9,7 +9,7 @@ spine of the Phase 0 effort: each item maps to a **tier**, the
 > `✅` overclaims now reflected in rows #3, #14, #43 below. See
 > [`../assessment/2026-07-06.md`](../assessment/2026-07-06.md).
 
-Tiers (see [`DECISIONS.md`](DECISIONS.md) D-001):
+Tiers (see [`DECISIONS.md`](../architecture/DECISIONS.md) D-001):
 
 - **A — done & verified here**: real code + tests that pass in this environment.
 - **B — coded & guarded; integration deferred**: real code paths written and

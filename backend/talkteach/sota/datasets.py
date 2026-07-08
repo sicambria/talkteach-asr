@@ -123,6 +123,7 @@ def download_hf_dataset(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    count = 0
     for i, item in enumerate(ds):
         audio = item.get("audio", {})
         audio_array = audio.get("array")
@@ -140,8 +141,9 @@ def download_hf_dataset(
         if transcript:
             txt_path = output_dir / f"clip_{i:05d}.txt"
             txt_path.write_text(str(transcript).strip())
+        count += 1
 
-    print(f"[sota] {spec['name']} ({split}): {i + 1} clips saved to {output_dir}")
+    print(f"[sota] {spec['name']} ({split}): {count} clips saved to {output_dir}")
     return output_dir
 
 

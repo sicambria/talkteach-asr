@@ -72,7 +72,7 @@ class SOTAHarness:
         seed: int = 42,
         baseline_only: bool = False,
     ):
-        self.engines = engines or ["whisper-tiny"]
+        self.engines = engines or ["tiny"]
         self.data_root = data_root or Path(
             os.environ.get("TALKTEACH_DATA_ROOT", Path.cwd() / "backend" / ".data")
         )
@@ -108,7 +108,7 @@ class SOTAHarness:
     def measure_base_wer(
         self,
         eval_dir: Path,
-        engine_name: str = "whisper-tiny",
+        engine_name: str = "tiny",
         max_clips: int = 100,
     ) -> dict[str, Any]:
         """Measure base (untrained) WER on an eval directory using faster-whisper."""
@@ -121,12 +121,17 @@ class SOTAHarness:
         model = WhisperModel(engine_name, device="cpu", compute_type="int8")
         references: list[str] = []
         hypotheses: list[str] = []
+        per_clip_wer: list[float] = []
 
         for audio_path, ref_text in pairs:
             segments, _ = model.transcribe(str(audio_path), beam_size=5)
             hyp_text = " ".join(s.text.strip() for s in segments)
-            references.append(ref_text.lower())
-            hypotheses.append(hyp_text.lower())
+            ref_lower = ref_text.lower()
+            hyp_lower = hyp_text.lower()
+            references.append(ref_lower)
+            hypotheses.append(hyp_lower)
+            # Compute per-clip WER for meaningful CI
+            per_clip_wer.append(wer([ref_lower], [hyp_lower]))
 
         clip_wer = wer(references, hypotheses)
         clip_cer = cer(references, hypotheses)
@@ -135,13 +140,13 @@ class SOTAHarness:
             "wer": clip_wer,
             "cer": clip_cer,
             "num_clips": len(pairs),
-            "ci_95_wer": confidence_interval([clip_wer] * len(pairs), seed=self.seed),
+            "ci_95_wer": confidence_interval(per_clip_wer, seed=self.seed),
         }
 
     def measure_rtf(
         self,
         eval_dir: Path,
-        engine_name: str = "whisper-tiny",
+        engine_name: str = "tiny",
         max_clips: int = 20,
     ) -> dict[str, Any]:
         """Measure Real-Time Factor on an eval directory."""
@@ -187,7 +192,7 @@ class SOTAHarness:
         self,
         clean_dir: Path,
         noise_dir: Path | None = None,
-        engine_name: str = "whisper-tiny",
+        engine_name: str = "tiny",
         max_clips: int = 30,
         snr_levels: list[float] | None = None,
     ) -> dict[str, Any]:
@@ -252,7 +257,7 @@ class SOTAHarness:
     def measure_speaker_equity(
         self,
         eval_dir: Path,
-        engine_name: str = "whisper-tiny",
+        engine_name: str = "tiny",
         max_clips: int = 100,
     ) -> dict[str, Any]:
         """Measure per-speaker WER variance on LibriSpeech."""
@@ -303,7 +308,7 @@ class SOTAHarness:
         self,
         train_dir: Path,
         eval_dir: Path,
-        engine_name: str = "whisper-tiny",
+        engine_name: str = "tiny",
         data_minutes: list[float] | None = None,
     ) -> dict[str, Any]:
         """Measure WER at different amounts of training data."""
@@ -329,7 +334,7 @@ class SOTAHarness:
         """Run a single domain benchmark and return a scored result."""
         import subprocess
 
-        engine = self.engines[0] if self.engines else "whisper-tiny"
+        engine = self.engines[0] if self.engines else "tiny"
 
         try:
             git_commit = subprocess.check_output(
@@ -443,10 +448,8 @@ class SOTAHarness:
                 result.band = band
             elif notes and "not downloaded" in notes:
                 result.band = "unmeasured"
-                result.notes = notes
-            elif notes and "skipped" in notes.lower():
+            elif notes:
                 result.band = "pending"
-                result.notes = notes
 
         except Exception as e:
             result.notes = f"Error: {e}"
@@ -477,7 +480,7 @@ class SOTAHarness:
         overall_mean = sum(scores) / len(scores) if scores else 0.0
 
         band_tuples = [
-            (1000, "platinum"),
+            (1000, "sota"),
             (950, "diamond"),
             (900, "platinum"),
             (800, "gold"),

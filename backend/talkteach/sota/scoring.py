@@ -137,7 +137,7 @@ def score_against_bands(
     Returns (score, band_label).
     """
     BAND_NAMES = {
-        1000: "platinum",
+        1000: "sota",
         950: "diamond",
         900: "platinum",
         800: "gold",

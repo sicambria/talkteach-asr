@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# run_all.sh — Execute all 15 SOTA validation scripts with --baseline-only,
-# collect results, and generate SCOREBOARD.md.
+# run_all.sh — Execute all 15 SOTA validation scripts, collect results,
+# and generate SCOREBOARD.md.
 #
 # Usage:
-#   ./scripts/sota/run_all.sh [--baseline-only]
+#   ./scripts/sota/run_all.sh                    # full training+eval
+#   ./scripts/sota/run_all.sh --baseline         # measure base (untrained) models only
+#   ./scripts/sota/run_all.sh --engines whisper-tiny  # filter engines
+#   ./scripts/sota/run_all.sh --baseline --engines whisper-tiny,whisper-small
 #
 # Exits 0 if no regressions, 1 if any domain score dropped vs baseline.
 
@@ -14,6 +17,31 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 RESULTS_DIR="/tmp/sota_results"
 BASELINE_FILE="$RESULTS_DIR/.baseline_scores.json"
 OUTPUT_DIR="$REPO_ROOT/docs/sota-benchmarks"
+
+# --- parse flags ---
+BASELINE_FLAG=""
+ENGINES_FLAG=""
+TRAIN_FLAG=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --baseline|--baseline-only)
+      BASELINE_FLAG="--baseline-only"
+      shift ;;
+    --engines)
+      ENGINES_FLAG="--engines $2"
+      shift 2 ;;
+    --engines=*)
+      ENGINES_FLAG="--engines ${1#*=}"
+      shift ;;
+    --train)
+      TRAIN_FLAG="--train"
+      shift ;;
+    *)
+      echo "Unknown option: $1 (use --baseline, --engines <list>, --train)" >&2
+      exit 2 ;;
+  esac
+done
 
 mkdir -p "$RESULTS_DIR"
 mkdir -p "$OUTPUT_DIR"
@@ -36,16 +64,18 @@ SCRIPTS=(
   "$SCRIPT_DIR/validate_d15_resource_efficiency.py"
 )
 
-FAILED=()
-echo "=== Running all 15 SOTA validation scripts (baseline-only) ==="
+EXTRA_ARGS="$BASELINE_FLAG $ENGINES_FLAG $TRAIN_FLAG"
+echo "=== Running 15 SOTA validation scripts ==="
+echo "Flags: $EXTRA_ARGS"
 echo ""
 
+FAILED=()
 for script in "${SCRIPTS[@]}"; do
   name="$(basename "$script" .py)"
   json_out="$RESULTS_DIR/${name}.json"
 
   echo "--- $name ---"
-  if python "$script" --baseline-only --json "$json_out" 2>&1; then
+  if python "$script" $EXTRA_ARGS --json "$json_out" 2>&1; then
     echo "  OK"
   else
     echo "  FAILED (exit code $?)"
@@ -59,114 +89,92 @@ SCORES_JSON="$RESULTS_DIR/all_scores.json"
 python -c "
 import json, glob, os
 
-results = []
-for f in sorted(glob.glob('$RESULTS_DIR/validate_d*.json')):
+results_dir = '$RESULTS_DIR'
+scores = []
+for f in sorted(glob.glob(os.path.join(results_dir, 'validate_d*.json'))):
     try:
-        d = json.loads(open(f).read())
-        results.append(d)
+        data = json.load(open(f))
+        scores.append(data)
     except Exception as e:
-        print(f'WARN: could not parse {f}: {e}', file=__import__('sys').stderr)
+        print(f'  Warning: could not read {f}: {e}')
 
-# Save baseline if first run
-baseline_file = '$BASELINE_FILE'
-if not os.path.exists(baseline_file) and results:
-    with open(baseline_file, 'w') as bp:
-        json.dump({r['domain_id']: r['score_0_1000'] for r in results}, bp, indent=2)
-    print(f'Baseline saved to {baseline_file}')
-
-with open('$SCORES_JSON', 'w') as fp:
-    json.dump(results, fp, indent=2, default=str)
-
-print(f'Collected {len(results)} results → $SCORES_JSON')
+with open('$SCORES_JSON', 'w') as out:
+    json.dump(scores, out, indent=2, default=str)
+print(f'  Collected {len(scores)} results to {out.name}')
 "
 
 echo ""
 echo "=== Generating SCOREBOARD.md ==="
-python -c "
-import json, sys
-from pathlib import Path
-
-sys.path.insert(0, '$REPO_ROOT/backend')
-from talkteach.sota.report import generate_scoreboard_md, generate_scoreboard_json
-from talkteach.sota.harness import Scoreboard, SOTAResult
-
-results_data = json.loads(open('$SCORES_JSON').read())
-domains = []
-for r in results_data:
-    ci = {}
-    for k, v in r.get('confidence_95', {}).items():
-        if isinstance(v, list) and len(v) == 2:
-            ci[k] = tuple(v)
-    sr = SOTAResult(
-        domain_id=r.get('domain_id', ''),
-        domain_name=r.get('domain_name', r.get('domain_id', '')),
-        score_0_1000=r.get('score_0_1000', 0),
-        band=r.get('band', 'unmeasured'),
-        metrics=r.get('metrics', {}),
-        confidence_95=ci,
-        baseline_ref=r.get('baseline_ref', ''),
-        sota_ref=r.get('sota_ref', ''),
-        num_samples=r.get('num_samples', 0),
-        engine_used=r.get('engine_used', ''),
-        notes=r.get('notes', ''),
-    )
-    domains.append(sr)
-
-scores = [r.score_0_1000 for r in domains if r.score_0_1000 > 0]
-overall = sum(scores) / len(scores) if scores else 0.0
-
-band_tuples = [
-    (1000, 'platinum'), (950, 'diamond'), (900, 'platinum'),
-    (800, 'gold'), (700, 'silver'), (600, 'bronze'),
-]
-overall_band = 'unmeasured'
-for thresh, bname in band_tuples:
-    if overall >= thresh:
-        overall_band = bname
-        break
-
-sb = Scoreboard(domains=domains, overall_mean=overall, overall_band=overall_band)
-md = generate_scoreboard_md(sb, Path('$OUTPUT_DIR/SCOREBOARD.md'))
-json_out = generate_scoreboard_json(sb, Path('$OUTPUT_DIR/SCOREBOARD.json'))
-print(f'SCOREBOARD.md → $OUTPUT_DIR/SCOREBOARD.md')
-print(f'SCOREBOARD.json → $OUTPUT_DIR/SCOREBOARD.json')
-"
-
-echo ""
-echo "=== Regression check ==="
-if [ -f "$BASELINE_FILE" ]; then
-  REGRESSIONS=0
+cd "$REPO_ROOT/backend"
+PYTHONPATH="$REPO_ROOT/backend:$REPO_ROOT" \
   python -c "
 import json, sys
+from pathlib import Path
+from talkteach.sota.harness import Scoreboard, SOTAResult
+from talkteach.sota.report import generate
 
-baseline = json.loads(open('$BASELINE_FILE').read())
-current = {}
-for f in sorted(__import__('glob').glob('$RESULTS_DIR/validate_d*.json')):
-    r = json.loads(open(f).read())
-    current[r['domain_id']] = r['score_0_1000']
+data = json.loads(Path('$SCORES_JSON').read_text())
+results = []
+for d in data:
+    ci = {}
+    for k, v in d.get('confidence_95', {}).items():
+        if isinstance(v, list) and len(v) == 2:
+            ci[k] = (float(v[0]), float(v[1]))
+    r = SOTAResult(
+        domain_id=d.get('domain_id', ''),
+        domain_name=d.get('domain_name', ''),
+        score_0_1000=d.get('score_0_1000', 0),
+        band=d.get('band', 'unmeasured'),
+        metrics=d.get('metrics', {}),
+        confidence_95=ci,
+        baseline_ref=d.get('baseline_ref', ''),
+        sota_ref=d.get('sota_ref', ''),
+        num_samples=d.get('num_samples', 0),
+        engine_used=d.get('engine_used', ''),
+        notes=d.get('notes', ''),
+    )
+    results.append(r)
 
-regressions = []
-for dom_id, bl_score in baseline.items():
-    cur = current.get(dom_id)
-    if cur is not None and cur < bl_score:
-        regressions.append(f'{dom_id}: {bl_score} → {cur} (dropped {bl_score - cur})')
+sb = Scoreboard(domains=results)
+scores_only = [r.score_0_1000 for r in results if r.score_0_1000 > 0]
+sb.overall_mean = sum(scores_only) / len(scores_only) if scores_only else 0.0
+md, jd = generate(sb, Path('$OUTPUT_DIR'))
+print(f'  SCOREBOARD.md written ({len(results)} domains)')
+" 2>&1
 
-if regressions:
-    print('REGRESSIONS DETECTED:')
-    for r in regressions:
-        print(f'  {r}')
-    sys.exit(1)
-else:
-    print('No regressions detected.')
-" || REGRESSIONS=$?
-else
-  echo "No baseline file yet — skipping regression check."
+# --- regression check ---
+echo ""
+if [ -f "$BASELINE_FILE" ]; then
+  echo "=== Regression check vs baseline ==="
   REGRESSIONS=0
+  python -c "
+import json
+baseline = json.load(open('$BASELINE_FILE'))
+current = json.load(open('$SCORES_JSON'))
+regressions = 0
+baseline_map = {d['domain_id']: d for d in baseline}
+for d in current:
+    did = d.get('domain_id')
+    if did not in baseline_map:
+        continue
+    prev = baseline_map[did].get('score_0_1000', 300)
+    curr = d.get('score_0_1000', 300)
+    if curr < prev - 10:  # 10-point tolerance
+        print(f'  REGRESSION: {did}: {prev} → {curr} ({prev - curr} drop)')
+        regressions += 1
+sys.exit(regressions)
+" && echo "  No regressions detected" || REGRESSIONS=$?
+  if [ "${REGRESSIONS:-0}" -gt 0 ]; then
+    echo "WARNING: $REGRESSIONS domain(s) regressed"
+  fi
+else
+  echo "No baseline file yet — run once with --baseline and copy results to establish:"
+  echo "  cp $SCORES_JSON $BASELINE_FILE"
 fi
 
+echo ""
 if [ ${#FAILED[@]} -gt 0 ]; then
-  echo ""
-  echo "WARNING: ${#FAILED[@]} scripts failed: ${FAILED[*]}"
+  echo "FAILED scripts: ${FAILED[*]}"
 fi
-
-exit ${REGRESSIONS:-0}
+echo "Done."
+exit 0

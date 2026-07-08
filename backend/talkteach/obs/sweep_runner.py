@@ -32,8 +32,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-import yaml  # type: ignore[import-untyped]
-
 from talkteach.obs.experiment_db import (
     hash_config,
     log_experiment,
@@ -139,6 +137,8 @@ def run_sweep(
 
     Returns list of result dicts for each cell in the grid.
     """
+    import yaml  # type: ignore[import-untyped]
+
     config = yaml.safe_load(config_path.read_text())
 
     name = config.get("name", config_path.stem)

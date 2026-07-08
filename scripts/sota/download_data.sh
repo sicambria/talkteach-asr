@@ -77,12 +77,10 @@ download_fleurs() {
 
     echo -e "${YELLOW}[sota]${NC} Downloading FLEURS en/es (Hugging Face, ~1.5 GB)..."
     cd "$REPO_ROOT/backend"
-    for lang in en_us es_419; do
-        "$PYTHON" -c "
+    "$PYTHON" -c "
 from talkteach.sota.datasets import download
 download('fleurs', split='test', max_samples=100)
 "
-    done
     echo -e "${GREEN}[sota]${NC} FLEURS ready"
 }
 
