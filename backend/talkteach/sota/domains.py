@@ -31,7 +31,8 @@ class Domain:
     engine_filter: list[str] = field(default_factory=list)  # applicable engine names
     data_filter: list[str] = field(default_factory=list)  # required datasets
     runnable_cpu: bool = True  # can run without GPU?
-    min_samples: int = 50  # minimum eval clips for statistical validity
+    min_samples: int = 50  # minimum eval clips for statistical validity (headline gate)
+    min_speakers: int = 0  # minimum distinct speakers for a per-speaker metric (0 = N/A)
 
 
 ALL_DOMAINS: list[Domain] = [
@@ -41,7 +42,7 @@ ALL_DOMAINS: list[Domain] = [
         name="ASR Accuracy — Clean Speech",
         metric="wer",
         description="WER on LibriSpeech test-clean (read speech, studio quality). "
-        "The most cited ASR benchmark. SOTA=1000: whisper-large-v3 at ~1.8% WER.",
+        "The most cited ASR benchmark. 1000-tier (<1.0% WER) exceeds all known production ASR.",
         higher_is_better=False,
         bands=[
             Band(1000, 0.010, "WER ≤ 1.0% — surpasses best known production ASR"),
@@ -51,7 +52,11 @@ ALL_DOMAINS: list[Domain] = [
             Band(700, 0.050, "WER ≤ 5.0% — usable for clean speech applications"),
             Band(600, 0.080, "WER ≤ 8.0% — functional baseline"),
         ],
-        sota_1000_reference="whisper-large-v3 @ 1.8% WER on LibriSpeech test-clean (OpenAI, 2023)",
+        sota_1000_reference=(
+            "whisper-large-v3 ≈ 1.8–2.7% WER on LibriSpeech test-clean depending on "
+            "normalization (OpenAI HF model card ~2.7%); 1000-tier (<1.0%) exceeds all "
+            "known production ASR"
+        ),
         engine_filter=["whisper_lora", "wav2vec2_ctc"],
         data_filter=["librispeech_test_clean"],
         runnable_cpu=True,
@@ -299,6 +304,9 @@ ALL_DOMAINS: list[Domain] = [
         data_filter=["librispeech_test_clean"],
         runnable_cpu=True,
         min_samples=100,
+        # A std over a handful of speakers is not evidence of speaker generalization.
+        # Require ≥10 distinct speakers before this domain counts toward the headline.
+        min_speakers=10,
     ),
     # ── D13: Director Selection Accuracy ──
     Domain(

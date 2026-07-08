@@ -21,6 +21,7 @@ from talkteach.sota.datasets import (
 )
 from talkteach.sota.domains import ALL_DOMAINS, Domain
 from talkteach.sota.scoring import (
+    aggregate_headline,
     cer,
     confidence_interval,
     rtf,
@@ -46,6 +47,8 @@ class SOTAResult:
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     git_commit: str = ""
     notes: str = ""
+    directional: bool = False  # measured but under-powered → excluded from the headline mean
+    directional_reason: str = ""
 
 
 @dataclass
@@ -56,6 +59,12 @@ class Scoreboard:
     overall_mean: float = 0.0
     overall_band: str = "bronze"
     generated: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    # Coverage — how much of the 15-domain suite actually stands behind the headline.
+    num_total: int = 0
+    num_measured: int = 0
+    num_eligible: int = 0  # measured AND adequately powered
+    num_directional: int = 0  # measured but under-powered (excluded from the mean)
+    num_unmeasured: int = 0
 
     @property
     def sorted_by_score(self) -> list[SOTAResult]:
@@ -476,25 +485,18 @@ class SOTAHarness:
                 print(f"  → {result.notes}")
             results.append(result)
 
-        scores = [r.score_0_1000 for r in results if r.score_0_1000 > 0]
-        overall_mean = sum(scores) / len(scores) if scores else 0.0
-
-        band_tuples = [
-            (1000, "sota"),
-            (950, "diamond"),
-            (900, "platinum"),
-            (800, "gold"),
-            (700, "silver"),
-            (600, "bronze"),
-        ]
-        overall_band = "unmeasured"
-        for score_thresh, band_name in band_tuples:
-            if overall_mean >= score_thresh:
-                overall_band = band_name
-                break
+        # Honest headline: mean over adequately-powered domains only, with
+        # under-powered results flagged "directional" and excluded (see
+        # scoring.aggregate_headline). This also annotates each result in place.
+        headline = aggregate_headline(results)
 
         return Scoreboard(
             domains=results,
-            overall_mean=overall_mean,
-            overall_band=overall_band,
+            overall_mean=headline["overall_mean"],
+            overall_band=headline["overall_band"],
+            num_total=headline["num_total"],
+            num_measured=headline["num_measured"],
+            num_eligible=headline["num_eligible"],
+            num_directional=headline["num_directional"],
+            num_unmeasured=headline["num_unmeasured"],
         )

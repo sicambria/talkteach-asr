@@ -7,13 +7,13 @@
 
 ## Objective
 
-Close the remaining gap to SOTA (whisper-large-v3 @ 1.8% WER) and complete the SOTA scoreboard with the highest-value remaining domains.
+Close the remaining gap to the SOTA anchor (whisper-large-v3 ≈ 1.8–2.7% test-clean depending on normalization; the 1000-tier is <1.0% WER) and grow SOTA scoreboard coverage with the highest-value remaining domains. See [`OVERALL.md`](../../OVERALL.md) for the authoritative, single-sourced state.
 
 ## Current State
 
 | Domain | Status | Score | Gap |
 |--------|--------|-------|-----|
-| D01 Clean WER | Measured | 800/gold | 0.89pp to SOTA (2.69% → 1.8%) |
+| D01 Clean WER | Measured (2-speaker slice, wide CI) | 800/gold | small gap to the large-v3 anchor; **not yet representative → E06** |
 | D04 RTF | Measured | 600/bronze | — |
 | D06 Noise | Measured | 800/gold | — |
 | D12 Speaker | Measured | 950/diamond (directional) | — |
@@ -24,11 +24,11 @@ Close the remaining gap to SOTA (whisper-large-v3 @ 1.8% WER) and complete the S
 
 ## Strategic Insight from S1+S2
 
-**Fine-tuning doesn't help on in-domain data.** The pretrained models are already near-Pareto-optimal on LibriSpeech. The path to SOTA is through model size: whisper-small (2.69%) is within 0.89pp of whisper-large-v3 (1.8%). Larger pretrained models may close this gap entirely without any training.
+**Fine-tuning doesn't help on in-domain data** (INS-001). The pretrained models are already near-Pareto-optimal on LibriSpeech. The path to a better score is through model size: whisper-small is already close to the whisper-large-v3 anchor (large-v3 ≈ 1.8–2.7% test-clean). Larger pretrained models may close much of the gap without any training. Caveat: the current D01 number is on a 2-speaker slice with a wide CI — make it representative first (E06) before over-reading the gap.
 
 ## Stage 3 Hypothesis
 
-Using a larger pretrained model (distil-large-v3, distil-large-v3.5, or medium) will reduce D01 WER from 2.69% to ≤2.0% (diamond band, 900+), potentially reaching ≤1.8% (SOTA, 1000/1000).
+Using a larger pretrained model (distil-large-v3, distil-large-v3.5, or medium) will reduce D01 WER to ≤2.0% (diamond band, 900+). Note the 1000-tier is <1.0% WER, so the SOTA tier is not expected to be reachable on CPU.
 
 ## Stage 3 Experiments
 
@@ -66,7 +66,7 @@ Using a larger pretrained model (distil-large-v3, distil-large-v3.5, or medium) 
 - [x] Evidence classification: `backend/talkteach/sota/scoring.py:14` — WER measured (banked) with 95% CI; model comparisons directional when n<100
 - [x] Reproducibility: `backend/talkteach/sota/scoring.py:14` — fixed seed (42), normalized text, documented protocol in `docs/testing/journey-s1-real-audio-baseline.md`
 - [x] Statistical validity: `backend/talkteach/sota/scoring.py:58` — bootstrap CI on per-clip WER; ≥50 clips for ≥5% difference detectability
-- [x] Baseline / SOTA calibration: `backend/talkteach/sota/domains.py:46` — D01 bands anchored to whisper-large-v3 @ 1.8%; intermediate bands verified against published whisper model sizes
+- [x] Baseline / SOTA calibration: `backend/talkteach/sota/domains.py:46` — D01 bands per domains.py (1000-tier <1.0%; large-v3 ≈ 1.8–2.7% reference); intermediate bands verified against published whisper model sizes
 
 ## Execution Order
 
