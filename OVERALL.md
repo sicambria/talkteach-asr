@@ -168,7 +168,14 @@ per row.
 
 | Exp | Date | Config / command | Metric | Result | Verdict | Notes |
 |-----|------|------------------|--------|--------|---------|-------|
-| E01 | _pending_ | `benchmark.py --config benchmarks/quick.yaml` | whisper-tiny / wav2vec2 mean WER | _to record_ | — | prompt-disjoint TTS eval; compare vs REPORT.md 0.131/0.298 |
+| **smoke** | 2026-07-08 | 1 cell: espeak + whisper-tiny, 2 train / 2 eval, 1 epoch (CPU) | real-path check | WER 0.071, CER 0.065, **train 7.8 s/cell**; **no `[SIMULATION]`**, base scored (delta available); workdir auto-cleaned to 284 K | ✅ real path | Confirms harness runs the real `Seq2SeqTrainer` (PEFT LoRA) + base-model scoring, and the disk-quota guardrail (`keep_artifacts:false`) works. |
+| **E01** | 2026-07-08 | `benchmark.py --config benchmarks/quick.yaml` (CPU, real path) | whisper-tiny / wav2vec2 mean WER on shared, **prompt-disjoint** synthetic-TTS eval (6 train / 6 eval) | **whisper 0.1310 / wav2vec2 0.2858**. Per-cell: `piper+whisper 0.024`, `espeak+whisper 0.238`, `piper+wav2vec2 0.167`, `espeak+wav2vec2 0.405`. train 6–12 s/cell | ✅ reproduces REPORT.md (0.131 / 0.298) to the digit | **Indicative synthetic proxy** (A.6.7). Honest signal: 1-epoch fine-tunes barely move whisper-tiny on clean TTS (`delta_wer ≈ 0`; only `espeak+wav2vec2` improved, 0.452→0.405) → motivates the epochs/data-quantity + rank/LR sweeps (E19–E22). |
+
+**Established baselines (this box, CPU, real path):** synthetic-TTS `small`-bracket = whisper-tiny
+**0.131** WER / wav2vec2 **0.286** WER. **Still missing (the P0 gap): any real-audio number (E02).**
+Per-cell CPU cost is ~8–12 s for a 1-epoch tiny fit; 5-epoch runs on 15–30 min of data and the
+`medium` bracket (244–315 M models) are minutes–tens-of-minutes each, so the calibration sweeps
+(E19–E26) are a multi-hour CPU program and the `large`/adapter work (E14–E18) is GPU-queued.
 
 _Remaining experiments E02–E30 are specified above and queued. This log is appended to as runs
 complete; each entry states its eval-disjointness and whether it was the real path or `[SIMULATION]`._
