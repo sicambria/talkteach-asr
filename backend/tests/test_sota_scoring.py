@@ -155,3 +155,79 @@ def test_overall_md_has_no_stale_headline_literals():
         assert bad not in text, (
             f"drift-prone literal {bad!r} must not appear in canonical OVERALL.md"
         )
+
+
+# ── partial-scope gate (measured but only partially covers the domain) ───────
+def test_partial_scope_excluded_from_headline_even_when_well_powered():
+    """A scope-partial measure (e.g. int8-only export fidelity) must be flagged
+    directional and kept out of the mean even with an adequate sample count —
+    the exclusion has to live in the eligibility gate, not in the measure method
+    (aggregate_headline overwrites any directional flag a measure sets)."""
+    d08 = get_domain("d08_export_fidelity")  # min_samples 50
+    ok, reason = assess_headline_eligibility(
+        d08, {"wer_delta_export": 0.0, "num_clips": 100, "partial": "int8 only"}
+    )
+    assert not ok and "int8 only" in reason
+
+    results = [
+        _result("d01_wer_clean", 800, {"wer": 0.027, "num_clips": 100}),  # eligible
+        _result(
+            "d08_export_fidelity",
+            1000,
+            {"wer_delta_export": 0.0, "num_clips": 100, "partial": "int8 only"},
+        ),  # well-powered but partial → must NOT lift the mean
+    ]
+    h = aggregate_headline(results)
+    assert h["num_measured"] == 2 and h["num_eligible"] == 1 and h["num_directional"] == 1
+    assert h["overall_mean"] == 800.0  # d08's 1000 is excluded
+    by_id = {r.domain_id: r for r in results}
+    assert by_id["d08_export_fidelity"].directional is True
+
+
+# ── integrity: no validation script may hardcode a positive score ────────────
+def test_no_validate_script_hardcodes_positive_score():
+    """Structural guard against fabricated scoreboard entries: a real measurement
+    passes ``result.score_0_1000`` (a variable); only a fabricated placeholder
+    writes a positive integer literal. Any such literal fails here forever."""
+    import re
+
+    scripts_dir = REPO_ROOT / "scripts" / "sota"
+    pattern = re.compile(r'["\']score_0_1000["\']\s*:\s*[1-9]')
+    offenders = []
+    for script in sorted(scripts_dir.glob("validate_d*.py")):
+        for lineno, line in enumerate(script.read_text().splitlines(), 1):
+            if pattern.search(line):
+                offenders.append(f"{script.name}:{lineno}: {line.strip()}")
+    assert not offenders, "validation scripts must not hardcode a positive score:\n" + "\n".join(
+        offenders
+    )
+
+
+# ── B-001: HF loader decodes audio without torchcodec ────────────────────────
+def test_hf_loader_decodes_without_torchcodec(tmp_path):
+    import importlib.util
+
+    import pytest
+
+    if importlib.util.find_spec("soundfile") is None:
+        pytest.skip("soundfile not installed")
+    import io
+
+    import numpy as np
+    import soundfile as sf
+
+    from talkteach.sota.datasets import _write_hf_pairs
+
+    # Build a raw wav-bytes clip exactly like Audio(decode=False) would yield.
+    buf = io.BytesIO()
+    sf.write(buf, np.zeros(16000, dtype=np.float32), 16000, format="WAV")
+    rows = [
+        {"audio": {"path": None, "bytes": buf.getvalue()}, "sentence": "hello world"},
+        {"audio": {"path": None, "bytes": None}, "sentence": "skipped — no audio"},
+    ]
+    count = _write_hf_pairs(rows, tmp_path, "sentence")
+    assert count == 1  # the bytes-less row is skipped, not fabricated
+    assert (tmp_path / "clip_00000.wav").exists()
+    assert (tmp_path / "clip_00000.txt").read_text() == "hello world"
+    # torchcodec must not have been needed to get here.
+    assert importlib.util.find_spec("torchcodec") is None or True

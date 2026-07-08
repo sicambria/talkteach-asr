@@ -10,7 +10,7 @@
 > generator and stored in [`docs/sota-benchmarks/SCOREBOARD.md`](docs/sota-benchmarks/SCOREBOARD.md)
 > / `.json`. This document *references* the scoreboard by its `generated` stamp rather than copying
 > figures into prose, so the two can never silently drift (the prior root cause of the contradiction
-> this rewrite resolved). Current scoreboard stamp: **`2026-07-08T14:00:54.165418+00:00`**.
+> this rewrite resolved). Current scoreboard stamp: **`2026-07-08T22:23:17.820188+00:00`**.
 > Regenerate after any scoring-policy change with **`make sota-rescore`** (seconds, no GPU); the
 > dated entries in Part C are immutable historical records and are exempt from single-sourcing.
 
@@ -38,20 +38,32 @@ The authoritative numbers are in
 [`SCOREBOARD.md`](docs/sota-benchmarks/SCOREBOARD.md) (stamp above). Read it there; the summary
 here is deliberately qualitative so it cannot drift:
 
-- **Coverage is low and the headline is provisional.** Of the 15 domains, **only one is adequately
-  powered** (D01 clean-speech WER, on 100 real LibriSpeech test-clean clips). Three more are
-  **measured but under-powered ("directional")** and are therefore **excluded from the headline
-  mean**; the rest are **unmeasured or blocked**. The scoreboard reports the exact headline,
-  band (`provisional`), and the measured / directional / unmeasured counts.
+- **Coverage is partial and the headline is provisional.** Of the 15 domains, **8 are now measured
+  on real audio** but **only one is adequately powered and in-scope** (D01 clean-speech WER, 100
+  real LibriSpeech test-clean clips). The other seven are **excluded from the headline mean** as
+  **"directional"** — either under-powered (too few clips/speakers) or **scope-partial** (the metric
+  covers only part of the domain's definition). The remaining seven **abstain** (`human_needed`):
+  they need training runs, human labels, or a working dataset loader, and emit **no fabricated
+  score**. The scoreboard reports the exact headline, band (`provisional`), and the
+  measured / eligible / directional / unmeasured counts.
 - **The one solid result:** off-the-shelf (untrained) **whisper-small** on real LibriSpeech
   test-clean lands in the **gold** band — see D01 in the scoreboard for the WER, its 95 % CI, and
   the anchor. Caveat carried in the scoreboard: those 100 clips span only **2 speakers**, so the CI
   is wide and it is **not** a like-for-like comparison to full-test-set SOTA anchors.
-- **Directional (do not headline):** D04 real-time factor (20 clips < the domain's declared 100),
-  D06 noise robustness (30 clips < 50, synthetic noise = upper bound), and D12 speaker equity
-  (**a per-speaker σ over n=2 speakers is not evidence of generalization** — needs ≥10).
-- **Blocked:** D02 (spontaneous / Common Voice) and D07 (multilingual / FLEURS) — **B-001**
-  (HF `datasets` v5 + missing `torchcodec` breaks the CV17/FLEURS loaders).
+- **Directional (do not headline):** two kinds. *Under-powered:* D04 real-time factor (20 clips <
+  the domain's declared 100), D06 noise robustness (30 clips < 50, synthetic noise = upper bound),
+  D12 speaker equity (**a per-speaker σ over n=2 speakers is not evidence of generalization** —
+  needs ≥10). *Scope-partial* (measured, but the metric covers only part of the domain): D08 export
+  fidelity (int8 quantization only — 1 of 3 export targets), D10 decoding (beam sweep only, no
+  hotword/OOV biasing), D11 long-form (a ~10-min concatenated-clip proxy, not 60-min continuous),
+  D15 resource (model disk footprint only). The partial-scope gate keeps these out of the headline
+  even though several land in high bands.
+- **Abstained (`human_needed`, score 0 — never fabricated):** D03/D05/D09/D13 need real training
+  runs; D14 needs a hand-labelled quality set; **D02** (Common Voice) fails to load under HF
+  `datasets` v5 (`EmptyDatasetError` / gated access); **D07** (FLEURS) loads but its metric counts
+  languages and the spec is single-config (en_us). *B-001 update:* the torchcodec decode barrier is
+  **fixed** (loader uses `Audio(decode=False)` + soundfile); D02/D07 remain blocked by the separate
+  dataset-resolution / multi-config gaps above.
 - **Synthetic-TTS proxy** (separate generator, single-sourced in
   [`benchmarks/REPORT.md`](benchmarks/REPORT.md)): the TTS×ASR harness reports whisper-tiny vs
   wav2vec2 on synthetic speech. **Synthetic-TTS WER is an indicative proxy only** and must never be

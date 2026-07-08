@@ -104,8 +104,14 @@ def download_hf_dataset(
     split: str = "test",
     max_samples: int | None = None,
 ) -> Path:
-    """Download a dataset from Hugging Face and save as (audio, transcript) pairs."""
-    from datasets import load_dataset
+    """Download a dataset from Hugging Face and save as (audio, transcript) pairs.
+
+    B-001: `datasets` v5 decodes audio columns through `torchcodec`, which is not
+    installed here. We disable on-access decoding (`Audio(decode=False)`) and decode
+    the raw bytes/path ourselves with soundfile (mp3 supported), so the loader needs
+    no torchcodec/ffmpeg backend.
+    """
+    from datasets import Audio, load_dataset
 
     spec = DATASET_SPECS[dataset_name]
     hf_name, config = spec["hf_dataset"]
@@ -117,34 +123,53 @@ def download_hf_dataset(
 
     print(f"[sota] Loading {hf_name} ({config}, {split}) from Hugging Face...")
     ds = load_dataset(hf_name, config, split=split)
+    # Read the audio column as raw {path, bytes} instead of torchcodec-decoded arrays.
+    if "audio" in ds.column_names:
+        ds = ds.cast_column("audio", Audio(decode=False))
 
     if max_samples and len(ds) > max_samples:
         ds = ds.select(range(max_samples))
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    count = 0
-    for i, item in enumerate(ds):
-        audio = item.get("audio", {})
-        audio_array = audio.get("array")
-        sampling_rate = audio.get("sampling_rate", 16000)
-
-        if audio_array is None:
-            continue
-
-        import soundfile as sf
-
-        audio_path = output_dir / f"clip_{i:05d}.wav"
-        sf.write(str(audio_path), audio_array, sampling_rate)
-
-        transcript = item.get(spec["transcript_field"], "")
-        if transcript:
-            txt_path = output_dir / f"clip_{i:05d}.txt"
-            txt_path.write_text(str(transcript).strip())
-        count += 1
-
+    count = _write_hf_pairs(ds, output_dir, spec["transcript_field"])
     print(f"[sota] {spec['name']} ({split}): {count} clips saved to {output_dir}")
     return output_dir
+
+
+def _write_hf_pairs(ds: Any, output_dir: Path, transcript_field: str) -> int:
+    """Decode each row's raw audio (no torchcodec) and write clip_NNNNN.wav/.txt."""
+    import io
+
+    import soundfile as sf
+
+    count = 0
+    for i, item in enumerate(ds):
+        audio = item.get("audio") or {}
+        # With Audio(decode=False), audio is {"path": str|None, "bytes": bytes|None}.
+        data = None
+        sr = None
+        raw = audio.get("bytes")
+        path = audio.get("path")
+        try:
+            if raw:
+                data, sr = sf.read(io.BytesIO(raw))
+            elif path and Path(path).exists():
+                data, sr = sf.read(path)
+        except Exception as e:  # unreadable clip — skip, don't fabricate
+            print(f"[sota]   skip clip {i}: {e}")
+            continue
+        if data is None or sr is None:
+            continue
+
+        audio_path = output_dir / f"clip_{i:05d}.wav"
+        sf.write(str(audio_path), data, sr)
+
+        transcript = item.get(transcript_field, "")
+        if transcript:
+            (output_dir / f"clip_{i:05d}.txt").write_text(str(transcript).strip())
+        count += 1
+    return count
 
 
 def generate_synthetic_noise(

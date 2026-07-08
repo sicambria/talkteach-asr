@@ -29,6 +29,28 @@ from talkteach.sota.scoring import (
     wer,
 )
 
+_ENGINE_ALIASES = {
+    "whisper-tiny": "tiny",
+    "whisper-base": "base",
+    "whisper-small": "small",
+    "whisper-medium": "medium",
+    "whisper-large": "large-v3",
+}
+
+
+def normalize_engine(name: str) -> str:
+    """Map CLI/engine-filter names to faster-whisper model sizes.
+
+    faster-whisper rejects names like "whisper-tiny" (it wants "tiny"); the SOTA
+    domains/CLI use the "whisper-*" spelling, so normalize at the model boundary.
+    """
+    n = (name or "").strip()
+    if n in _ENGINE_ALIASES:
+        return _ENGINE_ALIASES[n]
+    if n.startswith("whisper-"):
+        return n[len("whisper-") :]
+    return n or "tiny"
+
 
 @dataclass
 class SOTAResult:
@@ -339,11 +361,201 @@ class SOTAHarness:
             "status": "skipped — exhaustive sweep needed (validate_d13)",
         }
 
+    def measure_export_fidelity(
+        self,
+        eval_dir: Path,
+        engine_name: str = "tiny",
+        max_clips: int = 50,
+    ) -> dict[str, Any]:
+        """WER drift from CT2-float32 to CT2-int8 on the same clips (D08).
+
+        This measures the int8 *quantization* delta only — one of the three export
+        targets the domain's bands name (ONNX fp16, safetensors). The float32
+        reference is itself CTranslate2-float32, not the original PyTorch fp32 base.
+        Hence the result is scope-partial and excluded from the headline.
+        """
+        from faster_whisper import WhisperModel
+
+        pairs = load_clip_transcript_pairs(eval_dir, max_clips=max_clips)
+        if not pairs:
+            return {"wer_delta_export": -1.0, "num_clips": 0, "error": "no clips found"}
+
+        def _wer_at(compute_type: str) -> float:
+            model = WhisperModel(engine_name, device="cpu", compute_type=compute_type)
+            refs: list[str] = []
+            hyps: list[str] = []
+            for audio_path, ref_text in pairs:
+                segments, _ = model.transcribe(str(audio_path), beam_size=5)
+                hyps.append(" ".join(s.text.strip() for s in segments).lower())
+                refs.append(ref_text.lower())
+            return wer(refs, hyps)
+
+        wer_fp32 = _wer_at("float32")
+        wer_int8 = _wer_at("int8")
+        return {
+            "wer_delta_export": abs(wer_int8 - wer_fp32),
+            "wer_ct2_float32": wer_fp32,
+            "wer_ct2_int8": wer_int8,
+            "num_clips": len(pairs),
+            "partial": "int8 quantization only (1 of 3 export targets; "
+            "baseline is CT2-float32, not PyTorch fp32)",
+        }
+
+    def measure_decoding(
+        self,
+        eval_dir: Path,
+        engine_name: str = "tiny",
+        max_clips: int = 30,
+        beam_sizes: tuple[int, ...] = (1, 5),
+    ) -> dict[str, Any]:
+        """Best WER across a beam-size sweep on read speech (D10).
+
+        No hotword/OOV biasing on a domain-vocab set is measured (none exists),
+        so this is scope-partial: it validates the decoder sweep, not the full
+        domain-decoding claim.
+        """
+        from faster_whisper import WhisperModel
+
+        pairs = load_clip_transcript_pairs(eval_dir, max_clips=max_clips)
+        if not pairs:
+            return {"domain_wer_optimal": -1.0, "num_clips": 0, "error": "no clips found"}
+
+        model = WhisperModel(engine_name, device="cpu", compute_type="int8")
+        wer_by_beam: dict[str, float] = {}
+        for beam in beam_sizes:
+            refs: list[str] = []
+            hyps: list[str] = []
+            for audio_path, ref_text in pairs:
+                segments, _ = model.transcribe(str(audio_path), beam_size=beam)
+                hyps.append(" ".join(s.text.strip() for s in segments).lower())
+                refs.append(ref_text.lower())
+            wer_by_beam[f"wer_beam_{beam}"] = wer(refs, hyps)
+
+        best_key = min(wer_by_beam, key=lambda k: wer_by_beam[k])
+        return {
+            "domain_wer_optimal": wer_by_beam[best_key],
+            "best_beam": int(best_key.rsplit("_", 1)[1]),
+            **wer_by_beam,
+            "num_clips": len(pairs),
+            "partial": "beam sweep on general read speech only; "
+            "no hotword/OOV domain-vocab biasing",
+        }
+
+    def measure_longform(
+        self,
+        eval_dir: Path,
+        engine_name: str = "tiny",
+        target_minutes: float = 10.0,
+    ) -> dict[str, Any]:
+        """WER drift from short clips to one concatenated long recording (D11).
+
+        The long recording is built by concatenating read-speech clips up to
+        ``target_minutes`` (a proxy shorter than the 60-min domain target, and not
+        naturally continuous speech), so the result is scope-partial.
+        """
+        import numpy as np
+        import soundfile as sf
+        from faster_whisper import WhisperModel
+
+        pairs = load_clip_transcript_pairs(eval_dir, max_clips=1000)
+        if not pairs:
+            return {"wer_delta_60min": -1.0, "num_clips": 0, "error": "no clips found"}
+
+        model = WhisperModel(engine_name, device="cpu", compute_type="int8")
+        target_s = target_minutes * 60.0
+        arrays: list[Any] = []
+        refs_short: list[str] = []
+        hyps_short: list[str] = []
+        total_s = 0.0
+
+        for audio_path, ref_text in pairs:
+            audio, sr = sf.read(str(audio_path))
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            audio = audio.astype(np.float32)
+            segments, _ = model.transcribe(audio, beam_size=5)
+            hyps_short.append(" ".join(s.text.strip() for s in segments).lower())
+            refs_short.append(ref_text.lower())
+            arrays.append(audio)
+            total_s += len(audio) / sr
+            if total_s >= target_s:
+                break
+
+        wer_short = wer(refs_short, hyps_short)
+        long_audio = np.concatenate(arrays)
+        long_ref = " ".join(refs_short)  # already lower-cased
+        segments, _ = model.transcribe(long_audio, beam_size=5)
+        long_hyp = " ".join(s.text.strip() for s in segments).lower()
+        wer_long = wer([long_ref], [long_hyp])
+
+        minutes = round(total_s / 60.0, 2)
+        return {
+            "wer_delta_60min": abs(wer_long - wer_short),
+            "wer_short_clips": wer_short,
+            "wer_longform": wer_long,
+            "longform_minutes": minutes,
+            "num_clips": len(arrays),
+            "partial": f"proxy: {minutes} min of concatenated read speech, "
+            "not 60 min of naturally continuous audio",
+        }
+
+    def measure_resource_efficiency(
+        self,
+        eval_dir: Path,
+        engine_name: str = "tiny",
+        max_clips: int = 20,
+    ) -> dict[str, Any]:
+        """Model disk footprint + peak RAM over some audio-minutes (D15).
+
+        Scores the standing model disk footprint (the domain's SOTA anchor is
+        "~50 MB disk"); peak RSS is reported but not scored, and the marginal
+        per-audio-minute pipeline storage is not yet accounted — hence partial.
+        """
+        import os
+
+        import psutil
+        import soundfile as sf
+        from faster_whisper import WhisperModel, download_model
+
+        paths = (
+            sorted(eval_dir.rglob("*.flac"))[:max_clips]
+            or sorted(eval_dir.rglob("*.wav"))[:max_clips]
+        )
+        if not paths:
+            return {"mb_per_audio_minute": -1.0, "num_clips": 0, "error": "no audio files found"}
+
+        model_dir = Path(download_model(engine_name))
+        disk_mb = sum(f.stat().st_size for f in model_dir.rglob("*") if f.is_file()) / (1024 * 1024)
+
+        proc = psutil.Process(os.getpid())
+        rss_before = proc.memory_info().rss
+        model = WhisperModel(engine_name, device="cpu", compute_type="int8")
+        peak_rss = proc.memory_info().rss
+        total_audio_s = 0.0
+        for p in paths:
+            audio, sr = sf.read(str(p))
+            total_audio_s += len(audio) / sr
+            segments, _ = model.transcribe(str(p))
+            for _ in segments:
+                pass
+            peak_rss = max(peak_rss, proc.memory_info().rss)
+
+        return {
+            "mb_per_audio_minute": disk_mb,  # standing model disk footprint (see partial note)
+            "model_disk_mb": disk_mb,
+            "peak_rss_mb": peak_rss / (1024 * 1024),
+            "rss_delta_mb": (peak_rss - rss_before) / (1024 * 1024),
+            "audio_minutes": round(total_audio_s / 60.0, 3),
+            "num_clips": len(paths),
+            "partial": "model disk footprint scored (per SOTA anchor); "
+            "peak RAM reported not scored; marginal per-audio-min storage not accounted",
+        }
+
     def run_domain(self, domain: Domain) -> SOTAResult:
         """Run a single domain benchmark and return a scored result."""
         import subprocess
 
-        engine = self.engines[0] if self.engines else "tiny"
+        engine = normalize_engine(self.engines[0] if self.engines else "tiny")
 
         try:
             git_commit = subprocess.check_output(
@@ -383,6 +595,18 @@ class SOTAHarness:
                         "librispeech_test_clean not downloaded — run scripts/sota/download_data.sh"
                     )
 
+            elif domain.id == "d02_wer_spontaneous":
+                eval_dir = data_paths.get("common_voice_en")
+                if eval_dir:
+                    m = self.measure_base_wer(eval_dir, engine, max_clips=domain.min_samples)
+                    metrics["wer"] = m["wer"]
+                    metrics["cer"] = m.get("cer", -1.0)
+                    metrics["num_clips"] = m.get("num_clips", 0)
+                    if "ci_95_wer" in m:
+                        result.confidence_95["wer"] = m["ci_95_wer"]
+                else:
+                    notes = "common_voice_en not downloaded"
+
             elif domain.id == "d04_rtf":
                 eval_dir = data_paths.get("librispeech_test_clean")
                 if eval_dir:
@@ -416,6 +640,40 @@ class SOTAHarness:
                     metrics["per_speaker_wer_std"] = m.get("std_wer", -1.0)
                     metrics["speaker_wer_spread"] = m.get("spread", -1.0)
                     metrics["num_speakers"] = m.get("num_speakers", 0)
+                else:
+                    notes = "librispeech_test_clean not downloaded"
+
+            elif domain.id == "d08_export_fidelity":
+                eval_dir = data_paths.get("librispeech_test_clean")
+                if eval_dir:
+                    m = self.measure_export_fidelity(eval_dir, engine, max_clips=domain.min_samples)
+                    metrics.update(m)
+                else:
+                    notes = "librispeech_test_clean not downloaded"
+
+            elif domain.id == "d10_decoding":
+                eval_dir = data_paths.get("librispeech_test_clean")
+                if eval_dir:
+                    m = self.measure_decoding(eval_dir, engine, max_clips=domain.min_samples)
+                    metrics.update(m)
+                else:
+                    notes = "librispeech_test_clean not downloaded"
+
+            elif domain.id == "d11_longform":
+                eval_dir = data_paths.get("librispeech_test_clean")
+                if eval_dir:
+                    m = self.measure_longform(eval_dir, engine)
+                    metrics.update(m)
+                else:
+                    notes = "librispeech_test_clean not downloaded"
+
+            elif domain.id == "d15_resource_efficiency":
+                eval_dir = data_paths.get("librispeech_test_clean")
+                if eval_dir:
+                    m = self.measure_resource_efficiency(
+                        eval_dir, engine, max_clips=domain.min_samples
+                    )
+                    metrics.update(m)
                 else:
                     notes = "librispeech_test_clean not downloaded"
 

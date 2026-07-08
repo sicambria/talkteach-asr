@@ -24,7 +24,7 @@ Svelte 4 UI, Tauri v2 shell, GPL-3.0-or-later. See `README.md` and `OVERALL.md`.
 - Pre-register experiments: metric + baseline + DoD before implementation (OVERALL.md Part B)
 - Update `docs/roadmap/ROADMAP_STATUS.md` when a roadmap item changes status
 - Record non-obvious choices in `docs/architecture/DECISIONS.md` (top-5 scored 0-100)
-- 198 fast tests must stay green (no GPU/ML deps needed)
+- 219 fast tests must stay green (no GPU/ML deps needed)
 
 ## Experiment Workflow (Learning Loop)
 1. Define: create YAML in `experiments/<name>.yaml` with pre-registered metric, baseline, DoD
@@ -55,7 +55,7 @@ TalkTeach follows three standing engineering rules, documented in full at
    reproducible benchmarks.
 
 ## Guardrails (must verify before committing)
-- [ ] `make test` all green (198 tests)
+- [ ] `make test` all green (219 tests)
 - [ ] No `[SIMULATION]` in real-path results
 - [ ] No `project/docs/` paths in any .md file (`grep -rn 'project/docs/' --include='*.md' .`)
 - [ ] No hardcoded secrets or tokens
