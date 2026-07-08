@@ -4,7 +4,7 @@
 > Update this in the same change as the work it describes.
 
 ## Now
-- Last captured session: 2026-07-08 (journey S1+S2 complete, see episodic below)
+- Last captured session: 2026-07-08 (see `.harness/memory/episodic/2026-07-08.md`)
 - **Active experiments:** E01 (banked), E02 (falsified). Next: Stage 3 — model-size scaling.
 - **Blockers:** B-001 (HF datasets v5 incompat — blocks D02, D07)
 - **Scoreboard:** 4/15 domains measured, overall 788/1000 (silver). whisper-small @ 2.69% WER is the strategic anchor.
