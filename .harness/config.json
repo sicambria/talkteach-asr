@@ -142,13 +142,13 @@
   "hooks": {
     "requiredBinaries": [],
     "prePushLogDir": ".prepush-logs",
-    "priorHooksPath": null,
+    "priorHooksPath": ".harness/hooks",
     "managed": true
   },
   "verify": {
-    "test": "",
-    "lint": "",
-    "build": "npm run build",
+    "test": "make test",
+    "lint": "make lint",
+    "build": "N/A",
     "e2e": "",
     "healthcheck": ""
   },
