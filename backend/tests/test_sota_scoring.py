@@ -349,3 +349,29 @@ def test_gpu_hours_to_converge_improving_and_degrading():
     assert gpu_hours_to_converge([(1.0, 0.30, 900.0), (2.0, 0.30, 1800.0)]) is None
     # Too few points → None.
     assert gpu_hours_to_converge([(1.0, 0.30, 900.0)]) is None
+
+
+# ── D05: wer_at_5min scores against the data-efficiency bands ──────────────────
+def test_d05_wer_at_5min_band_scoring():
+    from talkteach.sota.scoring import score_against_bands
+
+    d05 = get_domain("d05_data_efficiency")
+    bands = [(b.score, b.threshold) for b in d05.bands]
+    assert d05.metric == "wer_at_5min" and not d05.higher_is_better
+    # 4% WER at 5 min → top band; 12% → gold (≤0.15); 25% → below silver.
+    assert score_against_bands(0.04, bands, d05.higher_is_better)[0] == 1000
+    assert score_against_bands(0.12, bands, d05.higher_is_better)[0] == 800
+    assert score_against_bands(0.25, bands, d05.higher_is_better)[0] <= 700
+
+
+# ── D03/D05: shared improvement gate (the bug: a worse-than-base result scored) ─
+def test_beats_base_gate():
+    from talkteach.sota.scoring import beats_base
+
+    # A real ≥5% relative improvement passes.
+    assert beats_base(0.057, 0.064) is True  # 5.7% vs 6.4% base → >5% rel better
+    # A degradation must NOT pass (D05 scored 7.1% platinum over a 6.4% base — the
+    # exact failure this gate exists to stop).
+    assert beats_base(0.071, 0.064) is False
+    # A tie / sub-threshold nudge must NOT pass (noise, not data efficiency).
+    assert beats_base(0.062, 0.064) is False  # only ~3% rel → below 5% threshold

@@ -1,6 +1,6 @@
 # TalkTeach SOTA Scoreboard
 
-**Generated:** 2026-07-09T08:43:00.184806+00:00
+**Generated:** 2026-07-09T09:03:05.083293+00:00
 
 **Headline:** 800/1000 — provisional
 
@@ -20,7 +20,7 @@
 | 8 | 🥉 Resource Efficiency — Disk + RAM per Audio Minute | **600** | bronze ⚠︎ directional | mb_per_audio_minute | 463.6883 |
 | 9 | 🧑‍🔬 ASR Accuracy — Spontaneous/Conversational Speech | **0** | human_needed | wer | — |
 | 10 | 🧑‍🔬 Training Efficiency — Time-to-Convergence | **0** | human_needed | gpu_hours | — |
-| 11 | 🧑‍🔬 Data Efficiency — WER vs. Training Minutes | **0** | human_needed | wer_at_5min | — |
+| 11 | 🧑‍🔬 Data Efficiency — WER vs. Training Minutes | **0** | human_needed | wer_at_5min | 0.0709 |
 | 12 | 🧑‍🔬 Multilingual Coverage — Languages with WER < 15% | **0** | human_needed | languages_under_15pct_wer | — |
 | 13 | 🧑‍🔬 Augmentation Efficacy — Relative WER Reduction at 5 min Data | **0** | human_needed | rel_wer_reduction_5min | — |
 | 14 | 🧑‍🔬 Director Auto-Selection — Optimal Config Choice Rate | **0** | human_needed | oracle_match_rate | — |
@@ -96,14 +96,24 @@
 ### d05_data_efficiency: Data Efficiency — WER vs. Training Minutes
 
 - **Score:** 0/1000 (human_needed)
-- **Engine:** 
-- **Samples:** 0
+- **Engine:** tiny
+- **Samples:** 238
 - **SOTA Reference:** Whisper-LoRA: ~3% WER with 30 min of fine-tuning data (literature)
+- **Notes:** 5-min fine-tune did not beat the zero-shot base on held-out test-clean: base 6.4% → 5-min 7.1% (≥5% relative improvement required). WER-by-minutes {'5': 0.07092198581560284, '15': 0.06028368794326241, '30': 0.08156028368794327} just fluctuates around base within noise — no data-efficiency signal on this in-domain corpus where base is near-ceiling (cf INS-001).
 
 ```json
 {
-  "status": "not measured",
-  "requires": "training runs at 5/15/30/60/120 min of LibriSpeech train-clean-100 to trace the WER-vs-data curve (extract the cached tar first)"
+  "base_wer": 0.06382978723404255,
+  "wer_by_minutes": {
+    "5": 0.07092198581560284,
+    "15": 0.06028368794326241,
+    "30": 0.08156028368794327
+  },
+  "wer_at_5min": 0.07092198581560284,
+  "best_wer": 0.06028368794326241,
+  "num_clips": 238,
+  "degenerate": true,
+  "abstain_reason": "5-min fine-tune did not beat the zero-shot base on held-out test-clean: base 6.4% \u2192 5-min 7.1% (\u22655% relative improvement required). WER-by-minutes {'5': 0.07092198581560284, '15': 0.06028368794326241, '30': 0.08156028368794327} just fluctuates around base within noise \u2014 no data-efficiency signal on this in-domain corpus where base is near-ceiling (cf INS-001)."
 }
 ```
 

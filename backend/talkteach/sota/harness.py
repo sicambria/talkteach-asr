@@ -341,14 +341,111 @@ class SOTAHarness:
         eval_dir: Path,
         engine_name: str = "tiny",
         data_minutes: list[float] | None = None,
+        epochs: int = 2,
+        eval_clips: int = 15,
+        min_rel_improvement: float = 0.05,
     ) -> dict[str, Any]:
-        """Measure WER at different amounts of training data."""
-        data_minutes = data_minutes or [5, 15, 30, 60, 120]
-        return {
-            "data_minutes": data_minutes,
-            "wer_by_minutes": {},
-            "status": "skipped — training needed, use scripts/sota/validate_d05_data_efficiency.py",
+        """WER after fine-tuning on increasing amounts of data (D05).
+
+        Anchors base (pre-finetune) WER on disjoint test-clean, then fine-tunes
+        whisper-tiny on each bounded slice of train-clean-100 and re-evals the SAME
+        test-clean subset (same HF engine). ``wer_at_5min`` is the 5-min result. If
+        no slice beats base by ``min_rel_improvement`` — the LIKELY case for in-domain
+        LibriSpeech (INS-001, and confirmed by D03) — it ABSTAINS with the base→trained
+        numbers rather than score a wer_at_5min that presumes fine-tuning worked.
+
+        Scope-partial: bounded data sizes (domain intends ≤120 min), whisper-tiny,
+        single seed → excluded from the headline even when a slice improves.
+        """
+        import shutil
+        import tempfile
+
+        from talkteach.director.types import Compute, EngineKind, Precision, TrainingPlan
+        from talkteach.engines._whisper_train import (
+            run_real_training,
+            transcribe_with_transformers,
+        )
+        from talkteach.sota.scoring import beats_base
+
+        sizes = data_minutes or [5.0, 15.0, 30.0]  # bounded (domain default ≤120)
+        base_ckpt = f"openai/whisper-{engine_name}"
+        eval_pairs = load_clip_transcript_pairs(eval_dir, max_clips=eval_clips)
+        if not eval_pairs:
+            return {"wer_at_5min": -1.0, "num_clips": 0, "error": "no eval clips found"}
+
+        def _hf_wer(model_dir: str) -> float:
+            refs: list[str] = []
+            hyps: list[str] = []
+            for audio_path, ref_text in eval_pairs:
+                hyps.append(transcribe_with_transformers(str(audio_path), model_dir).lower())
+                refs.append(ref_text.lower())
+            return wer(refs, hyps)
+
+        base_wer = _hf_wer(base_ckpt)
+        wer_by_minutes: dict[str, float] = {}
+        total_clips = 0
+        for target in sizes:
+            manifest, _actual = self._build_train_manifest(train_dir, target, seed=self.seed)
+            if len(manifest) < 5:
+                continue
+            total_clips += len(manifest)
+            plan = TrainingPlan(
+                engine=EngineKind.WHISPER_LORA,
+                base_checkpoint=base_ckpt,
+                compute=Compute.CPU,
+                precision=Precision.FP32,
+                batch_size=1,
+                grad_accum=1,
+                learning_rate=1e-4,
+                epochs=epochs,
+                warmup_ratio=0.1,
+                early_stop_patience=0,
+                lora_rank=8,
+                lora_alpha=16,
+                freeze_encoder=True,
+                seed=self.seed,
+                grad_clip=1.0,
+            )
+            workdir = tempfile.mkdtemp(prefix="sota_d05_")
+            try:
+                run_real_training(plan, manifest, workdir, progress=None, should_stop=None)
+                wer_by_minutes[str(int(target))] = _hf_wer(workdir)
+            finally:
+                shutil.rmtree(workdir, ignore_errors=True)  # disk guard
+
+        if not wer_by_minutes:
+            return {"wer_at_5min": -1.0, "num_clips": 0, "error": "no training slices built"}
+
+        wer_at_5min = wer_by_minutes.get(str(int(sizes[0])), min(wer_by_minutes.values()))
+        best = min(wer_by_minutes.values())
+        metrics: dict[str, Any] = {
+            "base_wer": base_wer,
+            "wer_by_minutes": wer_by_minutes,
+            "wer_at_5min": wer_at_5min,
+            "best_wer": best,
+            "num_clips": total_clips,
         }
+        # The SCORED metric is wer_at_5min. Data efficiency means 5 min of data BEATS
+        # the zero-shot base (which needs 0 min) — otherwise a wer_at_5min that maps to
+        # a high band is a degradation dressed as a good score. Gate on the reported
+        # 5-min result, not on "some size improved" (a noise-level blip at another size
+        # must not license scoring a worse 5-min number). On in-domain LibriSpeech the
+        # base is near-ceiling so fine-tuning just fluctuates around it (INS-001).
+        if not beats_base(wer_at_5min, base_wer, min_rel_improvement):
+            metrics["degenerate"] = True
+            metrics["abstain_reason"] = (
+                f"5-min fine-tune did not beat the zero-shot base on held-out test-clean: "
+                f"base {base_wer:.1%} → 5-min {wer_at_5min:.1%} (≥{min_rel_improvement:.0%} "
+                f"relative improvement required). WER-by-minutes {wer_by_minutes} just "
+                f"fluctuates around base within noise — no data-efficiency signal on this "
+                f"in-domain corpus where base is near-ceiling (cf INS-001)."
+            )
+            return metrics
+        metrics["partial"] = (
+            f"bounded data sizes {[int(s) for s in sizes]} min (domain intends ≤120); "
+            f"whisper-{engine_name} FP32 LoRA; single seed; LibriSpeech read speech"
+        )
+        return metrics
 
     def measure_director_accuracy(
         self,
@@ -537,7 +634,7 @@ class SOTAHarness:
             run_real_training,
             transcribe_with_transformers,
         )
-        from talkteach.sota.scoring import gpu_hours_to_converge
+        from talkteach.sota.scoring import beats_base, gpu_hours_to_converge
 
         base_ckpt = f"openai/whisper-{engine_name}"
         eval_pairs = load_clip_transcript_pairs(eval_dir, max_clips=eval_clips)
@@ -602,7 +699,7 @@ class SOTAHarness:
             "wall_clock_s": curve[-1][2] if curve else -1.0,
         }
         # Non-improvement is a documented terminal state (INS-001), not an error.
-        if final_wer >= base_wer * (1.0 - min_rel_improvement):
+        if not beats_base(final_wer, base_wer, min_rel_improvement):
             metrics["degenerate"] = True
             metrics["abstain_reason"] = (
                 f"fine-tune did not improve WER on held-out test-clean: base "
@@ -957,8 +1054,16 @@ class SOTAHarness:
                     notes = "librispeech train-clean-100 / test-clean not downloaded"
 
             elif domain.id == "d05_data_efficiency":
-                notes = "Requires training at multiple data sizes — use validate_d05 script"
-                metrics["wer_at_5min"] = -1.0
+                train_dir = data_paths.get("librispeech_train_clean_100")
+                td_eval = data_paths.get("librispeech_test_clean")
+                if train_dir and td_eval:
+                    m = self.measure_data_efficiency(train_dir, td_eval, engine)
+                    metrics.update(m)
+                    if m.get("degenerate"):
+                        abstained = True
+                        notes = str(m.get("abstain_reason", "no data size improved"))
+                else:
+                    notes = "librispeech train-clean-100 / test-clean not downloaded"
 
             elif domain.id == "d13_director_accuracy":
                 notes = "Requires exhaustive oracle sweep — use validate_d13 script"

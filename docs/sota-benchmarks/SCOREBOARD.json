@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-09T08:43:00.184806+00:00",
+  "generated": "2026-07-09T09:03:05.083293+00:00",
   "overall_mean": 800.0,
   "overall_band": "provisional",
   "coverage": {
@@ -102,15 +102,24 @@
       "directional": false,
       "directional_reason": "",
       "metrics": {
-        "status": "not measured",
-        "requires": "training runs at 5/15/30/60/120 min of LibriSpeech train-clean-100 to trace the WER-vs-data curve (extract the cached tar first)"
+        "base_wer": 0.06382978723404255,
+        "wer_by_minutes": {
+          "5": 0.07092198581560284,
+          "15": 0.06028368794326241,
+          "30": 0.08156028368794327
+        },
+        "wer_at_5min": 0.07092198581560284,
+        "best_wer": 0.06028368794326241,
+        "num_clips": 238,
+        "degenerate": true,
+        "abstain_reason": "5-min fine-tune did not beat the zero-shot base on held-out test-clean: base 6.4% \u2192 5-min 7.1% (\u22655% relative improvement required). WER-by-minutes {'5': 0.07092198581560284, '15': 0.06028368794326241, '30': 0.08156028368794327} just fluctuates around base within noise \u2014 no data-efficiency signal on this in-domain corpus where base is near-ceiling (cf INS-001)."
       },
       "confidence_95": {},
       "baseline_ref": "",
       "sota_ref": "Whisper-LoRA: ~3% WER with 30 min of fine-tuning data (literature)",
-      "num_samples": 0,
-      "engine_used": "",
-      "notes": ""
+      "num_samples": 238,
+      "engine_used": "tiny",
+      "notes": "5-min fine-tune did not beat the zero-shot base on held-out test-clean: base 6.4% \u2192 5-min 7.1% (\u22655% relative improvement required). WER-by-minutes {'5': 0.07092198581560284, '15': 0.06028368794326241, '30': 0.08156028368794327} just fluctuates around base within noise \u2014 no data-efficiency signal on this in-domain corpus where base is near-ceiling (cf INS-001)."
     },
     {
       "domain_id": "d06_noise_robustness",

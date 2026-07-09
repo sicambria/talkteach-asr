@@ -204,6 +204,17 @@ def _assign_tie_ranks(scores: Any, ranks: Any) -> None:
         i = j + 1
 
 
+def beats_base(candidate_wer: float, base_wer: float, min_rel_improvement: float = 0.05) -> bool:
+    """True iff ``candidate_wer`` beats ``base_wer`` by ≥ ``min_rel_improvement`` (relative).
+
+    The single improvement gate shared by D03/D05: a fine-tune result is only worth
+    scoring if it beats the zero-shot base by a real margin. A result that merely
+    ties or degrades base (the LIKELY case for in-domain LibriSpeech, INS-001) must
+    NOT be scored into a band — the caller abstains.
+    """
+    return candidate_wer < base_wer * (1.0 - min_rel_improvement)
+
+
 def gpu_hours_to_converge(
     curve: Sequence[tuple[float, float, float]],
     tol: float = 0.10,

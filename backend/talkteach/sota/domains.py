@@ -147,7 +147,8 @@ ALL_DOMAINS: list[Domain] = [
         ],
         sota_1000_reference="Whisper-LoRA: ~3% WER with 30 min of fine-tuning data (literature)",
         engine_filter=["whisper_lora"],
-        data_filter=["librispeech_train_clean_100"],
+        # fine-tune on train-clean-100 slices; eval each on disjoint test-clean.
+        data_filter=["librispeech_train_clean_100", "librispeech_test_clean"],
         runnable_cpu=True,
         min_samples=50,
     ),
