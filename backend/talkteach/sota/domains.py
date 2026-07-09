@@ -102,7 +102,8 @@ ALL_DOMAINS: list[Domain] = [
         ],
         sota_1000_reference="whisper-tiny LoRA on A100: ~0.17 GPU-hr to converge on 1hr data",
         engine_filter=["whisper_lora", "wav2vec2_ctc"],
-        data_filter=["librispeech_train_clean_100"],
+        # train on train-clean-100; eval base-vs-trained WER on disjoint test-clean.
+        data_filter=["librispeech_train_clean_100", "librispeech_test_clean"],
         runnable_cpu=True,
         min_samples=5,
     ),

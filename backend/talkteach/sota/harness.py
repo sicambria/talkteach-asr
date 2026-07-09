@@ -474,6 +474,157 @@ class SOTAHarness:
             )
         return result
 
+    def _build_train_manifest(
+        self, train_dir: Path, target_minutes: float, seed: int = 42
+    ) -> tuple[list[dict], float]:
+        """Deterministically slice a ``[{path, text}]`` manifest up to N minutes.
+
+        Pure/reproducible given ``seed`` (shuffle is seeded), so it is unit-testable
+        without touching the trainer. Durations come from ``soundfile.info`` (header
+        only, no full decode).
+        """
+        import random
+
+        import soundfile as sf
+
+        from talkteach.sota.datasets import get_clip_paths, get_transcript
+
+        paths = get_clip_paths(train_dir)
+        random.Random(seed).shuffle(paths)
+        manifest: list[dict] = []
+        total_s = 0.0
+        for p in paths:
+            text = get_transcript(p)
+            if not text:
+                continue
+            try:
+                dur = float(sf.info(str(p)).duration)
+            except Exception:
+                continue
+            manifest.append({"path": str(p), "text": text})
+            total_s += dur
+            if total_s >= target_minutes * 60.0:
+                break
+        return manifest, total_s / 60.0
+
+    def measure_train_efficiency(
+        self,
+        train_dir: Path,
+        eval_dir: Path,
+        engine_name: str = "tiny",
+        minutes: float = 8.0,
+        epochs: int = 3,
+        eval_clips: int = 20,
+        min_rel_improvement: float = 0.05,
+    ) -> dict[str, Any]:
+        """GPU-hours to converge for a real bounded fine-tune (D03).
+
+        Anchors on the pre-finetune (base) WER on the disjoint test-clean subset,
+        then fine-tunes whisper-tiny on ``minutes`` of train-clean-100 and re-evals
+        the SAME test-clean subset with the SAME HF engine (comparable). If the
+        fine-tune does not beat base by ``min_rel_improvement`` — the LIKELY case for
+        in-domain LibriSpeech (INS-001) — it ABSTAINS with the base→trained numbers
+        rather than emit a convergence time from a run that never converged.
+
+        Scope-partial (CPU-timed ÷10 A100 proxy, whisper-tiny, bounded data/epochs,
+        single seed) → excluded from the headline even when it does converge.
+        """
+        import shutil
+        import tempfile
+
+        from talkteach.director.types import Compute, EngineKind, Precision, TrainingPlan
+        from talkteach.engines._whisper_train import (
+            run_real_training,
+            transcribe_with_transformers,
+        )
+        from talkteach.sota.scoring import gpu_hours_to_converge
+
+        base_ckpt = f"openai/whisper-{engine_name}"
+        eval_pairs = load_clip_transcript_pairs(eval_dir, max_clips=eval_clips)
+        if not eval_pairs:
+            return {"gpu_hours": -1.0, "num_clips": 0, "error": "no eval clips found"}
+
+        def _hf_wer(model_dir: str) -> float:
+            refs: list[str] = []
+            hyps: list[str] = []
+            for audio_path, ref_text in eval_pairs:
+                hyps.append(transcribe_with_transformers(str(audio_path), model_dir).lower())
+                refs.append(ref_text.lower())
+            return wer(refs, hyps)
+
+        base_wer = _hf_wer(base_ckpt)
+        manifest, actual_min = self._build_train_manifest(train_dir, minutes, seed=self.seed)
+        if len(manifest) < 5:
+            return {
+                "gpu_hours": -1.0,
+                "num_clips": len(manifest),
+                "error": "insufficient train data",
+            }
+
+        plan = TrainingPlan(
+            engine=EngineKind.WHISPER_LORA,
+            base_checkpoint=base_ckpt,
+            compute=Compute.CPU,
+            precision=Precision.FP32,  # int8 is inference-only; train in fp32 on CPU
+            batch_size=1,
+            grad_accum=1,
+            learning_rate=1e-4,
+            epochs=epochs,
+            warmup_ratio=0.1,
+            early_stop_patience=0,
+            lora_rank=8,
+            lora_alpha=16,
+            freeze_encoder=True,
+            seed=self.seed,
+            grad_clip=1.0,
+        )
+        curve: list[tuple[float, float, float]] = []
+        workdir = tempfile.mkdtemp(prefix="sota_d03_")
+        try:
+            run_real_training(
+                plan,
+                manifest,
+                workdir,
+                progress=None,
+                should_stop=None,
+                eval_sink=lambda e, w, s: curve.append((e, w, s)),
+            )
+            final_wer = _hf_wer(workdir)
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)  # disk guard (keep_artifacts=False)
+
+        metrics: dict[str, Any] = {
+            "base_wer": base_wer,
+            "final_wer_test_clean": final_wer,
+            "train_minutes": actual_min,
+            "epochs": epochs,
+            "num_clips": len(manifest),
+            "wall_clock_s": curve[-1][2] if curve else -1.0,
+        }
+        # Non-improvement is a documented terminal state (INS-001), not an error.
+        if final_wer >= base_wer * (1.0 - min_rel_improvement):
+            metrics["degenerate"] = True
+            metrics["abstain_reason"] = (
+                f"fine-tune did not improve WER on held-out test-clean: base "
+                f"{base_wer:.1%} → trained {final_wer:.1%} (≥{min_rel_improvement:.0%} "
+                f"relative improvement required); convergence undefined (cf INS-001)."
+            )
+            return metrics
+        gh = gpu_hours_to_converge(curve)
+        if gh is None:
+            metrics["degenerate"] = True
+            metrics["abstain_reason"] = (
+                f"test-clean improved (base {base_wer:.1%} → {final_wer:.1%}) but the "
+                f"in-domain eval curve shows no convergence point — time undefined."
+            )
+            return metrics
+        metrics["gpu_hours"] = gh
+        metrics["partial"] = (
+            f"CPU-timed ÷10 A100 proxy; whisper-{engine_name} FP32 LoRA; "
+            f"{actual_min:.0f} min / {epochs} epochs; single seed; only when it beat base"
+        )
+        return metrics
+
     def measure_export_fidelity(
         self,
         eval_dir: Path,
@@ -792,6 +943,18 @@ class SOTAHarness:
                     metrics.update(m)
                 else:
                     notes = "librispeech_test_clean not downloaded"
+
+            elif domain.id == "d03_train_efficiency":
+                train_dir = data_paths.get("librispeech_train_clean_100")
+                td_eval = data_paths.get("librispeech_test_clean")
+                if train_dir and td_eval:
+                    m = self.measure_train_efficiency(train_dir, td_eval, engine)
+                    metrics.update(m)
+                    if m.get("degenerate"):
+                        abstained = True
+                        notes = str(m.get("abstain_reason", "no convergence"))
+                else:
+                    notes = "librispeech train-clean-100 / test-clean not downloaded"
 
             elif domain.id == "d05_data_efficiency":
                 notes = "Requires training at multiple data sizes — use validate_d05 script"

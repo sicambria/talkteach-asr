@@ -330,3 +330,22 @@ def test_rescore_preserves_abstention_not_rescore_raw_metric():
     assert by_id["d14_quality_gate"].score_0_1000 == 0
     assert sb.num_eligible == 1  # only D01, not the abstained D14
     assert sb.overall_mean == 800.0 and sb.overall_band == "provisional"
+
+
+# ── D03: gpu_hours_to_converge (base anchor; degrading curve → abstain) ────────
+def test_gpu_hours_to_converge_improving_and_degrading():
+    from talkteach.sota.scoring import gpu_hours_to_converge
+
+    # Improving curve: base 0.50 → final 0.28; target = 0.28 + 0.1*(0.22) = 0.302.
+    # First eval at/under 0.302 is epoch 2 (0.30) at t=1800s → 1800/3600/10 = 0.05 gpu-hr.
+    improving = [(1.0, 0.50, 900.0), (2.0, 0.30, 1800.0), (3.0, 0.28, 2700.0)]
+    gh = gpu_hours_to_converge(improving)
+    assert gh is not None and abs(gh - 0.05) < 1e-9
+
+    # Degrading curve → no convergence time (must abstain, NOT emit a tiny value
+    # from a run that got worse — the INS-001 failure mode the advisor flagged).
+    assert gpu_hours_to_converge([(1.0, 0.30, 900.0), (2.0, 0.40, 1800.0)]) is None
+    # Flat curve (final == base) → also None.
+    assert gpu_hours_to_converge([(1.0, 0.30, 900.0), (2.0, 0.30, 1800.0)]) is None
+    # Too few points → None.
+    assert gpu_hours_to_converge([(1.0, 0.30, 900.0)]) is None

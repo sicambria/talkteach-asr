@@ -10,7 +10,7 @@
 > generator and stored in [`docs/sota-benchmarks/SCOREBOARD.md`](docs/sota-benchmarks/SCOREBOARD.md)
 > / `.json`. This document *references* the scoreboard by its `generated` stamp rather than copying
 > figures into prose, so the two can never silently drift (the prior root cause of the contradiction
-> this rewrite resolved). Current scoreboard stamp: **`2026-07-09T08:31:48.217124+00:00`**.
+> this rewrite resolved). Current scoreboard stamp: **`2026-07-09T08:43:00.184806+00:00`**.
 > Regenerate after any scoring-policy change with **`make sota-rescore`** (seconds, no GPU); the
 > dated entries in Part C are immutable historical records and are exempt from single-sourcing.
 

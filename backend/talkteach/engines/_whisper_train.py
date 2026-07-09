@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import TYPE_CHECKING, Any
 
 from talkteach.director.types import Precision, TrainingPlan
@@ -37,7 +38,13 @@ from ._train_common import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .base import ProgressCallback, ShouldStop, TrainProgress
+
+    # (epoch, eval_wer, seconds_since_train_start) — opt-in observer for the SOTA
+    # harness (D03 time-to-convergence, D05 data-efficiency). Default None ⇒ no-op.
+    EvalSink = Callable[[float, float, float], None]
 
 log = logging.getLogger("talkteach.train")
 
@@ -193,9 +200,15 @@ def run_real_training(
     progress: ProgressCallback | None,
     should_stop: ShouldStop | None,
     language: str | None = None,
+    eval_sink: EvalSink | None = None,
 ) -> TrainProgress:
     """The real PEFT/LoRA ``Seq2SeqTrainer`` loop (#1) with measured WER (#2) and
     the safety rails wired in (#3). All heavy imports are local to this call.
+
+    ``eval_sink`` is an opt-in observer (default ``None`` ⇒ no behavior change) that
+    receives ``(epoch, eval_wer, seconds_since_start)`` at each per-epoch evaluation.
+    The SOTA harness uses it to trace the WER-vs-time / WER-vs-data curves (D03/D05)
+    without altering the training path.
     """
     from peft import LoraConfig, get_peft_model
     from transformers import (
@@ -211,6 +224,7 @@ def run_real_training(
 
     os.makedirs(workdir, exist_ok=True)
     guard = NanRollbackGuard()
+    t_start = time.perf_counter()
 
     def emit(p: TrainProgress) -> None:
         if progress is not None:
@@ -300,6 +314,10 @@ def run_real_training(
             metrics = metrics or {}
             w = metrics.get("eval_wer")
             if w is not None:
+                if eval_sink is not None:
+                    eval_sink(
+                        float(state.epoch or 0), float(w), time.perf_counter() - t_start
+                    )
                 exp.log_metrics(
                     workdir,
                     epoch=float(state.epoch or 0),

@@ -1,6 +1,6 @@
 # TalkTeach SOTA Scoreboard
 
-**Generated:** 2026-07-09T08:31:48.217124+00:00
+**Generated:** 2026-07-09T08:43:00.184806+00:00
 
 **Headline:** 800/1000 — provisional
 
@@ -60,14 +60,21 @@
 ### d03_train_efficiency: Training Efficiency — Time-to-Convergence
 
 - **Score:** 0/1000 (human_needed)
-- **Engine:** 
-- **Samples:** 0
+- **Engine:** tiny
+- **Samples:** 39
 - **SOTA Reference:** whisper-tiny LoRA on A100: ~0.17 GPU-hr to converge on 1hr data
+- **Notes:** fine-tune did not improve WER on held-out test-clean: base 6.1% → trained 6.3% (≥5% relative improvement required); convergence undefined (cf INS-001).
 
 ```json
 {
-  "status": "not measured",
-  "requires": "GPU training run measuring time-to-convergence on LibriSpeech train-clean-100 (extract the cached tar first)"
+  "base_wer": 0.06097560975609756,
+  "final_wer_test_clean": 0.06341463414634146,
+  "train_minutes": 8.050749999999997,
+  "epochs": 3,
+  "num_clips": 39,
+  "wall_clock_s": 55.473801061016275,
+  "degenerate": true,
+  "abstain_reason": "fine-tune did not improve WER on held-out test-clean: base 6.1% \u2192 trained 6.3% (\u22655% relative improvement required); convergence undefined (cf INS-001)."
 }
 ```
 

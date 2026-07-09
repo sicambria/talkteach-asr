@@ -204,6 +204,39 @@ def _assign_tie_ranks(scores: Any, ranks: Any) -> None:
         i = j + 1
 
 
+def gpu_hours_to_converge(
+    curve: Sequence[tuple[float, float, float]],
+    tol: float = 0.10,
+    cpu_gpu_factor: float = 10.0,
+) -> float | None:
+    """GPU-hours to reach within ``tol`` of the final WER improvement (D03).
+
+    ``curve`` is a list of ``(epoch, eval_wer, seconds_since_start)`` from a real
+    training run. The anchor is the run's OWN first eval (``curve[0]``) and its
+    final eval (``curve[-1]``) — "90% of final WER" is undefined without a start
+    point (advisor). Convergence = the first eval whose WER reaches
+    ``final + tol*(base-final)``; its wall-clock is converted CPU→A100 by dividing
+    by ``cpu_gpu_factor`` (domain description: CPU ≈ 10× slower than A100).
+
+    Returns ``None`` when the run did NOT improve (``final >= base``) — a flat or
+    rising curve has no convergence time, and the caller must abstain rather than
+    emit a tiny bogus value from a run that never converged (INS-001 makes this the
+    LIKELY case for in-domain LibriSpeech fine-tuning).
+    """
+    pts = [(float(e), float(w), float(s)) for (e, w, s) in curve]
+    if len(pts) < 2:
+        return None
+    base_wer = pts[0][1]
+    final_wer = pts[-1][1]
+    if final_wer >= base_wer:  # no improvement → no convergence time
+        return None
+    target = final_wer + tol * (base_wer - final_wer)
+    for _epoch, w, seconds in pts:
+        if w <= target:
+            return seconds / 3600.0 / cpu_gpu_factor
+    return pts[-1][2] / 3600.0 / cpu_gpu_factor
+
+
 def measure_rtf_single(
     audio_path: Path,
     engine_name: str = "whisper-tiny",
