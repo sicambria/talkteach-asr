@@ -85,6 +85,13 @@ estimate no longer keys off the absolute −45 dBFS silence threshold, the earli
 real-noisy-room* caveat is substantially addressed: a noisy-room recording whose pauses clear −45 dBFS
 now also gets a real spectral SNR instead of the 60 dB ceiling.
 
+**Scope of the fix.** It addresses *broadband* interference (the reported failure). A spectral floor is
+still fooled by *tonal / narrowband* interference — a peaky noise spectrum reads like a clean signal and
+scores high — but that is a separate, pre-existing limitation, not part of this defect. And on real read
+speech the spectral branch effectively never fires: sampling 40 raw LibriSpeech test-clean clips, **none**
+had `silence_fraction == 0.0`, so clean recordings keep the untouched temporal path (no false-reject
+risk); the spectral branch is reserved for the continuous / noise-buried clips that are its target.
+
 **D14 re-measured (real, bounded run — 40 clips, test-clean, seed=42):** `snr_ceiling_rate` **1.0 → 0.0**,
 and the gate now genuinely predicts measured WER — `pearson_r = 0.64`, `ROC-AUC = 0.83`, no `degenerate`
 flag. It returns `partial` (SNR component only, single engine) → correctly **excluded from the headline**
