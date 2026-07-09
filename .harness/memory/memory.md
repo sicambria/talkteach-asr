@@ -4,7 +4,7 @@
 > Update this in the same change as the work it describes.
 
 ## Now
-- Last captured session: 2026-07-08 (see `.harness/memory/episodic/2026-07-08.md`)
+- Last captured session: 2026-07-09 (see `.harness/memory/episodic/2026-07-09.md`)
 - **Active experiments:** E01 (banked), E02 (falsified). Next: Stage 3 — model-size scaling.
 - **Blockers:** B-001 torchcodec decode barrier **FIXED** (loader uses `Audio(decode=False)`+soundfile). D02 still blocked by CV17 `EmptyDatasetError` (datasets v5 / gated); D07 needs multi-config FLEURS (metric counts languages, spec is single en_us).
 - **Scoreboard:** headline **provisional** — **8/15 measured** but only **1 eligible** (D01 clean WER, gold). **7 directional**: under-powered (D04/D06/D12) + **scope-partial** (D08/D10/D11/D15, gated out by `metrics["partial"]`). **7 abstain (`human_needed`, score 0, never fabricated)**: D02/D07 (loader) + D03/D05/D09/D13 (need training) + D14 (needs labels). No `validate_*` may hardcode a positive score (static test). Numbers single-sourced in `docs/sota-benchmarks/SCOREBOARD.md`; canonical narrative in `OVERALL.md`. Regenerate: full `bash scripts/sota/run_all.sh --baseline --engines small`; re-present only with `make sota-rescore`.
