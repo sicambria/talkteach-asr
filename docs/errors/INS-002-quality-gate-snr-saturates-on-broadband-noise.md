@@ -25,9 +25,11 @@ shipping a recipe-dependent number.
 ## Root Cause
 
 `backend/talkteach/audio/quality.py` estimates SNR as speech-frame energy vs
-**silence-frame** energy. When a clip has no frames below the silence threshold — exactly
-what uniform broadband noise produces (every frame now carries noise energy) — the
-`silent_mask` is empty and the estimator hits this fallback:
+**silence-frame** energy, where a frame is "silent" iff its level is below an **absolute**
+threshold: `silent_mask = frame_dbfs < SILENCE_FRAME_DBFS` (`SILENCE_FRAME_DBFS = -45.0`
+dBFS). When no frame falls below that threshold — exactly what uniform broadband noise at a
+degrading level produces (every frame, including the pauses, now carries noise energy above
+−45 dBFS) — the `silent_mask` is empty and the estimator hits this fallback:
 
 ```python
 elif not silent_mask.any():
@@ -36,10 +38,17 @@ elif not silent_mask.any():
 ```
 
 The fallback assumes "no silence ⇒ continuous clean speech," but the other cause of "no
-silence" is "speech buried in constant noise." For a gate whose entire job is *rejecting*
-bad audio, defaulting to the best score in the ambiguous case is a quality-gate **escape**:
-a recording made in constant background noise (fan, AC, street hum) has no silence floor →
-is rated ~60 dB "clean" → is accepted for training.
+silence" is "speech buried in constant noise." For a gate whose job is *rejecting* bad audio,
+defaulting to the best score in the ambiguous case is a quality-gate **escape**.
+
+**Scope of the evidence (do not overstate):** this is *directly demonstrated* here only for
+**uniform, full-clip broadband noise at ≤~12 dB SNR** (the D14 widener) — the diagnostic is
+threshold-sensitive: at ~18 dB SNR the estimate is still real (~18 dB), at ~12 dB and below it
+saturates to 60 dB. Because the threshold is **absolute (−45 dBFS)**, real pause-containing
+recordings are affected *when their background-noise floor lifts even the quietest frames above
+−45 dBFS* — plausible for audibly noisy environments (fan/AC/street at a real level), but **not**
+for quiet-room recordings whose pauses stay below −45 dBFS. The real-recording incidence is
+**level-dependent and not directly measured here** — the scoped follow-up should quantify it.
 
 ## Prevention
 
