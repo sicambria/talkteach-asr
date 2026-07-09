@@ -1,25 +1,34 @@
 #!/usr/bin/env python3
-"""SOTA Domain D05: Data Efficiency — WER vs. training minutes (needs a training run)."""
+"""SOTA Domain D05: Data Efficiency — WER after fine-tuning on bounded data slices.
+
+Anchors base (pre-finetune) WER on disjoint test-clean, fine-tunes whisper-tiny on
+5/15/30 min slices of train-clean-100, and reports WER-at-5-min — OR abstains with
+the base→trained numbers if no slice improves (the likely case for in-domain
+LibriSpeech, per INS-001 and D03). Bounded (≤30 min) → flagged partial.
+"""
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
 
 from talkteach.sota.domains import get_domain
-from scripts.sota.common import build_base_parser, write_abstention
+from talkteach.sota.harness import SOTAHarness
+
+from scripts.sota.common import build_base_parser, write_domain_result
 
 
 def main():
     domain = get_domain("d05_data_efficiency")
     parser = build_base_parser(domain.id, domain.description)
     args = parser.parse_args()
-    print(f"[sota] D05 ({domain.name}) is NOT measured — no fabricated estimate is emitted.")
-    print("[sota] Requires training at multiple data sizes (5/15/30/60/120 min) on train-clean-100.")
-    write_abstention(
-        domain,
-        requires="training runs at 5/15/30/60/120 min of LibriSpeech train-clean-100 "
-        "to trace the WER-vs-data curve (extract the cached tar first)",
-        json_path=args.json,
+    harness = SOTAHarness(
+        engines=args.engines.split(","),
+        seed=args.seed,
+        data_root=args.data_root,
+        baseline_only=args.baseline_only,
     )
+    result = harness.run_domain(domain)
+    write_domain_result(result, args.json)
 
 
 if __name__ == "__main__":

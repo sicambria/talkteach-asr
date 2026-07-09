@@ -165,3 +165,20 @@ point; convergence = time to reach 90% of the *improvement from base→final*, o
 ## Scope discipline
 Exactly the 3 domains the user selected; D09/D13 explicitly deferred; no `policy.py` change, no new deps
 (sklearn/scipy/numpy already present), no speculative abstraction.
+
+## Outcomes (2026-07-09 — completed, 4 commits + this addendum)
+- **D14** did not become a scored band. The measurement (gate SNR vs *measured* WER) **discovered a
+  real gate defect** — the SNR estimator saturates to its 60 dB ceiling on 100% of noise-degraded
+  clips (silence-floor fallback), assigning its best score to its worst inputs. AUC 0.17 is a constant
+  sentinel artifact, not discrimination (advisor), so D14 **abstains-with-finding** (`human_needed`) and
+  the defect is filed as **INS-002** (gate NOT fixed — separate blast radius, scoped follow-up).
+- **D03** (base 6.1% → trained 6.3%) and **D05** (base 6.4% → 5-min 7.1%; curve {5:7.1,15:6.0,30:8.2}%)
+  both ran real bounded whisper-tiny fine-tunes and **abstain** — fine-tuning does not beat the zero-shot
+  base on in-domain LibriSpeech: fresh empirical **INS-001** confirmations, not fabricated bands.
+- **Bug caught by live data:** D05's first cut scored 900/platinum on a `wer_at_5min` (7.1%) that was
+  *worse* than base (6.4%) because the guard checked "best-of-all-sizes." Fixed: the scored metric must
+  itself beat base, unified into the pure, tested `scoring.beats_base` shared by D03 & D05.
+- **rescore** now preserves abstentions (it was silently re-scoring D14's raw AUC into a band, inflating
+  the headline to 650/eligible=2). Headline stayed **800/provisional, 1 eligible** throughout — no inflation.
+- **Deferred as agreed:** D09 (needs E07 augmentation-collator wiring) and D13 (combinatorial per-config
+  training sweep) remain `human_needed`.

@@ -231,3 +231,147 @@ def test_hf_loader_decodes_without_torchcodec(tmp_path):
     assert (tmp_path / "clip_00000.txt").read_text() == "hello world"
     # torchcodec must not have been needed to get here.
     assert importlib.util.find_spec("torchcodec") is None or True
+
+
+# ── D14: correlation-strength helper (gate score vs measured WER) ─────────────
+def test_correlation_strength_monotone_and_flat():
+    from talkteach.sota.scoring import correlation_strength
+
+    # Perfectly linear (negative) relationship → |r| == 1.
+    snr = [10.0, 20.0, 30.0, 40.0, 50.0]
+    wer_vals = [0.50, 0.40, 0.30, 0.20, 0.10]
+    r = correlation_strength(snr, wer_vals)
+    assert 0.999 <= r <= 1.0
+
+    # A flat (constant) predictor has no correlation → NaN (never a fake score).
+    import math
+
+    flat = correlation_strength([1.0, 1.0, 1.0], [0.1, 0.2, 0.3])
+    assert math.isnan(flat)
+
+    # Fewer than two points is undefined, not zero.
+    assert math.isnan(correlation_strength([1.0], [0.1]))
+
+
+# ── D14: ROC-AUC helper (rank-based, dependency-free) ─────────────────────────
+def test_roc_auc_ranks_and_degenerate():
+    from talkteach.sota.scoring import roc_auc
+
+    # Score perfectly separates the classes → AUC == 1.0.
+    labels = [False, False, True, True]
+    scores = [0.1, 0.2, 0.8, 0.9]
+    assert roc_auc(labels, scores) == 1.0
+
+    # Score is uncorrelated with the label → AUC ≈ 0.5 (the helper CAN fail;
+    # this is the anti-tautology guarantee the advisor required).
+    import math
+
+    mid = roc_auc([False, True, False, True], [0.5, 0.5, 0.5, 0.5])
+    assert abs(mid - 0.5) < 1e-9
+
+    # One-class input has no AUC → NaN, never coerced to a score.
+    assert math.isnan(roc_auc([True, True, True], [0.1, 0.2, 0.3]))
+
+
+# ── D14: degenerate gate estimate → abstain-with-finding (not a fake band) ─────
+def test_degenerate_quality_gate_abstains(monkeypatch):
+    from talkteach.sota.harness import SOTAHarness
+
+    h = SOTAHarness(engines=["whisper-tiny"])
+    monkeypatch.setattr(h, "ensure_data", lambda domain: {"librispeech_test_clean": Path("/x")})
+    monkeypatch.setattr(
+        h,
+        "measure_quality_gate",
+        lambda *a, **k: {
+            "quality_gate_auc": 0.17,
+            "quality_gate_pearson_r": 0.40,
+            "snr_ceiling_rate": 1.0,
+            "num_clips": 160,
+            "degenerate": True,
+            "abstain_reason": "gate SNR estimate saturates to the 60 dB ceiling ...",
+        },
+    )
+    r = h.run_domain(get_domain("d14_quality_gate"))
+    # A degenerate estimate must NOT be scored into a band (0.17 would map to ~0);
+    # it abstains, and the transparency metrics are preserved for the reader.
+    assert r.band == "human_needed"
+    assert r.score_0_1000 == 0
+    assert "saturat" in r.notes
+    assert r.metrics["quality_gate_auc"] == 0.17
+    assert r.metrics["snr_ceiling_rate"] == 1.0
+
+
+# ── rescore must preserve an abstention, never re-score its raw metric ─────────
+def test_rescore_preserves_abstention_not_rescore_raw_metric():
+    """A degenerate D14 (band human_needed) carries a raw quality_gate_auc in its
+    metrics for transparency. Rescore must keep it human_needed / score 0 — NOT
+    map that raw AUC onto a band (which would fabricate a score and inflate the
+    headline)."""
+    fixture = {
+        "generated": "2026-07-09T00:00:00+00:00",
+        "domains": [
+            {"domain_id": "d01_wer_clean", "metrics": {"wer": 0.027, "num_clips": 100}},
+            {
+                "domain_id": "d14_quality_gate",
+                "band": "human_needed",
+                "score_0_1000": 0,
+                "metrics": {
+                    "quality_gate_auc": 0.17,
+                    "snr_ceiling_rate": 1.0,
+                    "degenerate": True,
+                    "num_clips": 160,
+                },
+            },
+        ],
+    }
+    sb = rescore_mod.rescore_scoreboard(fixture)
+    by_id = {r.domain_id: r for r in sb.domains}
+    assert by_id["d14_quality_gate"].band == "human_needed"
+    assert by_id["d14_quality_gate"].score_0_1000 == 0
+    assert sb.num_eligible == 1  # only D01, not the abstained D14
+    assert sb.overall_mean == 800.0 and sb.overall_band == "provisional"
+
+
+# ── D03: gpu_hours_to_converge (base anchor; degrading curve → abstain) ────────
+def test_gpu_hours_to_converge_improving_and_degrading():
+    from talkteach.sota.scoring import gpu_hours_to_converge
+
+    # Improving curve: base 0.50 → final 0.28; target = 0.28 + 0.1*(0.22) = 0.302.
+    # First eval at/under 0.302 is epoch 2 (0.30) at t=1800s → 1800/3600/10 = 0.05 gpu-hr.
+    improving = [(1.0, 0.50, 900.0), (2.0, 0.30, 1800.0), (3.0, 0.28, 2700.0)]
+    gh = gpu_hours_to_converge(improving)
+    assert gh is not None and abs(gh - 0.05) < 1e-9
+
+    # Degrading curve → no convergence time (must abstain, NOT emit a tiny value
+    # from a run that got worse — the INS-001 failure mode the advisor flagged).
+    assert gpu_hours_to_converge([(1.0, 0.30, 900.0), (2.0, 0.40, 1800.0)]) is None
+    # Flat curve (final == base) → also None.
+    assert gpu_hours_to_converge([(1.0, 0.30, 900.0), (2.0, 0.30, 1800.0)]) is None
+    # Too few points → None.
+    assert gpu_hours_to_converge([(1.0, 0.30, 900.0)]) is None
+
+
+# ── D05: wer_at_5min scores against the data-efficiency bands ──────────────────
+def test_d05_wer_at_5min_band_scoring():
+    from talkteach.sota.scoring import score_against_bands
+
+    d05 = get_domain("d05_data_efficiency")
+    bands = [(b.score, b.threshold) for b in d05.bands]
+    assert d05.metric == "wer_at_5min" and not d05.higher_is_better
+    # 4% WER at 5 min → top band; 12% → gold (≤0.15); 25% → below silver.
+    assert score_against_bands(0.04, bands, d05.higher_is_better)[0] == 1000
+    assert score_against_bands(0.12, bands, d05.higher_is_better)[0] == 800
+    assert score_against_bands(0.25, bands, d05.higher_is_better)[0] <= 700
+
+
+# ── D03/D05: shared improvement gate (the bug: a worse-than-base result scored) ─
+def test_beats_base_gate():
+    from talkteach.sota.scoring import beats_base
+
+    # A real ≥5% relative improvement passes.
+    assert beats_base(0.057, 0.064) is True  # 5.7% vs 6.4% base → >5% rel better
+    # A degradation must NOT pass (D05 scored 7.1% platinum over a 6.4% base — the
+    # exact failure this gate exists to stop).
+    assert beats_base(0.071, 0.064) is False
+    # A tie / sub-threshold nudge must NOT pass (noise, not data efficiency).
+    assert beats_base(0.062, 0.064) is False  # only ~3% rel → below 5% threshold

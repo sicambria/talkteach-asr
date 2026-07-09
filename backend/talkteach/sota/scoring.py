@@ -139,6 +139,115 @@ def demographic_equity_gini(per_group_metrics: dict[str, float]) -> float:
     return float((2 * np.sum(index * arr)) / (n * np.sum(arr)) - (n + 1) / n)
 
 
+def correlation_strength(xs: Sequence[float], ys: Sequence[float]) -> float:
+    """|Pearson r| between two equal-length series, as a 0..1 strength.
+
+    Used by D14 to relate the quality-gate score to *measured* downstream WER.
+    Returns ``nan`` for degenerate input (n < 2 or a constant series) — there is
+    no correlation to report, and the caller must not turn ``nan`` into a score.
+    """
+    import numpy as np
+
+    a = np.asarray(list(xs), dtype=np.float64)
+    b = np.asarray(list(ys), dtype=np.float64)
+    if a.size != b.size or a.size < 2:
+        return float("nan")
+    if np.std(a) == 0.0 or np.std(b) == 0.0:
+        return float("nan")
+    r = float(np.corrcoef(a, b)[0, 1])
+    return abs(r)
+
+
+def roc_auc(labels: Sequence[bool], scores: Sequence[float]) -> float:
+    """ROC-AUC of ``scores`` separating the two classes in ``labels``.
+
+    Higher ``score`` should predict ``label==True``. Rank-based (Mann-Whitney U),
+    so it needs no external dependency and handles ties. Returns ``nan`` when a
+    class is empty (AUC undefined) — the caller must not coerce that to a score.
+    """
+    import numpy as np
+
+    y = np.asarray([bool(v) for v in labels])
+    s = np.asarray(list(scores), dtype=np.float64)
+    if y.size != s.size or y.size == 0:
+        return float("nan")
+    n_pos = int(y.sum())
+    n_neg = int((~y).sum())
+    if n_pos == 0 or n_neg == 0:
+        return float("nan")
+    # Average ranks (1-based) handle ties correctly.
+    order = np.argsort(s, kind="mergesort")
+    ranks = np.empty(s.size, dtype=np.float64)
+    ranks[order] = np.arange(1, s.size + 1, dtype=np.float64)
+    _assign_tie_ranks(s, ranks)
+    sum_ranks_pos = float(ranks[y].sum())
+    auc = (sum_ranks_pos - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+    return float(auc)
+
+
+def _assign_tie_ranks(scores: Any, ranks: Any) -> None:
+    """In-place: replace ranks of tied scores with their average rank."""
+    import numpy as np
+
+    s = np.asarray(scores, dtype=np.float64)
+    order = np.argsort(s, kind="mergesort")
+    s_sorted = s[order]
+    i = 0
+    n = s.size
+    while i < n:
+        j = i
+        while j + 1 < n and s_sorted[j + 1] == s_sorted[i]:
+            j += 1
+        if j > i:
+            idx = order[i : j + 1]
+            ranks[idx] = ranks[idx].mean()
+        i = j + 1
+
+
+def beats_base(candidate_wer: float, base_wer: float, min_rel_improvement: float = 0.05) -> bool:
+    """True iff ``candidate_wer`` beats ``base_wer`` by ≥ ``min_rel_improvement`` (relative).
+
+    The single improvement gate shared by D03/D05: a fine-tune result is only worth
+    scoring if it beats the zero-shot base by a real margin. A result that merely
+    ties or degrades base (the LIKELY case for in-domain LibriSpeech, INS-001) must
+    NOT be scored into a band — the caller abstains.
+    """
+    return candidate_wer < base_wer * (1.0 - min_rel_improvement)
+
+
+def gpu_hours_to_converge(
+    curve: Sequence[tuple[float, float, float]],
+    tol: float = 0.10,
+    cpu_gpu_factor: float = 10.0,
+) -> float | None:
+    """GPU-hours to reach within ``tol`` of the final WER improvement (D03).
+
+    ``curve`` is a list of ``(epoch, eval_wer, seconds_since_start)`` from a real
+    training run. The anchor is the run's OWN first eval (``curve[0]``) and its
+    final eval (``curve[-1]``) — "90% of final WER" is undefined without a start
+    point (advisor). Convergence = the first eval whose WER reaches
+    ``final + tol*(base-final)``; its wall-clock is converted CPU→A100 by dividing
+    by ``cpu_gpu_factor`` (domain description: CPU ≈ 10× slower than A100).
+
+    Returns ``None`` when the run did NOT improve (``final >= base``) — a flat or
+    rising curve has no convergence time, and the caller must abstain rather than
+    emit a tiny bogus value from a run that never converged (INS-001 makes this the
+    LIKELY case for in-domain LibriSpeech fine-tuning).
+    """
+    pts = [(float(e), float(w), float(s)) for (e, w, s) in curve]
+    if len(pts) < 2:
+        return None
+    base_wer = pts[0][1]
+    final_wer = pts[-1][1]
+    if final_wer >= base_wer:  # no improvement → no convergence time
+        return None
+    target = final_wer + tol * (base_wer - final_wer)
+    for _epoch, w, seconds in pts:
+        if w <= target:
+            return seconds / 3600.0 / cpu_gpu_factor
+    return pts[-1][2] / 3600.0 / cpu_gpu_factor
+
+
 def measure_rtf_single(
     audio_path: Path,
     engine_name: str = "whisper-tiny",

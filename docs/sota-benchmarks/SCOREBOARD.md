@@ -1,6 +1,6 @@
 # TalkTeach SOTA Scoreboard
 
-**Generated:** 2026-07-08T22:23:17.820188+00:00
+**Generated:** 2026-07-09T09:03:05.083293+00:00
 
 **Headline:** 800/1000 — provisional
 
@@ -20,11 +20,11 @@
 | 8 | 🥉 Resource Efficiency — Disk + RAM per Audio Minute | **600** | bronze ⚠︎ directional | mb_per_audio_minute | 463.6883 |
 | 9 | 🧑‍🔬 ASR Accuracy — Spontaneous/Conversational Speech | **0** | human_needed | wer | — |
 | 10 | 🧑‍🔬 Training Efficiency — Time-to-Convergence | **0** | human_needed | gpu_hours | — |
-| 11 | 🧑‍🔬 Data Efficiency — WER vs. Training Minutes | **0** | human_needed | wer_at_5min | — |
+| 11 | 🧑‍🔬 Data Efficiency — WER vs. Training Minutes | **0** | human_needed | wer_at_5min | 0.0709 |
 | 12 | 🧑‍🔬 Multilingual Coverage — Languages with WER < 15% | **0** | human_needed | languages_under_15pct_wer | — |
 | 13 | 🧑‍🔬 Augmentation Efficacy — Relative WER Reduction at 5 min Data | **0** | human_needed | rel_wer_reduction_5min | — |
 | 14 | 🧑‍🔬 Director Auto-Selection — Optimal Config Choice Rate | **0** | human_needed | oracle_match_rate | — |
-| 15 | 🧑‍🔬 Data Quality Gate — ROC-AUC vs. Human Labels | **0** | human_needed | quality_gate_auc | — |
+| 15 | 🧑‍🔬 Data Quality Gate — ROC-AUC vs. Human Labels | **0** | human_needed | quality_gate_auc | 0.1678 |
 
 ## Per-Domain Details
 
@@ -60,14 +60,21 @@
 ### d03_train_efficiency: Training Efficiency — Time-to-Convergence
 
 - **Score:** 0/1000 (human_needed)
-- **Engine:** 
-- **Samples:** 0
+- **Engine:** tiny
+- **Samples:** 39
 - **SOTA Reference:** whisper-tiny LoRA on A100: ~0.17 GPU-hr to converge on 1hr data
+- **Notes:** fine-tune did not improve WER on held-out test-clean: base 6.1% → trained 6.3% (≥5% relative improvement required); convergence undefined (cf INS-001).
 
 ```json
 {
-  "status": "not measured",
-  "requires": "GPU training run measuring time-to-convergence on LibriSpeech train-clean-100 (extract the cached tar first)"
+  "base_wer": 0.06097560975609756,
+  "final_wer_test_clean": 0.06341463414634146,
+  "train_minutes": 8.050749999999997,
+  "epochs": 3,
+  "num_clips": 39,
+  "wall_clock_s": 55.473801061016275,
+  "degenerate": true,
+  "abstain_reason": "fine-tune did not improve WER on held-out test-clean: base 6.1% \u2192 trained 6.3% (\u22655% relative improvement required); convergence undefined (cf INS-001)."
 }
 ```
 
@@ -89,14 +96,24 @@
 ### d05_data_efficiency: Data Efficiency — WER vs. Training Minutes
 
 - **Score:** 0/1000 (human_needed)
-- **Engine:** 
-- **Samples:** 0
+- **Engine:** tiny
+- **Samples:** 238
 - **SOTA Reference:** Whisper-LoRA: ~3% WER with 30 min of fine-tuning data (literature)
+- **Notes:** 5-min fine-tune did not beat the zero-shot base on held-out test-clean: base 6.4% → 5-min 7.1% (≥5% relative improvement required). WER-by-minutes {'5': 0.07092198581560284, '15': 0.06028368794326241, '30': 0.08156028368794327} just fluctuates around base within noise — no data-efficiency signal on this in-domain corpus where base is near-ceiling (cf INS-001).
 
 ```json
 {
-  "status": "not measured",
-  "requires": "training runs at 5/15/30/60/120 min of LibriSpeech train-clean-100 to trace the WER-vs-data curve (extract the cached tar first)"
+  "base_wer": 0.06382978723404255,
+  "wer_by_minutes": {
+    "5": 0.07092198581560284,
+    "15": 0.06028368794326241,
+    "30": 0.08156028368794327
+  },
+  "wer_at_5min": 0.07092198581560284,
+  "best_wer": 0.06028368794326241,
+  "num_clips": 238,
+  "degenerate": true,
+  "abstain_reason": "5-min fine-tune did not beat the zero-shot base on held-out test-clean: base 6.4% \u2192 5-min 7.1% (\u22655% relative improvement required). WER-by-minutes {'5': 0.07092198581560284, '15': 0.06028368794326241, '30': 0.08156028368794327} just fluctuates around base within noise \u2014 no data-efficiency signal on this in-domain corpus where base is near-ceiling (cf INS-001)."
 }
 ```
 
@@ -237,14 +254,21 @@
 ### d14_quality_gate: Data Quality Gate — ROC-AUC vs. Human Labels
 
 - **Score:** 0/1000 (human_needed)
-- **Engine:** 
-- **Samples:** 0
+- **Engine:** tiny
+- **Samples:** 160
 - **SOTA Reference:** SNR-based gate: AUC ~0.88 on Common Voice labelled subset (estimated)
+- **Notes:** gate SNR estimate saturates to the 60 dB ceiling on 100% of noised clips (silence-floor heuristic defeated by broadband noise) — the gate assigns its BEST score to its WORST inputs, so it cannot be validated as a WER predictor. See docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md.
 
 ```json
 {
-  "status": "not measured",
-  "requires": "hand-labelled GOOD/BAD quality dataset (human labels) to compute ROC-AUC of the SNR/clipping/silence gate"
+  "quality_gate_pearson_r": 0.47908077446481884,
+  "quality_gate_auc": 0.1678181818181818,
+  "snr_ceiling_rate": 1.0,
+  "num_clips": 160,
+  "num_bad_clips": 50,
+  "bad_wer_threshold": 0.15,
+  "degenerate": true,
+  "abstain_reason": "gate SNR estimate saturates to the 60 dB ceiling on 100% of noised clips (silence-floor heuristic defeated by broadband noise) \u2014 the gate assigns its BEST score to its WORST inputs, so it cannot be validated as a WER predictor. See docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md."
 }
 ```
 

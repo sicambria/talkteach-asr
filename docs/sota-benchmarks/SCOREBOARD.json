@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-08T22:23:17.820188+00:00",
+  "generated": "2026-07-09T09:03:05.083293+00:00",
   "overall_mean": 800.0,
   "overall_band": "provisional",
   "coverage": {
@@ -60,15 +60,21 @@
       "directional": false,
       "directional_reason": "",
       "metrics": {
-        "status": "not measured",
-        "requires": "GPU training run measuring time-to-convergence on LibriSpeech train-clean-100 (extract the cached tar first)"
+        "base_wer": 0.06097560975609756,
+        "final_wer_test_clean": 0.06341463414634146,
+        "train_minutes": 8.050749999999997,
+        "epochs": 3,
+        "num_clips": 39,
+        "wall_clock_s": 55.473801061016275,
+        "degenerate": true,
+        "abstain_reason": "fine-tune did not improve WER on held-out test-clean: base 6.1% \u2192 trained 6.3% (\u22655% relative improvement required); convergence undefined (cf INS-001)."
       },
       "confidence_95": {},
       "baseline_ref": "",
       "sota_ref": "whisper-tiny LoRA on A100: ~0.17 GPU-hr to converge on 1hr data",
-      "num_samples": 0,
-      "engine_used": "",
-      "notes": ""
+      "num_samples": 39,
+      "engine_used": "tiny",
+      "notes": "fine-tune did not improve WER on held-out test-clean: base 6.1% \u2192 trained 6.3% (\u22655% relative improvement required); convergence undefined (cf INS-001)."
     },
     {
       "domain_id": "d04_rtf",
@@ -96,15 +102,24 @@
       "directional": false,
       "directional_reason": "",
       "metrics": {
-        "status": "not measured",
-        "requires": "training runs at 5/15/30/60/120 min of LibriSpeech train-clean-100 to trace the WER-vs-data curve (extract the cached tar first)"
+        "base_wer": 0.06382978723404255,
+        "wer_by_minutes": {
+          "5": 0.07092198581560284,
+          "15": 0.06028368794326241,
+          "30": 0.08156028368794327
+        },
+        "wer_at_5min": 0.07092198581560284,
+        "best_wer": 0.06028368794326241,
+        "num_clips": 238,
+        "degenerate": true,
+        "abstain_reason": "5-min fine-tune did not beat the zero-shot base on held-out test-clean: base 6.4% \u2192 5-min 7.1% (\u22655% relative improvement required). WER-by-minutes {'5': 0.07092198581560284, '15': 0.06028368794326241, '30': 0.08156028368794327} just fluctuates around base within noise \u2014 no data-efficiency signal on this in-domain corpus where base is near-ceiling (cf INS-001)."
       },
       "confidence_95": {},
       "baseline_ref": "",
       "sota_ref": "Whisper-LoRA: ~3% WER with 30 min of fine-tuning data (literature)",
-      "num_samples": 0,
-      "engine_used": "",
-      "notes": ""
+      "num_samples": 238,
+      "engine_used": "tiny",
+      "notes": "5-min fine-tune did not beat the zero-shot base on held-out test-clean: base 6.4% \u2192 5-min 7.1% (\u22655% relative improvement required). WER-by-minutes {'5': 0.07092198581560284, '15': 0.06028368794326241, '30': 0.08156028368794327} just fluctuates around base within noise \u2014 no data-efficiency signal on this in-domain corpus where base is near-ceiling (cf INS-001)."
     },
     {
       "domain_id": "d06_noise_robustness",
@@ -275,15 +290,21 @@
       "directional": false,
       "directional_reason": "",
       "metrics": {
-        "status": "not measured",
-        "requires": "hand-labelled GOOD/BAD quality dataset (human labels) to compute ROC-AUC of the SNR/clipping/silence gate"
+        "quality_gate_pearson_r": 0.47908077446481884,
+        "quality_gate_auc": 0.1678181818181818,
+        "snr_ceiling_rate": 1.0,
+        "num_clips": 160,
+        "num_bad_clips": 50,
+        "bad_wer_threshold": 0.15,
+        "degenerate": true,
+        "abstain_reason": "gate SNR estimate saturates to the 60 dB ceiling on 100% of noised clips (silence-floor heuristic defeated by broadband noise) \u2014 the gate assigns its BEST score to its WORST inputs, so it cannot be validated as a WER predictor. See docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md."
       },
       "confidence_95": {},
       "baseline_ref": "",
       "sota_ref": "SNR-based gate: AUC ~0.88 on Common Voice labelled subset (estimated)",
-      "num_samples": 0,
-      "engine_used": "",
-      "notes": ""
+      "num_samples": 160,
+      "engine_used": "tiny",
+      "notes": "gate SNR estimate saturates to the 60 dB ceiling on 100% of noised clips (silence-floor heuristic defeated by broadband noise) \u2014 the gate assigns its BEST score to its WORST inputs, so it cannot be validated as a WER predictor. See docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md."
     },
     {
       "domain_id": "d15_resource_efficiency",

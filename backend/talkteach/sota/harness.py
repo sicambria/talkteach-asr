@@ -341,14 +341,111 @@ class SOTAHarness:
         eval_dir: Path,
         engine_name: str = "tiny",
         data_minutes: list[float] | None = None,
+        epochs: int = 2,
+        eval_clips: int = 15,
+        min_rel_improvement: float = 0.05,
     ) -> dict[str, Any]:
-        """Measure WER at different amounts of training data."""
-        data_minutes = data_minutes or [5, 15, 30, 60, 120]
-        return {
-            "data_minutes": data_minutes,
-            "wer_by_minutes": {},
-            "status": "skipped — training needed, use scripts/sota/validate_d05_data_efficiency.py",
+        """WER after fine-tuning on increasing amounts of data (D05).
+
+        Anchors base (pre-finetune) WER on disjoint test-clean, then fine-tunes
+        whisper-tiny on each bounded slice of train-clean-100 and re-evals the SAME
+        test-clean subset (same HF engine). ``wer_at_5min`` is the 5-min result. If
+        no slice beats base by ``min_rel_improvement`` — the LIKELY case for in-domain
+        LibriSpeech (INS-001, and confirmed by D03) — it ABSTAINS with the base→trained
+        numbers rather than score a wer_at_5min that presumes fine-tuning worked.
+
+        Scope-partial: bounded data sizes (domain intends ≤120 min), whisper-tiny,
+        single seed → excluded from the headline even when a slice improves.
+        """
+        import shutil
+        import tempfile
+
+        from talkteach.director.types import Compute, EngineKind, Precision, TrainingPlan
+        from talkteach.engines._whisper_train import (
+            run_real_training,
+            transcribe_with_transformers,
+        )
+        from talkteach.sota.scoring import beats_base
+
+        sizes = data_minutes or [5.0, 15.0, 30.0]  # bounded (domain default ≤120)
+        base_ckpt = f"openai/whisper-{engine_name}"
+        eval_pairs = load_clip_transcript_pairs(eval_dir, max_clips=eval_clips)
+        if not eval_pairs:
+            return {"wer_at_5min": -1.0, "num_clips": 0, "error": "no eval clips found"}
+
+        def _hf_wer(model_dir: str) -> float:
+            refs: list[str] = []
+            hyps: list[str] = []
+            for audio_path, ref_text in eval_pairs:
+                hyps.append(transcribe_with_transformers(str(audio_path), model_dir).lower())
+                refs.append(ref_text.lower())
+            return wer(refs, hyps)
+
+        base_wer = _hf_wer(base_ckpt)
+        wer_by_minutes: dict[str, float] = {}
+        total_clips = 0
+        for target in sizes:
+            manifest, _actual = self._build_train_manifest(train_dir, target, seed=self.seed)
+            if len(manifest) < 5:
+                continue
+            total_clips += len(manifest)
+            plan = TrainingPlan(
+                engine=EngineKind.WHISPER_LORA,
+                base_checkpoint=base_ckpt,
+                compute=Compute.CPU,
+                precision=Precision.FP32,
+                batch_size=1,
+                grad_accum=1,
+                learning_rate=1e-4,
+                epochs=epochs,
+                warmup_ratio=0.1,
+                early_stop_patience=0,
+                lora_rank=8,
+                lora_alpha=16,
+                freeze_encoder=True,
+                seed=self.seed,
+                grad_clip=1.0,
+            )
+            workdir = tempfile.mkdtemp(prefix="sota_d05_")
+            try:
+                run_real_training(plan, manifest, workdir, progress=None, should_stop=None)
+                wer_by_minutes[str(int(target))] = _hf_wer(workdir)
+            finally:
+                shutil.rmtree(workdir, ignore_errors=True)  # disk guard
+
+        if not wer_by_minutes:
+            return {"wer_at_5min": -1.0, "num_clips": 0, "error": "no training slices built"}
+
+        wer_at_5min = wer_by_minutes.get(str(int(sizes[0])), min(wer_by_minutes.values()))
+        best = min(wer_by_minutes.values())
+        metrics: dict[str, Any] = {
+            "base_wer": base_wer,
+            "wer_by_minutes": wer_by_minutes,
+            "wer_at_5min": wer_at_5min,
+            "best_wer": best,
+            "num_clips": total_clips,
         }
+        # The SCORED metric is wer_at_5min. Data efficiency means 5 min of data BEATS
+        # the zero-shot base (which needs 0 min) — otherwise a wer_at_5min that maps to
+        # a high band is a degradation dressed as a good score. Gate on the reported
+        # 5-min result, not on "some size improved" (a noise-level blip at another size
+        # must not license scoring a worse 5-min number). On in-domain LibriSpeech the
+        # base is near-ceiling so fine-tuning just fluctuates around it (INS-001).
+        if not beats_base(wer_at_5min, base_wer, min_rel_improvement):
+            metrics["degenerate"] = True
+            metrics["abstain_reason"] = (
+                f"5-min fine-tune did not beat the zero-shot base on held-out test-clean: "
+                f"base {base_wer:.1%} → 5-min {wer_at_5min:.1%} (≥{min_rel_improvement:.0%} "
+                f"relative improvement required). WER-by-minutes {wer_by_minutes} just "
+                f"fluctuates around base within noise — no data-efficiency signal on this "
+                f"in-domain corpus where base is near-ceiling (cf INS-001)."
+            )
+            return metrics
+        metrics["partial"] = (
+            f"bounded data sizes {[int(s) for s in sizes]} min (domain intends ≤120); "
+            f"whisper-{engine_name} FP32 LoRA; single seed; LibriSpeech read speech"
+        )
+        return metrics
 
     def measure_director_accuracy(
         self,
@@ -360,6 +457,270 @@ class SOTAHarness:
             "oracle_match_rate": -1.0,
             "status": "skipped — exhaustive sweep needed (validate_d13)",
         }
+
+    def measure_quality_gate(
+        self,
+        eval_dir: Path,
+        engine_name: str = "tiny",
+        max_clips: int = 100,
+        widen_clips: int = 60,
+        widen_snr_db: float = 3.0,
+        bad_wer_threshold: float = 0.15,
+    ) -> dict[str, Any]:
+        """How well the audio quality gate predicts *measured* downstream WER (D14).
+
+        The gate's real job is flagging clips that will transcribe badly. So the
+        ground-truth target is the **measured** per-clip WER, NOT a synthetic
+        clean/noised label — scoring separability by the very SNR a defect
+        manipulates would be near-tautological (AUC≈1 regardless of gate quality,
+        since the injected noise *defines* both the SNR drop and the label). Here:
+          - predictor = the gate's SNR score (``analyze_samples().est_snr_db``),
+          - target    = *measured* per-clip WER (real transcription).
+        Additive noise (deterministic white noise, seeded) is used ONLY to widen
+        the WER range — clean read speech is too uniform for the correlation to
+        mean anything — never as the label. So the measure can genuinely fail: if
+        noise raised WER but the SNR estimate missed it, r/AUC fall.
+
+        Metrics:
+          - ``quality_gate_pearson_r`` = |Pearson r| of SNR vs measured WER.
+          - ``quality_gate_auc`` = ROC-AUC of the SNR score ranking clips by
+            ``measured_wer > bad_wer_threshold`` (higher predicted "bad" = lower SNR).
+
+        Scope-partial: SNR component only (clipping/silence gate paths not
+        exercised), single engine → excluded from the headline.
+        """
+        import numpy as np
+        import soundfile as sf
+        from faster_whisper import WhisperModel
+
+        from talkteach.audio.augment import mix_noise
+        from talkteach.audio.quality import analyze_samples
+        from talkteach.sota.scoring import correlation_strength, roc_auc
+
+        pairs = load_clip_transcript_pairs(eval_dir, max_clips=max_clips)
+        if not pairs:
+            return {
+                "quality_gate_pearson_r": -1.0,
+                "quality_gate_auc": -1.0,
+                "num_clips": 0,
+                "error": "no clips found",
+            }
+
+        model = WhisperModel(engine_name, device="cpu", compute_type="int8")
+        rng = np.random.default_rng(self.seed)
+
+        def _snr_and_wer(audio: np.ndarray, sr: int, ref: str) -> tuple[float, float]:
+            snr = analyze_samples(audio, sr).est_snr_db
+            segments, _ = model.transcribe(audio.astype("float32"), beam_size=5)
+            hyp = " ".join(s.text.strip() for s in segments).lower()
+            return snr, wer([ref.lower()], [hyp])
+
+        snr_scores: list[float] = []
+        clip_wers: list[float] = []
+        noised_snr: list[float] = []
+        for i, (audio_path, ref_text) in enumerate(pairs):
+            audio, sr = sf.read(str(audio_path))
+            audio = np.asarray(audio, dtype="float32")
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            snr, w = _snr_and_wer(audio, sr, ref_text)
+            snr_scores.append(snr)
+            clip_wers.append(w)
+            # Widen WER variance on a bounded subset with deterministic noise.
+            if i < widen_clips:
+                noise = rng.standard_normal(audio.shape[0]).astype("float32")
+                noisy = mix_noise(audio, noise, widen_snr_db)
+                nsnr, nw = _snr_and_wer(noisy, sr, ref_text)
+                snr_scores.append(nsnr)
+                clip_wers.append(nw)
+                noised_snr.append(nsnr)
+
+        r = correlation_strength(snr_scores, clip_wers)
+        labels = [w > bad_wer_threshold for w in clip_wers]
+        # Lower SNR should predict "bad" (high WER) ⇒ rank by negative SNR.
+        auc = roc_auc(labels, [-s for s in snr_scores])
+        # The gate's SNR estimator falls back to a 60 dB ceiling when a clip has no
+        # silence frames (quality.py) — which is exactly what broadband additive
+        # noise produces. When that fires, noised clips (worst inputs) get the gate's
+        # BEST score, so any AUC/r is an artifact of that constant sentinel, not a
+        # measure of discrimination. Detect it and abstain with the finding rather
+        # than ship a recipe-dependent number.
+        ceiling_hits = sum(1 for s in noised_snr if s >= 59.9)
+        ceiling_rate = (ceiling_hits / len(noised_snr)) if noised_snr else 0.0
+        result: dict[str, Any] = {
+            "quality_gate_pearson_r": r if r == r else -1.0,  # NaN → -1.0 sentinel
+            "quality_gate_auc": auc if auc == auc else -1.0,
+            "snr_ceiling_rate": ceiling_rate,
+            "num_clips": len(snr_scores),
+            "num_bad_clips": int(sum(labels)),
+            "bad_wer_threshold": bad_wer_threshold,
+        }
+        if ceiling_rate > 0.5 or auc != auc:
+            result["degenerate"] = True
+            result["abstain_reason"] = (
+                f"gate SNR estimate saturates to the 60 dB ceiling on "
+                f"{ceiling_rate:.0%} of noised clips (silence-floor heuristic defeated "
+                f"by broadband noise) — the gate assigns its BEST score to its WORST "
+                f"inputs, so it cannot be validated as a WER predictor. See "
+                f"docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md."
+            )
+        else:
+            result["partial"] = (
+                "predicts measured WER; SNR component only (clipping/silence not "
+                "exercised); WER variance widened by seeded additive noise; single engine"
+            )
+        return result
+
+    def _build_train_manifest(
+        self, train_dir: Path, target_minutes: float, seed: int = 42
+    ) -> tuple[list[dict], float]:
+        """Deterministically slice a ``[{path, text}]`` manifest up to N minutes.
+
+        Pure/reproducible given ``seed`` (shuffle is seeded), so it is unit-testable
+        without touching the trainer. Durations come from ``soundfile.info`` (header
+        only, no full decode).
+        """
+        import random
+
+        import soundfile as sf
+
+        from talkteach.sota.datasets import get_clip_paths, get_transcript
+
+        paths = get_clip_paths(train_dir)
+        random.Random(seed).shuffle(paths)
+        manifest: list[dict] = []
+        total_s = 0.0
+        for p in paths:
+            text = get_transcript(p)
+            if not text:
+                continue
+            try:
+                dur = float(sf.info(str(p)).duration)
+            except Exception:
+                continue
+            manifest.append({"path": str(p), "text": text})
+            total_s += dur
+            if total_s >= target_minutes * 60.0:
+                break
+        return manifest, total_s / 60.0
+
+    def measure_train_efficiency(
+        self,
+        train_dir: Path,
+        eval_dir: Path,
+        engine_name: str = "tiny",
+        minutes: float = 8.0,
+        epochs: int = 3,
+        eval_clips: int = 20,
+        min_rel_improvement: float = 0.05,
+    ) -> dict[str, Any]:
+        """GPU-hours to converge for a real bounded fine-tune (D03).
+
+        Anchors on the pre-finetune (base) WER on the disjoint test-clean subset,
+        then fine-tunes whisper-tiny on ``minutes`` of train-clean-100 and re-evals
+        the SAME test-clean subset with the SAME HF engine (comparable). If the
+        fine-tune does not beat base by ``min_rel_improvement`` — the LIKELY case for
+        in-domain LibriSpeech (INS-001) — it ABSTAINS with the base→trained numbers
+        rather than emit a convergence time from a run that never converged.
+
+        Scope-partial (CPU-timed ÷10 A100 proxy, whisper-tiny, bounded data/epochs,
+        single seed) → excluded from the headline even when it does converge.
+        """
+        import shutil
+        import tempfile
+
+        from talkteach.director.types import Compute, EngineKind, Precision, TrainingPlan
+        from talkteach.engines._whisper_train import (
+            run_real_training,
+            transcribe_with_transformers,
+        )
+        from talkteach.sota.scoring import beats_base, gpu_hours_to_converge
+
+        base_ckpt = f"openai/whisper-{engine_name}"
+        eval_pairs = load_clip_transcript_pairs(eval_dir, max_clips=eval_clips)
+        if not eval_pairs:
+            return {"gpu_hours": -1.0, "num_clips": 0, "error": "no eval clips found"}
+
+        def _hf_wer(model_dir: str) -> float:
+            refs: list[str] = []
+            hyps: list[str] = []
+            for audio_path, ref_text in eval_pairs:
+                hyps.append(transcribe_with_transformers(str(audio_path), model_dir).lower())
+                refs.append(ref_text.lower())
+            return wer(refs, hyps)
+
+        base_wer = _hf_wer(base_ckpt)
+        manifest, actual_min = self._build_train_manifest(train_dir, minutes, seed=self.seed)
+        if len(manifest) < 5:
+            return {
+                "gpu_hours": -1.0,
+                "num_clips": len(manifest),
+                "error": "insufficient train data",
+            }
+
+        plan = TrainingPlan(
+            engine=EngineKind.WHISPER_LORA,
+            base_checkpoint=base_ckpt,
+            compute=Compute.CPU,
+            precision=Precision.FP32,  # int8 is inference-only; train in fp32 on CPU
+            batch_size=1,
+            grad_accum=1,
+            learning_rate=1e-4,
+            epochs=epochs,
+            warmup_ratio=0.1,
+            early_stop_patience=0,
+            lora_rank=8,
+            lora_alpha=16,
+            freeze_encoder=True,
+            seed=self.seed,
+            grad_clip=1.0,
+        )
+        curve: list[tuple[float, float, float]] = []
+        workdir = tempfile.mkdtemp(prefix="sota_d03_")
+        try:
+            run_real_training(
+                plan,
+                manifest,
+                workdir,
+                progress=None,
+                should_stop=None,
+                eval_sink=lambda e, w, s: curve.append((e, w, s)),
+            )
+            final_wer = _hf_wer(workdir)
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)  # disk guard (keep_artifacts=False)
+
+        metrics: dict[str, Any] = {
+            "base_wer": base_wer,
+            "final_wer_test_clean": final_wer,
+            "train_minutes": actual_min,
+            "epochs": epochs,
+            "num_clips": len(manifest),
+            "wall_clock_s": curve[-1][2] if curve else -1.0,
+        }
+        # Non-improvement is a documented terminal state (INS-001), not an error.
+        if not beats_base(final_wer, base_wer, min_rel_improvement):
+            metrics["degenerate"] = True
+            metrics["abstain_reason"] = (
+                f"fine-tune did not improve WER on held-out test-clean: base "
+                f"{base_wer:.1%} → trained {final_wer:.1%} (≥{min_rel_improvement:.0%} "
+                f"relative improvement required); convergence undefined (cf INS-001)."
+            )
+            return metrics
+        gh = gpu_hours_to_converge(curve)
+        if gh is None:
+            metrics["degenerate"] = True
+            metrics["abstain_reason"] = (
+                f"test-clean improved (base {base_wer:.1%} → {final_wer:.1%}) but the "
+                f"in-domain eval curve shows no convergence point — time undefined."
+            )
+            return metrics
+        metrics["gpu_hours"] = gh
+        metrics["partial"] = (
+            f"CPU-timed ÷10 A100 proxy; whisper-{engine_name} FP32 LoRA; "
+            f"{actual_min:.0f} min / {epochs} epochs; single seed; only when it beat base"
+        )
+        return metrics
 
     def measure_export_fidelity(
         self,
@@ -577,6 +938,9 @@ class SOTAHarness:
         # Dispatch to the right measurement
         metrics: dict[str, Any] = {}
         notes = ""
+        # Set when a measure ran but found no valid band exists (a documented
+        # terminal state — e.g. a degenerate gate estimate) → abstain, don't score.
+        abstained = False
 
         try:
             data_paths = self.ensure_data(domain) if domain.data_filter else {}
@@ -677,17 +1041,44 @@ class SOTAHarness:
                 else:
                     notes = "librispeech_test_clean not downloaded"
 
+            elif domain.id == "d03_train_efficiency":
+                train_dir = data_paths.get("librispeech_train_clean_100")
+                td_eval = data_paths.get("librispeech_test_clean")
+                if train_dir and td_eval:
+                    m = self.measure_train_efficiency(train_dir, td_eval, engine)
+                    metrics.update(m)
+                    if m.get("degenerate"):
+                        abstained = True
+                        notes = str(m.get("abstain_reason", "no convergence"))
+                else:
+                    notes = "librispeech train-clean-100 / test-clean not downloaded"
+
             elif domain.id == "d05_data_efficiency":
-                notes = "Requires training at multiple data sizes — use validate_d05 script"
-                metrics["wer_at_5min"] = -1.0
+                train_dir = data_paths.get("librispeech_train_clean_100")
+                td_eval = data_paths.get("librispeech_test_clean")
+                if train_dir and td_eval:
+                    m = self.measure_data_efficiency(train_dir, td_eval, engine)
+                    metrics.update(m)
+                    if m.get("degenerate"):
+                        abstained = True
+                        notes = str(m.get("abstain_reason", "no data size improved"))
+                else:
+                    notes = "librispeech train-clean-100 / test-clean not downloaded"
 
             elif domain.id == "d13_director_accuracy":
                 notes = "Requires exhaustive oracle sweep — use validate_d13 script"
                 metrics["oracle_match_rate"] = -1.0
 
             elif domain.id == "d14_quality_gate":
-                notes = "Requires hand-labelled quality set — use validate_d14 script"
-                metrics["quality_gate_auc"] = -1.0
+                eval_dir = data_paths.get("librispeech_test_clean")
+                if eval_dir:
+                    m = self.measure_quality_gate(eval_dir, engine, max_clips=domain.min_samples)
+                    metrics.update(m)
+                    if m.get("degenerate"):
+                        abstained = True
+                        notes = str(m.get("abstain_reason", "measurement degenerate"))
+                else:
+                    notes = "librispeech_test_clean not downloaded"
 
             else:
                 notes = f"Domain {domain.id} requires dedicated validation script"
@@ -698,25 +1089,31 @@ class SOTAHarness:
             result.num_samples = int(metrics.get("num_clips", metrics.get("num_speakers", 0)))
             result.notes = notes
 
-            # Score against bands
-            primary_metric = domain.metric
-            value = None
-            for key in metrics:
-                if primary_metric in key or key == primary_metric:
-                    v = metrics[key]
-                    if isinstance(v, (int, float)) and v >= 0:
-                        value = float(v)
-                        break
+            if abstained:
+                # Measured, but the domain has no valid band under what was measured
+                # (documented terminal state). Never a fabricated positive band.
+                result.band = "human_needed"
+                result.score_0_1000 = 0
+            else:
+                # Score against bands
+                primary_metric = domain.metric
+                value = None
+                for key in metrics:
+                    if primary_metric in key or key == primary_metric:
+                        v = metrics[key]
+                        if isinstance(v, (int, float)) and v >= 0:
+                            value = float(v)
+                            break
 
-            if value is not None and domain.bands:
-                band_tuples = [(b.score, b.threshold) for b in domain.bands]
-                score, band = score_against_bands(value, band_tuples, domain.higher_is_better)
-                result.score_0_1000 = score
-                result.band = band
-            elif notes and "not downloaded" in notes:
-                result.band = "unmeasured"
-            elif notes:
-                result.band = "pending"
+                if value is not None and domain.bands:
+                    band_tuples = [(b.score, b.threshold) for b in domain.bands]
+                    score, band = score_against_bands(value, band_tuples, domain.higher_is_better)
+                    result.score_0_1000 = score
+                    result.band = band
+                elif notes and "not downloaded" in notes:
+                    result.band = "unmeasured"
+                elif notes:
+                    result.band = "pending"
 
         except Exception as e:
             result.notes = f"Error: {e}"
