@@ -315,9 +315,7 @@ def run_real_training(
             w = metrics.get("eval_wer")
             if w is not None:
                 if eval_sink is not None:
-                    eval_sink(
-                        float(state.epoch or 0), float(w), time.perf_counter() - t_start
-                    )
+                    eval_sink(float(state.epoch or 0), float(w), time.perf_counter() - t_start)
                 exp.log_metrics(
                     workdir,
                     epoch=float(state.epoch or 0),
