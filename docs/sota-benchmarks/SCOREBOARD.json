@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-08T22:23:17.820188+00:00",
+  "generated": "2026-07-09T08:11:17.202418+00:00",
   "overall_mean": 800.0,
   "overall_band": "provisional",
   "coverage": {
@@ -271,18 +271,19 @@
       "domain_id": "d14_quality_gate",
       "domain_name": "Data Quality Gate \u2014 ROC-AUC vs. Human Labels",
       "score_0_1000": 0,
-      "band": "human_needed",
+      "band": "unmeasured",
       "directional": false,
       "directional_reason": "",
       "metrics": {
-        "status": "not measured",
-        "requires": "hand-labelled GOOD/BAD quality dataset (human labels) to compute ROC-AUC of the SNR/clipping/silence gate"
+        "quality_gate_pearson_r": 0.3832935135862975,
+        "num_clips": 100,
+        "partial": "Pearson r of gate SNR score vs measured WER; SNR component only; clean read speech (low quality variance); single engine"
       },
       "confidence_95": {},
       "baseline_ref": "",
       "sota_ref": "SNR-based gate: AUC ~0.88 on Common Voice labelled subset (estimated)",
-      "num_samples": 0,
-      "engine_used": "",
+      "num_samples": 100,
+      "engine_used": "tiny",
       "notes": ""
     },
     {

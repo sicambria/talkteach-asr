@@ -361,6 +361,56 @@ class SOTAHarness:
             "status": "skipped — exhaustive sweep needed (validate_d13)",
         }
 
+    def measure_quality_gate(
+        self,
+        eval_dir: Path,
+        engine_name: str = "tiny",
+        max_clips: int = 100,
+        noise_dir: Path | None = None,
+    ) -> dict[str, Any]:
+        """How well the audio quality gate predicts *measured* downstream WER (D14).
+
+        The gate's real job is flagging clips that will transcribe badly. So the
+        ground-truth target is the **measured** per-clip WER, NOT a synthetic
+        clean/noised label — scoring separability by the very SNR a defect
+        manipulates would be near-tautological (AUC≈1 regardless of gate quality).
+        Predictor = the gate's SNR score (``analyze_samples().est_snr_db``); target
+        = per-clip WER from real transcription. ``noise_dir`` (commit 2) is used
+        only to *widen* real WER variance, never as a label source.
+
+        Scope-partial: SNR component only (clipping/silence gate paths not
+        exercised), single engine → excluded from the headline.
+        """
+        import soundfile as sf
+        from faster_whisper import WhisperModel
+
+        from talkteach.audio.quality import analyze_samples
+        from talkteach.sota.scoring import correlation_strength
+
+        pairs = load_clip_transcript_pairs(eval_dir, max_clips=max_clips)
+        if not pairs:
+            return {"quality_gate_pearson_r": -1.0, "num_clips": 0, "error": "no clips found"}
+
+        model = WhisperModel(engine_name, device="cpu", compute_type="int8")
+
+        snr_scores: list[float] = []
+        clip_wers: list[float] = []
+        for audio_path, ref_text in pairs:
+            audio, sr = sf.read(str(audio_path))
+            snr_scores.append(analyze_samples(audio, sr).est_snr_db)
+            segments, _ = model.transcribe(str(audio_path), beam_size=5)
+            hyp = " ".join(s.text.strip() for s in segments).lower()
+            clip_wers.append(wer([ref_text.lower()], [hyp]))
+
+        # Higher SNR should predict lower WER ⇒ raw r is negative; report |r|.
+        r = correlation_strength(snr_scores, clip_wers)
+        return {
+            "quality_gate_pearson_r": r if r == r else -1.0,  # NaN → -1.0 sentinel
+            "num_clips": len(pairs),
+            "partial": "Pearson r of gate SNR score vs measured WER; SNR component "
+            "only; clean read speech (low quality variance); single engine",
+        }
+
     def measure_export_fidelity(
         self,
         eval_dir: Path,
@@ -686,8 +736,12 @@ class SOTAHarness:
                 metrics["oracle_match_rate"] = -1.0
 
             elif domain.id == "d14_quality_gate":
-                notes = "Requires hand-labelled quality set — use validate_d14 script"
-                metrics["quality_gate_auc"] = -1.0
+                eval_dir = data_paths.get("librispeech_test_clean")
+                if eval_dir:
+                    m = self.measure_quality_gate(eval_dir, engine, max_clips=domain.min_samples)
+                    metrics.update(m)
+                else:
+                    notes = "librispeech_test_clean not downloaded"
 
             else:
                 notes = f"Domain {domain.id} requires dedicated validation script"

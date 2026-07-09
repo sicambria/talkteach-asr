@@ -231,3 +231,43 @@ def test_hf_loader_decodes_without_torchcodec(tmp_path):
     assert (tmp_path / "clip_00000.txt").read_text() == "hello world"
     # torchcodec must not have been needed to get here.
     assert importlib.util.find_spec("torchcodec") is None or True
+
+
+# ── D14: correlation-strength helper (gate score vs measured WER) ─────────────
+def test_correlation_strength_monotone_and_flat():
+    from talkteach.sota.scoring import correlation_strength
+
+    # Perfectly linear (negative) relationship → |r| == 1.
+    snr = [10.0, 20.0, 30.0, 40.0, 50.0]
+    wer_vals = [0.50, 0.40, 0.30, 0.20, 0.10]
+    r = correlation_strength(snr, wer_vals)
+    assert 0.999 <= r <= 1.0
+
+    # A flat (constant) predictor has no correlation → NaN (never a fake score).
+    import math
+
+    flat = correlation_strength([1.0, 1.0, 1.0], [0.1, 0.2, 0.3])
+    assert math.isnan(flat)
+
+    # Fewer than two points is undefined, not zero.
+    assert math.isnan(correlation_strength([1.0], [0.1]))
+
+
+# ── D14: ROC-AUC helper (rank-based, dependency-free) ─────────────────────────
+def test_roc_auc_ranks_and_degenerate():
+    from talkteach.sota.scoring import roc_auc
+
+    # Score perfectly separates the classes → AUC == 1.0.
+    labels = [False, False, True, True]
+    scores = [0.1, 0.2, 0.8, 0.9]
+    assert roc_auc(labels, scores) == 1.0
+
+    # Score is uncorrelated with the label → AUC ≈ 0.5 (the helper CAN fail;
+    # this is the anti-tautology guarantee the advisor required).
+    import math
+
+    mid = roc_auc([False, True, False, True], [0.5, 0.5, 0.5, 0.5])
+    assert abs(mid - 0.5) < 1e-9
+
+    # One-class input has no AUC → NaN, never coerced to a score.
+    assert math.isnan(roc_auc([True, True, True], [0.1, 0.2, 0.3]))

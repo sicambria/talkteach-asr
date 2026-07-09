@@ -350,9 +350,11 @@ ALL_DOMAINS: list[Domain] = [
         ],
         sota_1000_reference="SNR-based gate: AUC ~0.88 on Common Voice labelled subset (estimated)",
         engine_filter=[],
-        data_filter=["labelled_quality_set"],
+        # Measured against *downstream WER* (the gate's real target), not a human
+        # GOOD/BAD set: clean read speech + synthetic noise to widen WER variance.
+        data_filter=["librispeech_test_clean"],
         runnable_cpu=True,
-        min_samples=200,
+        min_samples=100,
     ),
     # ── D15: Resource Efficiency ──
     Domain(

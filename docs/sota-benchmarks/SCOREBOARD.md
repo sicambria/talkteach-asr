@@ -1,6 +1,6 @@
 # TalkTeach SOTA Scoreboard
 
-**Generated:** 2026-07-08T22:23:17.820188+00:00
+**Generated:** 2026-07-09T08:11:17.202418+00:00
 
 **Headline:** 800/1000 — provisional
 
@@ -24,7 +24,7 @@
 | 12 | 🧑‍🔬 Multilingual Coverage — Languages with WER < 15% | **0** | human_needed | languages_under_15pct_wer | — |
 | 13 | 🧑‍🔬 Augmentation Efficacy — Relative WER Reduction at 5 min Data | **0** | human_needed | rel_wer_reduction_5min | — |
 | 14 | 🧑‍🔬 Director Auto-Selection — Optimal Config Choice Rate | **0** | human_needed | oracle_match_rate | — |
-| 15 | 🧑‍🔬 Data Quality Gate — ROC-AUC vs. Human Labels | **0** | human_needed | quality_gate_auc | — |
+| 15 | ❓ Data Quality Gate — ROC-AUC vs. Human Labels | **0** | unmeasured | quality_gate_auc | — |
 
 ## Per-Domain Details
 
@@ -236,15 +236,16 @@
 
 ### d14_quality_gate: Data Quality Gate — ROC-AUC vs. Human Labels
 
-- **Score:** 0/1000 (human_needed)
-- **Engine:** 
-- **Samples:** 0
+- **Score:** 0/1000 (unmeasured)
+- **Engine:** tiny
+- **Samples:** 100
 - **SOTA Reference:** SNR-based gate: AUC ~0.88 on Common Voice labelled subset (estimated)
 
 ```json
 {
-  "status": "not measured",
-  "requires": "hand-labelled GOOD/BAD quality dataset (human labels) to compute ROC-AUC of the SNR/clipping/silence gate"
+  "quality_gate_pearson_r": 0.3832935135862975,
+  "num_clips": 100,
+  "partial": "Pearson r of gate SNR score vs measured WER; SNR component only; clean read speech (low quality variance); single engine"
 }
 ```
 
