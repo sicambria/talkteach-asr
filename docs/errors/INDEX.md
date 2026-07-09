@@ -4,7 +4,7 @@
 
 | Date | Type | Status | Note |
 |------|------|--------|------|
-| 2026-07-09 | reference | active | [INS-002 — Quality Gate SNR Estimate Saturates to 60 dB on Broadband Noise](docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md) |
+| 2026-07-09 | reference | resolved | [INS-002 — Quality Gate SNR Estimate Saturates to 60 dB on Broadband Noise](docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md) |
 | 2026-07-08 | reference | active | [INS-001 — LoRA Fine-Tuning Degrades In-Domain WER](docs/errors/INS-001-lora-finetune-degrades-in-domain-wer.md) |
 | 2026-07-08 | incident | resolved | [INC-002 — LibriSpeech Transcript Parsing (`.trans.txt` Naming)](docs/errors/INC-002-librichspeech-transcript-parsing.md) |
 | 2026-07-08 | incident | resolved | [INC-001 — WER Normalization Defect (Punctuation Inflating WER)](docs/errors/INC-001-wer-normalization-punctuation.md) |
