@@ -112,6 +112,40 @@ def _frame_rms(x: np.ndarray, frame_len: int) -> np.ndarray:
     return np.sqrt(np.mean(frames**2, axis=1))
 
 
+def _spectral_snr_db(x: np.ndarray, frame_len: int) -> float:
+    """Estimate SNR (dB) from the *spectral* noise floor, for clips with no
+    silence frames.
+
+    The temporal speech-vs-silence SNR is undefined when every frame carries
+    energy — a continuous tone, or (the failure mode this guards, INS-002) speech
+    buried in broadband noise. Ask the spectrum instead: average the per-frame
+    periodograms (Welch) and compare the mean bin power to a low percentile of
+    the bins (the noise floor). A *flat* spectrum (broadband noise) has
+    ``mean ~= floor`` → ~0 dB; a *peaky* spectrum (clean tone / harmonic speech)
+    has a floor far below the mean → high dB. For additive broadband noise at
+    true SNR ``s`` this recovers ``~10*log10(s_linear + 1)``, so it crosses
+    ``SNR_MIN_DB`` near a true 10 dB. Pure numpy, deterministic.
+
+    Returns ``0.0`` when there are fewer than two frames to average — a single
+    frame cannot establish a noise floor, so the clip cannot be certified clean.
+    The result is clamped to ``[0, 60]`` to match the estimator's range.
+    """
+    n = x.size
+    if frame_len <= 0 or n < 2 * frame_len:
+        return 0.0
+    n_frames = n // frame_len
+    frames = x[: n_frames * frame_len].reshape(n_frames, frame_len)
+    window = np.hanning(frame_len)
+    spec = np.fft.rfft(frames * window, axis=1)
+    psd = np.mean(np.abs(spec) ** 2, axis=0)  # Welch-averaged periodogram
+    psd = psd[1:]  # drop DC — offset carries no speech/noise information
+    if psd.size == 0:
+        return 0.0
+    signal = max(float(np.mean(psd)), _DBFS_FLOOR)
+    floor = max(float(np.percentile(psd, 10.0)), _DBFS_FLOOR)
+    return float(min(60.0, max(0.0, 10.0 * np.log10(signal / floor))))
+
+
 def analyze_samples(samples: np.ndarray, sample_rate: int) -> ClipQuality:
     """Analyse a float waveform in [-1, 1] and return a :class:`ClipQuality`.
 
@@ -169,8 +203,12 @@ def analyze_samples(samples: np.ndarray, sample_rate: int) -> ClipQuality:
         # No speech detected at all — treat as no usable signal.
         est_snr_db = 0.0
     elif not silent_mask.any():
-        # No noise floor frames — assume a clean signal (cap high).
-        est_snr_db = 60.0
+        # No silence frames to measure a noise floor against. This is EITHER a
+        # clean continuous signal OR speech buried in broadband noise (which lifts
+        # every frame above the absolute silence threshold). Assuming "clean" here
+        # assigned the best score to the worst inputs — INS-002. Estimate the noise
+        # floor from the spectrum instead, which tells the two cases apart.
+        est_snr_db = _spectral_snr_db(x, frame_len)
     else:
         snr_ratio = max(speech_pow, _DBFS_FLOOR) / max(noise_pow, _DBFS_FLOOR)
         est_snr_db = float(10.0 * np.log10(snr_ratio))

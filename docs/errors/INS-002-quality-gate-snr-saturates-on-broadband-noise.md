@@ -3,10 +3,10 @@
 **Date:** 2026-07-09  
 **Type:** reference  
 **Area:** audio / quality gate  
-**Status:** active  
+**Status:** resolved  
 **Trigger:** D14 quality-gate measurement — noised clips (worst inputs) received the gate's BEST SNR score
-**Guardrail Links:** `backend/talkteach/sota/harness.py` (`measure_quality_gate` detects the 60 dB ceiling rate and abstains-with-finding instead of scoring a degenerate number), `scripts/sota/validate_d14_quality_gate.py` (runs it)
-**Automation Links:** `backend/tests/test_sota_scoring.py` (unit test pins the ceiling-detection → abstain logic), `backend/talkteach/audio/quality.py` (defect site: `analyze_samples`)
+**Guardrail Links:** `backend/talkteach/audio/quality.py` (`_spectral_snr_db` replaces the 60 dB fallback with a spectral noise-floor estimate — the fix), `backend/talkteach/sota/harness.py` (`measure_quality_gate` still detects a genuine ceiling rate and abstains-with-finding), `scripts/sota/validate_d14_quality_gate.py` (runs it)
+**Automation Links:** `backend/tests/test_audio.py` (calibration/regression probes: `test_snr_sweep_is_monotonic_and_tracks_true_snr`, `test_pure_broadband_noise_is_rejected`, `test_snr_gate_crosses_near_true_10db`), `backend/tests/test_sota_scoring.py` (pins ceiling-detection → abstain logic — still valid, now dormant)
 
 ## Summary
 
@@ -69,9 +69,33 @@ for quiet-room recordings whose pauses stay below −45 dBFS. The real-recording
   into a positive band.
 - The abstention reason names this note, so the scoreboard row points a reader at the RCA.
 
+## Resolution (2026-07-09)
+
+The scoped fix landed in a worktree behind a pre-registered calibration check. `_spectral_snr_db`
+replaces the `no-silence ⇒ 60 dB` fallback with a Welch-averaged spectral noise-floor estimate:
+`10·log10(mean_psd / p10_psd)`, clamped `[0, 60]`. A flat spectrum (broadband noise) → ~0 dB; a peaky
+one (clean tone / harmonic speech) → high dB. For additive broadband noise at true SNR *s* it recovers
+`~10·log10(s_linear + 1)`, so `SNR_MIN_DB` (10 dB) is meaningful again. **Surgical:** only the
+empty-`silent_mask` branch changed; the temporal branch and its calibration are untouched.
+
+Measured (seed=0) `mix_noise` sweep on a structured base — true **3/8/10/15/20 dB → est
+5.4/9.2/11.0/15.9/20.6 dB** (monotonic, crosses the gate at true 10 dB); pure broadband noise
+**60 → 0.65 dB** (now rejected); a clean continuous tone stays **60** (no false reject). Because the
+estimate no longer keys off the absolute −45 dBFS silence threshold, the earlier *level-dependent
+real-noisy-room* caveat is substantially addressed: a noisy-room recording whose pauses clear −45 dBFS
+now also gets a real spectral SNR instead of the 60 dB ceiling.
+
+**D14 re-measured (real, bounded run — 40 clips, test-clean, seed=42):** `snr_ceiling_rate` **1.0 → 0.0**,
+and the gate now genuinely predicts measured WER — `pearson_r = 0.64`, `ROC-AUC = 0.83`, no `degenerate`
+flag. It returns `partial` (SNR component only, single engine) → correctly **excluded from the headline**
+by the scope gate, but it is a real measure, not an abstention on a constant sentinel. A larger scored
+run remains available via `validate_d14_quality_gate.py`; the artifact-abstention no longer applies.
+
 ## Automation Follow-Up
 
-- [ ] Scoped follow-up: replace the `no-silence ⇒ 60 dB` fallback with a percentile/spectral
-      noise-floor estimate; add the clean+noise regression clip to `backend/tests`.
-- [ ] Re-enable a scored D14 once the estimator no longer saturates (broadband noise then
-      yields a real SNR range, giving a non-degenerate AUC vs measured WER).
+- [x] Scoped follow-up: replace the `no-silence ⇒ 60 dB` fallback with a spectral noise-floor estimate
+      (`backend/talkteach/audio/quality.py:_spectral_snr_db`); regression probes added to
+      `backend/tests/test_audio.py`.
+- [x] D14 no longer saturates: broadband noise yields a real SNR range → non-degenerate AUC (0.83) vs
+      measured WER on a bounded run; `snr_ceiling_rate` = 0.0. (Headline eligibility still gated by the
+      `partial`/small-n scope rules — a scored *headline* band is a separate, non-fabricated decision.)
