@@ -366,50 +366,113 @@ class SOTAHarness:
         eval_dir: Path,
         engine_name: str = "tiny",
         max_clips: int = 100,
-        noise_dir: Path | None = None,
+        widen_clips: int = 60,
+        widen_snr_db: float = 3.0,
+        bad_wer_threshold: float = 0.15,
     ) -> dict[str, Any]:
         """How well the audio quality gate predicts *measured* downstream WER (D14).
 
         The gate's real job is flagging clips that will transcribe badly. So the
         ground-truth target is the **measured** per-clip WER, NOT a synthetic
         clean/noised label — scoring separability by the very SNR a defect
-        manipulates would be near-tautological (AUC≈1 regardless of gate quality).
-        Predictor = the gate's SNR score (``analyze_samples().est_snr_db``); target
-        = per-clip WER from real transcription. ``noise_dir`` (commit 2) is used
-        only to *widen* real WER variance, never as a label source.
+        manipulates would be near-tautological (AUC≈1 regardless of gate quality,
+        since the injected noise *defines* both the SNR drop and the label). Here:
+          - predictor = the gate's SNR score (``analyze_samples().est_snr_db``),
+          - target    = *measured* per-clip WER (real transcription).
+        Additive noise (deterministic white noise, seeded) is used ONLY to widen
+        the WER range — clean read speech is too uniform for the correlation to
+        mean anything — never as the label. So the measure can genuinely fail: if
+        noise raised WER but the SNR estimate missed it, r/AUC fall.
+
+        Metrics:
+          - ``quality_gate_pearson_r`` = |Pearson r| of SNR vs measured WER.
+          - ``quality_gate_auc`` = ROC-AUC of the SNR score ranking clips by
+            ``measured_wer > bad_wer_threshold`` (higher predicted "bad" = lower SNR).
 
         Scope-partial: SNR component only (clipping/silence gate paths not
         exercised), single engine → excluded from the headline.
         """
+        import numpy as np
         import soundfile as sf
         from faster_whisper import WhisperModel
 
+        from talkteach.audio.augment import mix_noise
         from talkteach.audio.quality import analyze_samples
-        from talkteach.sota.scoring import correlation_strength
+        from talkteach.sota.scoring import correlation_strength, roc_auc
 
         pairs = load_clip_transcript_pairs(eval_dir, max_clips=max_clips)
         if not pairs:
-            return {"quality_gate_pearson_r": -1.0, "num_clips": 0, "error": "no clips found"}
+            return {
+                "quality_gate_pearson_r": -1.0,
+                "quality_gate_auc": -1.0,
+                "num_clips": 0,
+                "error": "no clips found",
+            }
 
         model = WhisperModel(engine_name, device="cpu", compute_type="int8")
+        rng = np.random.default_rng(self.seed)
+
+        def _snr_and_wer(audio: np.ndarray, sr: int, ref: str) -> tuple[float, float]:
+            snr = analyze_samples(audio, sr).est_snr_db
+            segments, _ = model.transcribe(audio.astype("float32"), beam_size=5)
+            hyp = " ".join(s.text.strip() for s in segments).lower()
+            return snr, wer([ref.lower()], [hyp])
 
         snr_scores: list[float] = []
         clip_wers: list[float] = []
-        for audio_path, ref_text in pairs:
+        noised_snr: list[float] = []
+        for i, (audio_path, ref_text) in enumerate(pairs):
             audio, sr = sf.read(str(audio_path))
-            snr_scores.append(analyze_samples(audio, sr).est_snr_db)
-            segments, _ = model.transcribe(str(audio_path), beam_size=5)
-            hyp = " ".join(s.text.strip() for s in segments).lower()
-            clip_wers.append(wer([ref_text.lower()], [hyp]))
+            audio = np.asarray(audio, dtype="float32")
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            snr, w = _snr_and_wer(audio, sr, ref_text)
+            snr_scores.append(snr)
+            clip_wers.append(w)
+            # Widen WER variance on a bounded subset with deterministic noise.
+            if i < widen_clips:
+                noise = rng.standard_normal(audio.shape[0]).astype("float32")
+                noisy = mix_noise(audio, noise, widen_snr_db)
+                nsnr, nw = _snr_and_wer(noisy, sr, ref_text)
+                snr_scores.append(nsnr)
+                clip_wers.append(nw)
+                noised_snr.append(nsnr)
 
-        # Higher SNR should predict lower WER ⇒ raw r is negative; report |r|.
         r = correlation_strength(snr_scores, clip_wers)
-        return {
+        labels = [w > bad_wer_threshold for w in clip_wers]
+        # Lower SNR should predict "bad" (high WER) ⇒ rank by negative SNR.
+        auc = roc_auc(labels, [-s for s in snr_scores])
+        # The gate's SNR estimator falls back to a 60 dB ceiling when a clip has no
+        # silence frames (quality.py) — which is exactly what broadband additive
+        # noise produces. When that fires, noised clips (worst inputs) get the gate's
+        # BEST score, so any AUC/r is an artifact of that constant sentinel, not a
+        # measure of discrimination. Detect it and abstain with the finding rather
+        # than ship a recipe-dependent number.
+        ceiling_hits = sum(1 for s in noised_snr if s >= 59.9)
+        ceiling_rate = (ceiling_hits / len(noised_snr)) if noised_snr else 0.0
+        result: dict[str, Any] = {
             "quality_gate_pearson_r": r if r == r else -1.0,  # NaN → -1.0 sentinel
-            "num_clips": len(pairs),
-            "partial": "Pearson r of gate SNR score vs measured WER; SNR component "
-            "only; clean read speech (low quality variance); single engine",
+            "quality_gate_auc": auc if auc == auc else -1.0,
+            "snr_ceiling_rate": ceiling_rate,
+            "num_clips": len(snr_scores),
+            "num_bad_clips": int(sum(labels)),
+            "bad_wer_threshold": bad_wer_threshold,
         }
+        if ceiling_rate > 0.5 or auc != auc:
+            result["degenerate"] = True
+            result["abstain_reason"] = (
+                f"gate SNR estimate saturates to the 60 dB ceiling on "
+                f"{ceiling_rate:.0%} of noised clips (silence-floor heuristic defeated "
+                f"by broadband noise) — the gate assigns its BEST score to its WORST "
+                f"inputs, so it cannot be validated as a WER predictor. See "
+                f"docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md."
+            )
+        else:
+            result["partial"] = (
+                "predicts measured WER; SNR component only (clipping/silence not "
+                "exercised); WER variance widened by seeded additive noise; single engine"
+            )
+        return result
 
     def measure_export_fidelity(
         self,
@@ -627,6 +690,9 @@ class SOTAHarness:
         # Dispatch to the right measurement
         metrics: dict[str, Any] = {}
         notes = ""
+        # Set when a measure ran but found no valid band exists (a documented
+        # terminal state — e.g. a degenerate gate estimate) → abstain, don't score.
+        abstained = False
 
         try:
             data_paths = self.ensure_data(domain) if domain.data_filter else {}
@@ -740,6 +806,9 @@ class SOTAHarness:
                 if eval_dir:
                     m = self.measure_quality_gate(eval_dir, engine, max_clips=domain.min_samples)
                     metrics.update(m)
+                    if m.get("degenerate"):
+                        abstained = True
+                        notes = str(m.get("abstain_reason", "measurement degenerate"))
                 else:
                     notes = "librispeech_test_clean not downloaded"
 
@@ -752,25 +821,31 @@ class SOTAHarness:
             result.num_samples = int(metrics.get("num_clips", metrics.get("num_speakers", 0)))
             result.notes = notes
 
-            # Score against bands
-            primary_metric = domain.metric
-            value = None
-            for key in metrics:
-                if primary_metric in key or key == primary_metric:
-                    v = metrics[key]
-                    if isinstance(v, (int, float)) and v >= 0:
-                        value = float(v)
-                        break
+            if abstained:
+                # Measured, but the domain has no valid band under what was measured
+                # (documented terminal state). Never a fabricated positive band.
+                result.band = "human_needed"
+                result.score_0_1000 = 0
+            else:
+                # Score against bands
+                primary_metric = domain.metric
+                value = None
+                for key in metrics:
+                    if primary_metric in key or key == primary_metric:
+                        v = metrics[key]
+                        if isinstance(v, (int, float)) and v >= 0:
+                            value = float(v)
+                            break
 
-            if value is not None and domain.bands:
-                band_tuples = [(b.score, b.threshold) for b in domain.bands]
-                score, band = score_against_bands(value, band_tuples, domain.higher_is_better)
-                result.score_0_1000 = score
-                result.band = band
-            elif notes and "not downloaded" in notes:
-                result.band = "unmeasured"
-            elif notes:
-                result.band = "pending"
+                if value is not None and domain.bands:
+                    band_tuples = [(b.score, b.threshold) for b in domain.bands]
+                    score, band = score_against_bands(value, band_tuples, domain.higher_is_better)
+                    result.score_0_1000 = score
+                    result.band = band
+                elif notes and "not downloaded" in notes:
+                    result.band = "unmeasured"
+                elif notes:
+                    result.band = "pending"
 
         except Exception as e:
             result.notes = f"Error: {e}"

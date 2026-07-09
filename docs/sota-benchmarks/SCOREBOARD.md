@@ -1,6 +1,6 @@
 # TalkTeach SOTA Scoreboard
 
-**Generated:** 2026-07-09T08:11:17.202418+00:00
+**Generated:** 2026-07-09T08:31:48.217124+00:00
 
 **Headline:** 800/1000 — provisional
 
@@ -24,7 +24,7 @@
 | 12 | 🧑‍🔬 Multilingual Coverage — Languages with WER < 15% | **0** | human_needed | languages_under_15pct_wer | — |
 | 13 | 🧑‍🔬 Augmentation Efficacy — Relative WER Reduction at 5 min Data | **0** | human_needed | rel_wer_reduction_5min | — |
 | 14 | 🧑‍🔬 Director Auto-Selection — Optimal Config Choice Rate | **0** | human_needed | oracle_match_rate | — |
-| 15 | ❓ Data Quality Gate — ROC-AUC vs. Human Labels | **0** | unmeasured | quality_gate_auc | — |
+| 15 | 🧑‍🔬 Data Quality Gate — ROC-AUC vs. Human Labels | **0** | human_needed | quality_gate_auc | 0.1678 |
 
 ## Per-Domain Details
 
@@ -236,16 +236,22 @@
 
 ### d14_quality_gate: Data Quality Gate — ROC-AUC vs. Human Labels
 
-- **Score:** 0/1000 (unmeasured)
+- **Score:** 0/1000 (human_needed)
 - **Engine:** tiny
-- **Samples:** 100
+- **Samples:** 160
 - **SOTA Reference:** SNR-based gate: AUC ~0.88 on Common Voice labelled subset (estimated)
+- **Notes:** gate SNR estimate saturates to the 60 dB ceiling on 100% of noised clips (silence-floor heuristic defeated by broadband noise) — the gate assigns its BEST score to its WORST inputs, so it cannot be validated as a WER predictor. See docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md.
 
 ```json
 {
-  "quality_gate_pearson_r": 0.3832935135862975,
-  "num_clips": 100,
-  "partial": "Pearson r of gate SNR score vs measured WER; SNR component only; clean read speech (low quality variance); single engine"
+  "quality_gate_pearson_r": 0.47908077446481884,
+  "quality_gate_auc": 0.1678181818181818,
+  "snr_ceiling_rate": 1.0,
+  "num_clips": 160,
+  "num_bad_clips": 50,
+  "bad_wer_threshold": 0.15,
+  "degenerate": true,
+  "abstain_reason": "gate SNR estimate saturates to the 60 dB ceiling on 100% of noised clips (silence-floor heuristic defeated by broadband noise) \u2014 the gate assigns its BEST score to its WORST inputs, so it cannot be validated as a WER predictor. See docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md."
 }
 ```
 

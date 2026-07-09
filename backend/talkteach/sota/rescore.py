@@ -37,6 +37,12 @@ def _rederive_score(result: SOTAResult, domain: Domain | None) -> tuple[int, str
     and applies any band-threshold change. Falls back to the stored score/band
     for unmeasured domains (no usable metric value).
     """
+    # An explicit abstention is a policy decision the measure made at measurement
+    # time (it determined no valid band exists — e.g. a degenerate gate estimate).
+    # Rescore must NOT second-guess it by scoring a raw metric the measure
+    # deliberately declined to score, which would fabricate a band. Preserve it.
+    if result.band == "human_needed" or result.metrics.get("degenerate"):
+        return 0, "human_needed"
     if domain is None or not domain.bands:
         return result.score_0_1000, result.band
     primary = domain.metric

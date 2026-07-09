@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-09T08:11:17.202418+00:00",
+  "generated": "2026-07-09T08:31:48.217124+00:00",
   "overall_mean": 800.0,
   "overall_band": "provisional",
   "coverage": {
@@ -271,20 +271,25 @@
       "domain_id": "d14_quality_gate",
       "domain_name": "Data Quality Gate \u2014 ROC-AUC vs. Human Labels",
       "score_0_1000": 0,
-      "band": "unmeasured",
+      "band": "human_needed",
       "directional": false,
       "directional_reason": "",
       "metrics": {
-        "quality_gate_pearson_r": 0.3832935135862975,
-        "num_clips": 100,
-        "partial": "Pearson r of gate SNR score vs measured WER; SNR component only; clean read speech (low quality variance); single engine"
+        "quality_gate_pearson_r": 0.47908077446481884,
+        "quality_gate_auc": 0.1678181818181818,
+        "snr_ceiling_rate": 1.0,
+        "num_clips": 160,
+        "num_bad_clips": 50,
+        "bad_wer_threshold": 0.15,
+        "degenerate": true,
+        "abstain_reason": "gate SNR estimate saturates to the 60 dB ceiling on 100% of noised clips (silence-floor heuristic defeated by broadband noise) \u2014 the gate assigns its BEST score to its WORST inputs, so it cannot be validated as a WER predictor. See docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md."
       },
       "confidence_95": {},
       "baseline_ref": "",
       "sota_ref": "SNR-based gate: AUC ~0.88 on Common Voice labelled subset (estimated)",
-      "num_samples": 100,
+      "num_samples": 160,
       "engine_used": "tiny",
-      "notes": ""
+      "notes": "gate SNR estimate saturates to the 60 dB ceiling on 100% of noised clips (silence-floor heuristic defeated by broadband noise) \u2014 the gate assigns its BEST score to its WORST inputs, so it cannot be validated as a WER predictor. See docs/errors/INS-002-quality-gate-snr-saturates-on-broadband-noise.md."
     },
     {
       "domain_id": "d15_resource_efficiency",

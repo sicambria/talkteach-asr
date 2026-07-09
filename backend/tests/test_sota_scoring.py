@@ -271,3 +271,62 @@ def test_roc_auc_ranks_and_degenerate():
 
     # One-class input has no AUC → NaN, never coerced to a score.
     assert math.isnan(roc_auc([True, True, True], [0.1, 0.2, 0.3]))
+
+
+# ── D14: degenerate gate estimate → abstain-with-finding (not a fake band) ─────
+def test_degenerate_quality_gate_abstains(monkeypatch):
+    from talkteach.sota.harness import SOTAHarness
+
+    h = SOTAHarness(engines=["whisper-tiny"])
+    monkeypatch.setattr(h, "ensure_data", lambda domain: {"librispeech_test_clean": Path("/x")})
+    monkeypatch.setattr(
+        h,
+        "measure_quality_gate",
+        lambda *a, **k: {
+            "quality_gate_auc": 0.17,
+            "quality_gate_pearson_r": 0.40,
+            "snr_ceiling_rate": 1.0,
+            "num_clips": 160,
+            "degenerate": True,
+            "abstain_reason": "gate SNR estimate saturates to the 60 dB ceiling ...",
+        },
+    )
+    r = h.run_domain(get_domain("d14_quality_gate"))
+    # A degenerate estimate must NOT be scored into a band (0.17 would map to ~0);
+    # it abstains, and the transparency metrics are preserved for the reader.
+    assert r.band == "human_needed"
+    assert r.score_0_1000 == 0
+    assert "saturat" in r.notes
+    assert r.metrics["quality_gate_auc"] == 0.17
+    assert r.metrics["snr_ceiling_rate"] == 1.0
+
+
+# ── rescore must preserve an abstention, never re-score its raw metric ─────────
+def test_rescore_preserves_abstention_not_rescore_raw_metric():
+    """A degenerate D14 (band human_needed) carries a raw quality_gate_auc in its
+    metrics for transparency. Rescore must keep it human_needed / score 0 — NOT
+    map that raw AUC onto a band (which would fabricate a score and inflate the
+    headline)."""
+    fixture = {
+        "generated": "2026-07-09T00:00:00+00:00",
+        "domains": [
+            {"domain_id": "d01_wer_clean", "metrics": {"wer": 0.027, "num_clips": 100}},
+            {
+                "domain_id": "d14_quality_gate",
+                "band": "human_needed",
+                "score_0_1000": 0,
+                "metrics": {
+                    "quality_gate_auc": 0.17,
+                    "snr_ceiling_rate": 1.0,
+                    "degenerate": True,
+                    "num_clips": 160,
+                },
+            },
+        ],
+    }
+    sb = rescore_mod.rescore_scoreboard(fixture)
+    by_id = {r.domain_id: r for r in sb.domains}
+    assert by_id["d14_quality_gate"].band == "human_needed"
+    assert by_id["d14_quality_gate"].score_0_1000 == 0
+    assert sb.num_eligible == 1  # only D01, not the abstained D14
+    assert sb.overall_mean == 800.0 and sb.overall_band == "provisional"
